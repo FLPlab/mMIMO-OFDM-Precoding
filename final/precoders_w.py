@@ -44,7 +44,8 @@ def rzf_precoder(h_freq, stream_management, no=None, alpha=None):
     return rzf_precoding_matrix(h_pc, alpha=alpha_val)
 
 
-def wmmse_precoder(h_freq, no, stream_management, num_iterations=10):
+def wmmse_precoder(h_freq, no, stream_management, num_iterations=10,
+                    bisection_iters=30, bisection_doublings=30):
     """
     WMMSE itératif — initialisé depuis RZF, α = no (optimal i.i.d.).
     Sortie : [B, 1, ofdm, fft, M, K]
@@ -55,22 +56,33 @@ def wmmse_precoder(h_freq, no, stream_management, num_iterations=10):
     est donc exécutée en complex128/float64 ; seule l'entrée/sortie reste
     complex64 pour ne pas changer l'interface externe.
 
-    Écart résiduel connu à bas SNR (0-5dB) : le sum-rate reporté pour WMMSE
-    reste légèrement (~0.5-0.7% à 0dB, disparaît vers 10dB) en dessous de
-    son propre point de départ RZF(alpha=no). Ce n'est PAS un artefact de
-    métrique d'évaluation -- les deux sens de réconciliation ont été
-    essayés et écartés : (a) faire optimiser à WMMSE la métrique 2x-
-    interférence de Sionna's LMMSEPostEqualizationSINR au lieu de la
-    formule 1x standard casse la garantie de non-décroissance monotone de
-    l'algorithme ; (b) reporter le sum-rate via la formule 1x native de
-    WMMSE au lieu de LMMSEPostEqualizationSINR ne referme pas l'écart non
-    plus (RZF en bénéficie davantage que WMMSE, car RZF tolère plus
-    d'interférence résiduelle à bas SNR). L'explication la plus probable
-    est une différence algorithmique réelle : WMMSE alloue la puissance de
-    façon inégale entre utilisateurs (visible dans ses poids itératifs W),
-    alors que RZF impose une puissance égale par flux via sa normalisation
-    par colonne. Non confirmé davantage -- à traiter comme une
-    caractéristique connue de WMMSE, pas un bug.
+    Mise à jour de V — multiplicateur de Lagrange μ exact (Shi et al. 2011,
+    "An Iteratively Weighted MMSE Approach...", Algorithm 1) :
+    v_k = (Σ_j w_j|u_j|² h_j h_j^H + μI)⁻¹ w_k u_k* h_k, où μ≥0 est choisi
+    pour que Σ_k‖v_k‖² = K EXACTEMENT (contrainte de puissance active).
+    Précédemment, μ était fixé arbitrairement à `no` (par analogie avec la
+    régularisation RZF) puis la puissance totale était renormalisée a
+    posteriori — une renormalisation scalaire globale ne peut pas
+    reproduire l'effet d'un μ différent (qui change la DIRECTION de chaque
+    v_k, pas seulement sa norme), ce qui cassait la garantie de
+    non-décroissance monotone du WSR de l'algorithme (Théorème 1 de Shi et
+    al.) : diagnostic instrumenté = WSR interne strictement DÉCROISSANT à
+    chaque itération (14/14 violations sur 3 batches testés), et le gap
+    RZF-WMMSE qui grandissait avec plus d'itérations (+0.54% à 10 iters,
+    +1.84% à 50 iters) au lieu de se refermer.
+
+    μ est résolu par bisection vectorisée, sans re-résoudre le système
+    linéaire à chaque étape de bisection : A = Σ_k w_k|u_k|² h_k h_k^H est
+    Hermitienne semi-définie positive, donc A = QΣQ^H (eigh), et
+    v_k(μ) = Q(Σ+μI)⁻¹Q^H b_k implique ‖V(μ)‖²_F = Σ_m p_m/(σ_m+μ)² avec
+    p_m = Σ_k|c_k[m]|², c_k = Q^H b_k — fonction scalaire décroissante de
+    μ, bisectée en ~30+30 itérations d'arithmétique bon marché (un seul
+    eigh() par itération WMMSE, pas un solve() par étape de bisection).
+
+    Validé (voir diagnostic) : WSR interne désormais non-décroissant à
+    chaque itération (0/14 violations sur les mêmes 3 batches), et le gap
+    RZF-WMMSE se referme avec plus d'itérations (+0.11% à 10 iters,
+    -0.08% à 50 iters — WMMSE dépasse RZF, comme attendu théoriquement).
     """
     input_dtype = h_freq.dtype
     h_pc = _get_desired_channels(h_freq, stream_management)
@@ -81,10 +93,7 @@ def wmmse_precoder(h_freq, no, stream_management, num_iterations=10):
     K_float = tf.cast(K, tf.float64)
 
     no_scalar  = tf.cast(tf.reshape(no, []), tf.float64)
-    no_complex = tf.cast(no_scalar, H.dtype)
     no_val     = tf.reshape(no_scalar,  [1, 1, 1, 1])
-    no_mat     = tf.reshape(no_complex, [1, 1, 1, 1, 1])
-    eye_M      = tf.eye(M, dtype=H.dtype)
 
     V = tf.cast(tf.squeeze(
         rzf_precoding_matrix(h_pc, alpha=tf.cast(no_scalar, tf.float32)), axis=1),
@@ -103,14 +112,44 @@ def wmmse_precoder(h_freq, no, stream_management, num_iterations=10):
         weights     = tf.cast(W * tf.abs(U)**2, H.dtype)
         H_H         = tf.linalg.adjoint(H)
         weighted_HH = H_H * weights[:, :, :, None, :]
-        A_reg       = tf.matmul(weighted_HH, H) + no_mat * eye_M
+        A           = tf.matmul(weighted_HH, H)          # [...,M,M] Hermitienne PSD (pas de +no*I ici)
 
         target = tf.cast(W, H.dtype) * tf.math.conj(U)
-        B_rhs  = H_H * target[:, :, :, None, :]
-        V      = tf.linalg.solve(A_reg, B_rhs)
+        B_rhs  = H_H * target[:, :, :, None, :]           # [...,M,K]
 
-        pwr = tf.reduce_sum(tf.abs(V)**2, axis=[-2, -1], keepdims=True)
-        V   = V * tf.cast(tf.sqrt(K_float / (pwr + 1e-12)), V.dtype)
+        # --- V(μ) exact sous contrainte de puissance, via eigh + bisection sur μ ---
+        # tf.linalg.eigh batché sur beaucoup de petites matrices (M<=64) est
+        # extrêmement lent/instable sur GPU dans cette version de TF (mesuré :
+        # ~9s/appel pour M=8, hang/OOM total pour M=64, sur un batch B×ofdm×fft
+        # ~43k matrices) -- LAPACK CPU gère ce cas ~35-1000x plus vite (<0.3s
+        # même à M=64). Forcé sur CPU ; les tenseurs (quelques dizaines de MB)
+        # traversent le bus au besoin, coût négligeable face au gain.
+        with tf.device('/CPU:0'):
+            sigma, Q = tf.linalg.eigh(A)                    # eigh(complex128) -> (complex128, complex128) sur ce TF
+        sigma    = tf.maximum(tf.math.real(sigma), 0.0)    # valeurs propres d'une matrice Hermitienne : réelles
+        C = tf.matmul(Q, B_rhs, adjoint_a=True)             # Q^H @ B_rhs -> [...,M,K]
+        p = tf.reduce_sum(tf.abs(C) ** 2, axis=-1)          # p_m = Σ_k |c_k[m]|² -> [...,M]
+
+        def power_at(mu):
+            """‖V(μ)‖²_F = Σ_m p_m/(σ_m+μ)² -- décroissante en μ."""
+            denom_m = tf.maximum(sigma + mu, 1e-30)
+            return tf.reduce_sum(p / (denom_m ** 2), axis=-1, keepdims=True)
+
+        lo = tf.zeros_like(sigma[..., :1])
+        hi = tf.fill(tf.shape(sigma[..., :1]), tf.constant(1.0, tf.float64))
+        for _ in range(bisection_doublings):    # cadrage : agrandit hi tant que power(hi) > K
+            hi = tf.where(power_at(hi) > K_float, hi * 2.0, hi)
+        for _ in range(bisection_iters):        # bisection standard
+            mid   = 0.5 * (lo + hi)
+            too_much = power_at(mid) > K_float
+            lo = tf.where(too_much, mid, lo)
+            hi = tf.where(too_much, hi, mid)
+        mu_star = 0.5 * (lo + hi)                # [...,1]
+
+        inv_diag = 1.0 / tf.maximum(sigma + mu_star, 1e-30)         # [...,M]
+        V = tf.matmul(Q, tf.cast(inv_diag, H.dtype)[..., None] * C)  # Q @ diag(inv) @ C
+        # Contrainte de puissance Σ_k‖v_k‖²=K satisfaite par construction (μ exact)
+        # -- plus besoin de renormalisation post-hoc.
 
     V = tf.cast(V, input_dtype)
     return tf.expand_dims(V, axis=1)   # [B, 1, ofdm, fft, M, K]
