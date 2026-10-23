@@ -14,20 +14,23 @@ freqctx/
   csi.py                 UplinkSounder (pilotes kronecker + LS Sionna), csi_at_bs, smooth_freq
   metrics.py             sinr, sum_rate (toujours sur le canal VRAI)
   precoders/classical.py MRT, ZF, RZF, WMMSE (par SC)
-  models/                (phase 1+) modèles appris
+  models/per_sc.py       transformer minimal par SC (phase 1)
+  train.py               données par SC, boucle d'entraînement, évaluation
   experiments/           un script par expérience : phaseN_<nom>.py
-  tests/test_sanity.py   tests de cohérence de la chaîne
+  tests/                 test_sanity (chaîne), test_models (équivariance), test_env_repro (machines)
+  requirements.txt       versions exactes de l'environnement
   utils.py               sauvegarde résultats (json + png/pdf + commit git), style figures
-  results/<phase>/       UNIQUEMENT les résultats retenus : <expérience>.{json,png,pdf}
-  FINDINGS.md            journal : question -> chiffres -> verdict, pour chaque expérience
+  results/<phase>/       un fichier par expérience complète : <expérience>.{json,png,pdf}
+  FINDINGS.md            journal : question -> chiffres -> verdict (retenu / négatif / écarté)
 ```
 
 Règles :
 - une expérience = un script `experiments/phaseN_<nom>.py`, qui écrit `results/phaseN/<nom>.*`
   (config, graine, commit dans le JSON ; une relance écrase, l'historique est dans git) ;
 - évaluations **appariées** (un tirage de canal réutilisé pour toutes les méthodes/conditions) ;
-- après chaque expérience : une entrée dans `FINDINGS.md`. Si ce n'est pas intéressant, on
-  supprime les fichiers et on retire la condition du script ; seule l'entrée « écarté » reste ;
+- après chaque expérience : une entrée dans `FINDINGS.md` (question, chiffres, verdict),
+  **y compris les résultats négatifs ou inutiles**, avec leurs chiffres. Une option écartée est
+  retirée du code pour le garder simple ; elle reste décrite dans le journal ;
 - pas d'abstraction tant qu'on n'en a pas besoin deux fois.
 
 ## Conventions
@@ -40,16 +43,33 @@ Règles :
 - CSI estimé : un symbole de sondage, peigne orthogonal entre utilisateurs (1 SC sur K),
   LS puis interpolation linéaire (`ls_lin`) ou plus proche voisin (`ls_nn`).
 
-## Lancer (srvgrm12)
+## Lancer
 
+Environnement figé dans `requirements.txt` (Python 3.11.13, TF 2.20.0, Keras 3.11.3, Sionna 1.2.1).
+
+**srvgrm12** (L40S, env `tf-gpu`) :
 ```
 source /export/tmp/sala/miniconda/bin/activate tf-gpu
 export LD_LIBRARY_PATH=/export/tmp/sala/miniconda/envs/tf-gpu/lib:$LD_LIBRARY_PATH
-export CUDA_VISIBLE_DEVICES=1 TF_CPP_MIN_LOG_LEVEL=3
-cd freqctx
-python -m tests.test_sanity
+export CUDA_VISIBLE_DEVICES=1 TF_CPP_MIN_LOG_LEVEL=3 TF_FORCE_GPU_ALLOW_GROWTH=true  # plusieurs jobs par GPU
+```
+
+**srvgrm08** (P100 16 Go, env `freqctx`, créé le 2026-10-23 ; ne pas confondre avec son `tf-gpu` en TF 2.13) :
+```
+source /export/tmp/sala/anaconda3/bin/activate /export/tmp/sala/anaconda3/envs/freqctx
+export LD_LIBRARY_PATH=/export/tmp/sala/anaconda3/envs/freqctx/lib:$LD_LIBRARY_PATH
+export CUDA_VISIBLE_DEVICES=3 TF_CPP_MIN_LOG_LEVEL=3 TF_FORCE_GPU_ALLOW_GROWTH=true
+```
+
+Puis, depuis `freqctx/` :
+```
+python -m tests.test_sanity          # chaîne canal / CSI / précodeurs
+python -m tests.test_models          # modèles : forme, puissance, équivariance
+python -m tests.test_env_repro       # même canal que la référence srvgrm12 ? (obligatoire sur une nouvelle machine)
 python -m experiments.phase0_channel_stats
 python -m experiments.phase0_baselines [--quick]
+python -m experiments.phase1_size_sweep [--quick]
+python -m experiments.phase1_signed_gram [--d 64 --layers 2] [--quick]
 ```
 
 ## Plan
