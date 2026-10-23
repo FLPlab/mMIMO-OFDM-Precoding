@@ -18,7 +18,7 @@ class SystemConfig:
     carrier_frequency: float = 3.5e9
     subcarrier_spacing: float = 30e3
     num_rb: int = 51                    # 20 MHz a 30 kHz (TS 38.101-1, table 5.3.2-1)
-    scenario: str = "umi"               # "umi" | "uma"
+    scenario: str = "umi"               # "umi" | "uma" | "rma"
     min_speed_kmh: float = 3.0
     max_speed_kmh: float = 30.0
     indoor_probability: float = None    # None = valeur 3GPP du scenario

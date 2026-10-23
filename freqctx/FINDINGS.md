@@ -23,7 +23,9 @@
 
 **Ce que le modèle a pour lui face à WMMSE(LMMSE)** : il n'a pas besoin de la covariance du canal, il n'itère pas sur une inversion de matrice, il s'exécute en un temps fixe, et son attention n'a que des multiplications et des additions. **Ce qui lui manque** : 1 à 3 % de débit, et un coût de calcul de 590 k MAC/SC à D=64 (environ 420 fois RZF).
 
-**Questions ouvertes** : (a) une covariance fixe pour LMMSE perd-elle quand les scénarios sont mélangés ? (b) peut-on traiter la fenêtre plus économiquement que D=64 partout ? (c) une attention en fréquence (adaptative) apporte-t-elle quelque chose par rapport à la concaténation (un filtre appris fixe) ?
+| 11 | **Scénarios mélangés : LMMSE avec covariance moyenne perd 1 bps/Hz sur RMa (canal plat)** ; notre modèle à filtre fixe ne le récupère pas (24,09 contre 24,20 pour WMMSE(LMMSE mélange), 25,24 pour l'oracle) | phase 3, `mixed_p10` |
+
+**Questions ouvertes** : (a) est-ce la fenêtre trop étroite (W=13) ou le filtre fixe qui empêche de profiter de RMa ? (b) une attention en fréquence (adaptative) récupère-t-elle le 1 bps/Hz ? (c) peut-on traiter la fenêtre plus économiquement que D=64 partout ?
 
 ---
 
@@ -284,8 +286,31 @@ Pilote 10 dB, mêmes tirages. Débit somme (0 / 5 / 10 / 15 / 20 / 25 dB) :
 
 **Conclusion : le meilleur modèle (D64, W=13 : 5,21 / 9,10 / 13,94 / 19,10 / 23,65 / 26,78) reste à 97,4-98,8 % de WMMSE(LMMSE) à tous les SNR.** Il bat RZF(LMMSE), mais pas la meilleure méthode classique. Ma réserve du diagnostic était fondée.
 
+### Scénarios mélangés UMi + UMa + RMa — RETENU (`results/phase3/mixed_p10.*`)
+- **Question** : une covariance fixe pour LMMSE perd-elle quand les scénarios sont mélangés ? Le modèle (D64, W=13, linéaire) fait-il mieux ?
+- **Contraste entre scénarios** : corrélation sur 1 RB de 0,85 (UMi), 0,81 (UMa) et **0,98 (RMa, canal bien plus plat)**.
+- **Réglages** : pilote 10 dB. Entraînement sur 352 tirages par scénario (graines 1, 2, 3), mélangés, sans que le modèle connaisse le scénario. Évaluation sur 192 tirages par scénario (graines 2026, 2036, 2046), avec les mêmes tirages et le même bruit pilote pour toutes les méthodes. LMMSE « mélange » = covariance moyenne des trois scénarios ; LMMSE « oracle » = covariance du bon scénario.
+
+Débit somme à 20 dB (bps/Hz) :
+
+| | UMi | UMa | **RMa** |
+|---|---|---|---|
+| RZF (CSI parfait) | 26,31 | 25,98 | 25,95 |
+| WMMSE (LMMSE oracle) | 24,02 | 23,45 | **25,24** |
+| **WMMSE (LMMSE mélange)** | **24,07** | **23,62** | **24,20** |
+| RZF (LMMSE oracle) | 23,60 | 23,00 | 24,64 |
+| RZF (LMMSE mélange) | 23,66 | 23,16 | 23,62 |
+| RZF (LS) | 21,81 | 21,37 | 21,68 |
+| **modèle entraîné sur le mélange** | 23,70 | 23,16 | **24,09** |
+| modèle entraîné sur UMi seul | 23,71 | 23,20 | 24,01 |
+
+**Conclusions :**
+- **Une covariance mal adaptée coûte cher là où le canal est différent** : sur RMa, LMMSE avec la covariance du mélange perd **1,0 bps/Hz** par rapport à l'oracle (WMMSE : 25,24 → 24,20). Sur UMi et UMa, la covariance du mélange suffit, parce qu'ils se ressemblent.
+- **Mais notre modèle ne récupère pas cette perte** : sur RMa, il fait 24,09, donc au-dessus de RZF(LMMSE mélange) mais **sous WMMSE(LMMSE mélange)** (99,5 %), et loin de l'oracle (25,24). Il reste en dessous de WMMSE(LMMSE mélange) à tous les SNR, dans les trois scénarios.
+- **Le modèle ne s'adapte pas** : entraîné sur le mélange ou sur UMi seul, il fait pareil sur RMa (24,09 contre 24,01). C'est cohérent avec ce qu'il est, un **filtre fréquentiel fixe** suivi d'un précodeur. (Ça règle aussi la question de la quantité de données : le mélange n'a rien coûté sur UMi et UMa.)
+- **Deux raisons possibles, à séparer** : (1) le filtre est fixe, alors que RMa demanderait de moyenner plus largement ; (2) **W=13 est trop étroit pour RMa**, où le canal reste corrélé sur des dizaines de SC, alors que LMMSE utilise toute la bande.
+- **Pour le paper**, c'est la situation qui justifie un traitement fréquentiel **adaptatif** : il y a 1 bps/Hz à gagner sur RMa par rapport à la meilleure méthode classique réaliste, et la concaténation ne le prend pas.
+
 ## Prochaine étape
-1. Ajouter la référence WMMSE(LMMSE), la meilleure méthode classique, à toutes les comparaisons de la phase 3.
-2. Rendre le traitement de la fenêtre moins coûteux que D=64 partout (entrée plus large seulement, ou attention en fréquence).
-3. Pilote 20 dB et mélange de scénarios (UMi + UMa), là où une covariance fixe pour LMMSE doit perdre.
+Sur le mélange UMi + UMa + RMa : (1) fenêtre plus large (W = 25, 49) avec la même concaténation, pour savoir si c'est la largeur qui manque ; (2) si ça ne suffit pas, une attention en fréquence (filtre adaptatif).
 Cible principale ensuite (phases 2–3) : le régime pilote 10 dB, où il reste 2,7 à 5,9 bps/Hz après LMMSE.

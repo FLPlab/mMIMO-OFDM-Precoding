@@ -2,11 +2,11 @@
 import tensorflow as tf
 from sionna.phy.channel import (cir_to_ofdm_channel, gen_single_sector_topology,
                                 subcarrier_frequencies)
-from sionna.phy.channel.tr38901 import UMa, UMi, PanelArray
+from sionna.phy.channel.tr38901 import RMa, UMa, UMi, PanelArray
 
 from config import SystemConfig
 
-_MODELS = {"umi": UMi, "uma": UMa}
+_MODELS = {"umi": UMi, "uma": UMa, "rma": RMa}
 
 
 class ChannelGenerator:
@@ -29,9 +29,10 @@ class ChannelGenerator:
         bs_array = PanelArray(num_rows_per_panel=1, num_cols_per_panel=cfg.num_bs_ant // 2,
                               polarization="dual", polarization_type="cross",
                               antenna_pattern="38.901", carrier_frequency=fc)
+        o2i = {} if cfg.scenario == "rma" else {"o2i_model": "low"}   # RMa : pas de modele O2I
         self.model = _MODELS[cfg.scenario](
-            carrier_frequency=fc, o2i_model="low", ut_array=ut_array, bs_array=bs_array,
-            direction="uplink", enable_pathloss=False, enable_shadow_fading=False)
+            carrier_frequency=fc, ut_array=ut_array, bs_array=bs_array, direction="uplink",
+            enable_pathloss=False, enable_shadow_fading=False, **o2i)
         self.frequencies = subcarrier_frequencies(cfg.num_sc, cfg.subcarrier_spacing)
 
     def __call__(self, batch_size):
