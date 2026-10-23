@@ -8,6 +8,9 @@ Cible : battre RZF(LMMSE), qui connait la covariance du canal.
 
     python -m experiments.phase3_window --pilot 10 --windows 1,9 --tag a
     python -m experiments.phase3_window --pilot 10 --merge
+
+Diagnostic (estimation ou precodeur ?) : --name diagnostic, avec --input lmmse
+(le modele recoit l'estimation LMMSE), --attn signed, --d 64.
 """
 import argparse
 import dataclasses
@@ -43,10 +46,15 @@ def main():
     ap.add_argument("--tag", default="")
     ap.add_argument("--quick", action="store_true")
     ap.add_argument("--merge", action="store_true")
+    ap.add_argument("--name", default="window", help="nom de l'experience (window | diagnostic)")
+    ap.add_argument("--input", default="ls", choices=["ls", "lmmse"], help="CSI donne au modele")
+    ap.add_argument("--attn", default="linear")
+    ap.add_argument("--d", type=int, default=32)
     args = ap.parse_args()
-    base = f"window_p{int(args.pilot)}"
+    base = f"{args.name}_p{int(args.pilot)}"
     if args.merge:
-        return merge_parts("phase3", base, plot, sort_key=lambda r: r["window"])
+        return merge_parts("phase3", base, plot,
+                           sort_key=lambda r: (r["window"], r.get("input", "ls"), r["name"]))
     steps, drops = (2000, 128) if args.quick else (40000, 1024)
     cfg = SystemConfig()
     csi = CSIConfig("ls_lin", args.pilot, 0)
@@ -57,9 +65,11 @@ def main():
     ls = eval_csi_pool(cfg, csi, flat=False)                         # [512, F, K, M]
     lmmse = eval_csi_pool(cfg, CSIConfig("ls_lmmse", args.pilot, 0), cov, flat=False)
     assert float(tf.reduce_max(tf.abs(ls[1] - lmmse[1]))) == 0.0, "tirages non apparies"
-    train_in, train_true = csi_pool(cfg, csi, drops, seed=1, flat=False)
+    train_csi = CSIConfig("ls_" + ("lin" if args.input == "ls" else "lmmse"), args.pilot, 0)
+    train_in, train_true = csi_pool(cfg, train_csi, drops, seed=1, cov_freq=cov, flat=False)
     if args.quick:
         ls, lmmse = (ls[0][::50], ls[1][::50]), (lmmse[0][::50], lmmse[1][::50])
+    model_in = ls if args.input == "ls" else lmmse                  # CSI vu par le modele
 
     ls_flat = (flat(ls[0], cfg), flat(ls[1], cfg))
     ref = references(ls_flat, SNRS_DB)
@@ -72,18 +82,20 @@ def main():
                 rzf_fn, (flat(smooth_freq(ls[0], W), cfg), ls_flat[1]), SNRS_DB)
     print("references @20dB :", {k: round(v[4], 2) for k, v in refs.items()})
 
+    model_kw = {**MODEL, "d": args.d, "attn": args.attn}
     runs = []
     for W in windows:
-        run = run_variant(f"D32_T4_linear_W{W}_p{int(args.pilot)}",
-                          PerSCPrecoder(cfg.num_bs_ant, window=W, **MODEL),
-                          WindowedPool(train_in, train_true, W), WindowedPool(ls[0], ls[1], W),
+        name = f"D{args.d}_T4_{args.attn}_W{W}_{args.input}_p{int(args.pilot)}"
+        run = run_variant(name, PerSCPrecoder(cfg.num_bs_ant, window=W, **model_kw),
+                          WindowedPool(train_in, train_true, W),
+                          WindowedPool(model_in[0], model_in[1], W),
                           SNRS_DB, ref, steps, seed=0, loss="rel_rzf",
                           weights_dir=None if args.quick else W3)
         run["pct_rzf_lmmse"] = [r / z * 100 for r, z in zip(run["rate_bps_hz"], refs["RZF (LMMSE)"])]
-        runs.append({"window": W, **run})
+        runs.append({"window": W, "input": args.input, "attn": args.attn, "d": args.d, **run})
 
     payload = {"config": dataclasses.asdict(cfg), "csi": dataclasses.asdict(csi),
-               "snrs_db": SNRS_DB, "model": MODEL, "steps": steps, "train_drops": drops,
+               "snrs_db": SNRS_DB, "model": model_kw, "steps": steps, "train_drops": drops,
                "references": refs, "runs": runs}
     name = base + ("_quick" if args.quick else "") + (f"_part_{args.tag}" if args.tag else "")
     save("phase3", name, payload, plot(payload))

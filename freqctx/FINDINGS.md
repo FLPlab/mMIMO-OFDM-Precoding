@@ -225,6 +225,29 @@ Débit somme à 20 dB (25 dB), bps/Hz :
   2. *Le précodage* : en CSI parfait, ce modèle ne fait déjà que 97-98 % de RZF à 20 dB et 92-94 % à 25 dB. Une partie de l'écart à LMMSE est donc probablement la limite du précodeur lui-même, pas de l'estimation.
 - *Technique* : la fusion des parties ne gardait que les références de la première partie (le lissage W=3, 5 et 9 manquait) ; corrigé dans `utils.merge_parts`.
 
+### Diagnostic : estimation ou précodeur ? — RETENU (`results/phase3/diagnostic_p10.*`, parties a–c srvgrm12, d srvgrm08)
+- **Question** : l'écart à RZF(LMMSE) de la fenêtre W=13 vient-il de l'estimation, du précodeur, ou de la compression de l'entrée (208 valeurs → D=32) ?
+- **Réglages** : pilote 10 dB, 1 bloc × 4, perte relative, mêmes tirages. RZF(LMMSE) = 23,51 (20 dB) / 26,94 (25 dB).
+
+| Modèle | Entrée | 0 dB | 10 dB | 20 dB | 25 dB | params | MAC/SC |
+|---|---|---|---|---|---|---|---|
+| D32 linéaire, W=1 | **LMMSE** | 100,8 % | 102,0 % | 99,2 % | 97,1 % | 9,6 k | 139 k |
+| D32 signé, W=1 | **LMMSE** | 100,5 % | 101,8 % | 98,4 % | 95,9 % | 9,6 k | 139 k |
+| D32 linéaire, W=13 (phase 3) | LS | 100,6 % | 101,6 % | 98,5 % | 96,4 % | 15,8 k | 164 k |
+| D32 **signé**, W=13 | LS | 100,6 % | 101,1 % | 97,8 % | 95,5 % | 15,8 k | 164 k |
+| **D64** linéaire, W=13 | LS | **102,7 %** | **102,4 %** | **100,6 %** (23,65) | **99,4 %** (26,78) | 48 k | 590 k |
+
+(% de RZF(LMMSE), même SNR.)
+
+**Conclusions :**
+- **Le précodeur D32 coûte environ 1 point à 20 dB et 3 à 25 dB** : même avec l'estimation LMMSE en entrée, il n'atteint pas tout à fait RZF(LMMSE). C'est cohérent avec sa limite en CSI parfait.
+- **L'attention signée ne change rien ici** (W=13 : 97,8 % contre 98,5 % en linéaire ; LMMSE en entrée : 98,4 % contre 99,2 %). Le linéaire reste le bon choix.
+- **Le vrai goulot était la largeur.** Avec D=64, la fenêtre W=13 **dépasse RZF(LMMSE)** de 0 à 20 dB (100,6 à 102,7 %), sans connaître la covariance du canal, et égale presque LMMSE à 25 dB (99,4 %). Comprimer 208 valeurs d'entrée en 32 dimensions perdait de l'information.
+- **Le prix est élevé** : 48 k paramètres et 590 k MAC par SC, soit 3,6 fois le modèle D32 et environ 420 fois RZF. Il faudra trouver un moyen moins coûteux de traiter la fenêtre (par exemple une première projection plus large seulement à l'entrée, ou une attention en fréquence).
+- **Réserve importante** : RZF(LMMSE) n'est pas la meilleure référence classique. Au faible SNR, WMMSE fait environ 5 % de mieux que RZF (0 dB), et environ 1,7 % à 20 dB. Les 102-103 % du modèle D64 à 0-10 dB sont donc probablement **en dessous de WMMSE(LMMSE)**, qui n'a pas encore été calculé. Il faut ajouter cette référence avant d'affirmer quoi que ce soit.
+
 ## Prochaine étape
-Séparer estimation et précodage : (a) le modèle W=1 avec le LMMSE en entrée (limite du précodeur seul) ; (b) un précodeur plus capable (attention signée, ou D=64) avec la fenêtre W=13. Ensuite seulement : attention en fréquence, pilote 20 dB, mélange de scénarios.
+1. Ajouter la référence WMMSE(LMMSE), la meilleure méthode classique, à toutes les comparaisons de la phase 3.
+2. Rendre le traitement de la fenêtre moins coûteux que D=64 partout (entrée plus large seulement, ou attention en fréquence).
+3. Pilote 20 dB et mélange de scénarios (UMi + UMa), là où une covariance fixe pour LMMSE doit perdre.
 Cible principale ensuite (phases 2–3) : le régime pilote 10 dB, où il reste 2,7 à 5,9 bps/Hz après LMMSE.
