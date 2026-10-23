@@ -119,6 +119,38 @@ Entraînement court (3 000 à 20 000 pas, pas d'apprentissage 3e-3, 256 à 512 d
 - **Avec le signe, D64 L2 (275 k MAC) fait aussi bien que D64 L4 sans signe (541 k MAC)** : deux fois moins de calcul pour le même débit.
 - **Négatif : le biais Gram n'apporte rien de significatif** (+2,5 points, dans la variabilité d'environ 3 points), ni seul ni avec le signe. Le modèle sait reconstruire lui-même qui interfère avec qui. Ce qui lui manquait, c'était l'opération, pas l'information. *Limite* : Gram n'a été testé que comme biais du score ; il ne modifie que les poids, pas les valeurs transmises. Option retirée du modèle par défaut, mais gardée dans le code pour l'instant.
 
+### Balayage de taille avec attention signée — RETENU (`results/phase1/size_sweep_signed.*`, parties `_part_a/b/c` : srvgrm12 ×2, srvgrm08)
+Mêmes réglages que le balayage sans signe. % de RZF :
+
+| signé | 0 dB | 10 dB | 20 dB | 25 dB | params | MAC/SC |
+|---|---|---|---|---|---|---|
+| D16 L1 / L2 / L4 | 90 / 92 / 86 | 70 / 76 / 82 | 45 / 50 / 63 | 36 / 41 / 53 | 2,8 k / 5,0 k / 9,5 k | 11 k / 20 k / 37 k |
+| D32 L1 / L2 / L4 | 97 / 95 / 101 | 83 / 100 / 102 | 58 / 87 / **100** | 48 / 78 / **98** | 9,6 k / 18 k / 35 k | 38 k / 72 k / 139 k |
+| D64 L1 / L2 / L4 | 99 / 100 / 103 | 85 / 101 / 103 | 60 / 93 / **102** | 50 / 87 / **101** | 36 k / 69 k / 136 k | 142 k / 275 k / 541 k |
+
+- **Avec le signe, D32 L4 atteint RZF à 20 dB (100,4 %)** avec 35 k paramètres, 4 fois moins que sans signe (D64 L4 : 136 k pour 97 %). **D64 L4 signé atteint le niveau de WMMSE** (101,9 % de RZF ; WMMSE = 101,7 %).
+- **D=16 ne suffit pas** (63 % au mieux) : une largeur minimale d'environ 32 est nécessaire.
+- La profondeur reste décisive, même avec le signe : avec L=1, on plafonne vers 60 %.
+
+### Trois idées pour le fort SNR — RETENU (`results/phase1/highsnr.*`, parties `_part_a/b/c`)
+- **Question** : par rapport au modèle signé D32 L2 (88 % à 20 dB), que changent (a) un seul bloc répété T fois, (b) la normalisation de phase par utilisateur, (c) l'attention linéaire (sans softmax ni tanh) ?
+
+| D32 | 0 dB | 10 dB | 20 dB | 25 dB | params | MAC/SC |
+|---|---|---|---|---|---|---|
+| signé L2 (référence) | 95 | 100 | 88,0 | 79 | 18 k | 72 k |
+| **bloc répété T=2** | 95 | 100 | 87,1 | 78 | **9,6 k** | 72 k |
+| **bloc répété T=4** | 93 | 101 | **99,4** | **96** | **9,6 k** | 139 k |
+| bloc répété T=8 | 99 | 100 | 99,2 | 97 | 9,6 k | 275 k |
+| normalisation de phase | 100 | 100 | 87,7 | 79 | 18 k | 72 k |
+| **attention linéaire** | 95 | 100 | 88,9 | 80 | 18 k | 72 k |
+
+**Conclusions :**
+- **Répéter un seul bloc ne coûte rien en débit.** T=2 égale 2 blocs distincts, T=4 (99,4 %) égale 4 blocs distincts (100,4 %), **avec 3,7 fois moins de paramètres** (9,6 k au lieu de 35 k). **C'est le nombre d'itérations qui compte, pas le nombre de paramètres.** Pour le FPGA : un seul petit bloc, réutilisé 4 fois.
+- **Au-delà de 4 itérations, on ne gagne plus rien** (T=8 : 99,2 %) : le modèle est saturé à cette largeur.
+- **L'attention linéaire fait aussi bien que l'attention signée** (88,9 contre 88,0 %, dans le bruit), **sans exponentielle, sans division ni tanh**. Pour le matériel, c'est un gain net à précision égale.
+- **Négatif : la normalisation de phase n'apporte rien** (87,7 contre 88,0 %). Le réseau apprend déjà seul cette invariance. Option gardée dans le code, mais pas utilisée.
+- **Point à surveiller : à 0 dB, plusieurs modèles sont à 93-95 % de RZF** alors qu'ils dépassent 100 % à 5-10 dB. Probable cause : la perte moyenne le débit sur des SNR tirés de 0 à 25 dB, et les débits à fort SNR, bien plus grands, dominent la perte. Le faible SNR est donc négligé. Ça se corrigerait en normalisant la perte par SNR (par exemple, débit / débit RZF).
+
 ## Prochaine étape
-Balayage de taille AVEC attention signée : quel est le plus petit modèle signé à environ 95 % de RZF à 20 dB ? Puis mesurer la variabilité entre graines sur les configurations clés.
+Combiner ce qui marche : bloc répété T=4 + attention linéaire, D=32 (environ 9,6 k paramètres, sans fonction non linéaire coûteuse dans l'attention). Corriger la perte au faible SNR. Mesurer la variabilité entre graines (3 graines) sur le modèle retenu. Ensuite, phase 2 (CSI estimé).
 Cible principale ensuite (phases 2–3) : le régime pilote 10 dB, où il reste 2,7 à 5,9 bps/Hz après LMMSE.

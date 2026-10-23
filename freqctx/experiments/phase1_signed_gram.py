@@ -16,8 +16,8 @@ from train import channel_pool, eval_pool, references, run_variant
 from utils import BLUES, COLORS, plt, save
 
 SNRS_DB = [0, 5, 10, 15, 20, 25]
-VARIANTS = {"base": {}, "signed": {"signed": True}, "gram": {"gram": True},
-            "signed+gram": {"signed": True, "gram": True}}
+VARIANTS = {"base": {}, "signed": {"attn": "signed"}, "gram": {"gram": True},
+            "signed+gram": {"attn": "signed", "gram": True}}
 WEIGHTS = "/export/tmp/sala/freqctx/weights/phase1"
 
 

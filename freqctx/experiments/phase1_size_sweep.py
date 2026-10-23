@@ -6,6 +6,8 @@ SNR uniforme 0-25 dB. Evaluation : tirages de la phase 0 (graine 2026,
 512 drops x 612 SC), appariee avec RZF/WMMSE sur le meme ensemble.
 
     python -m experiments.phase1_size_sweep [--quick]
+    python -m experiments.phase1_size_sweep --signed --grid 16x1,16x2 --tag a   # une partie
+    python -m experiments.phase1_size_sweep --signed --merge                    # fusion des parties
 """
 import argparse
 import dataclasses
@@ -13,7 +15,7 @@ import dataclasses
 from config import SystemConfig
 from models.per_sc import PerSCPrecoder, rzf_macs_per_sc
 from train import channel_pool, eval_pool, references, run_variant
-from utils import BLUES, COLORS, plt, save
+from utils import BLUES, COLORS, merge_parts, plt, save
 
 SNRS_DB = [0, 5, 10, 15, 20, 25]
 VARIANTS = [(d, L, "attention") for L in (1, 2, 4) for d in (16, 32, 64, 128)] \
@@ -24,9 +26,19 @@ WEIGHTS = "/export/tmp/sala/freqctx/weights/phase1"
 def main():
     ap = argparse.ArgumentParser()
     ap.add_argument("--quick", action="store_true")
+    ap.add_argument("--signed", action="store_true", help="attention signee pour tous")
+    ap.add_argument("--grid", help="sous-ensemble 'DxL,DxL' (attention seulement)")
+    ap.add_argument("--tag", default="", help="suffixe du fichier (une partie du balayage)")
+    ap.add_argument("--merge", action="store_true", help="fusionne les parties --tag")
     args = ap.parse_args()
+    base = "size_sweep" + ("_signed" if args.signed else "")
+    if args.merge:
+        return merge_parts("phase1", base, plot, sort_key=lambda r: (r["layers"], r["d"]))
     steps, drops = (2000, 128) if args.quick else (40000, 1024)
     variants = VARIANTS[:2] if args.quick else VARIANTS
+    if args.grid:
+        variants = [(int(d), int(L), "attention")
+                    for d, L in (g.split("x") for g in args.grid.split(","))]
     cfg = SystemConfig()
     K, M = cfg.num_users, cfg.num_bs_ant
     pool = channel_pool(cfg, drops, seed=1)
@@ -38,15 +50,18 @@ def main():
 
     runs = []
     for d, L, mixer in variants:
-        run = run_variant(f"D{d}_L{L}_{mixer}", PerSCPrecoder(M, d=d, layers=L, mixer=mixer),
+        name = f"D{d}_L{L}_{mixer}" + ("_signed" if args.signed else "")
+        run = run_variant(name, PerSCPrecoder(M, d=d, layers=L, mixer=mixer,
+                                        attn="signed" if args.signed else "softmax"),
                           pool, h_eval, SNRS_DB, ref, steps,
                           weights_dir=None if args.quick else WEIGHTS)
-        runs.append({"d": d, "layers": L, "mixer": mixer, **run})
+        runs.append({"d": d, "layers": L, "mixer": mixer, "signed": args.signed, **run})
 
     payload = {"config": dataclasses.asdict(cfg), "snrs_db": SNRS_DB, "steps": steps,
                "train_drops": drops, "lr": 1e-3, "batch": 2048, "references": ref,
                "rzf_macs_per_sc": rzf_macs_per_sc(M, K), "runs": runs}
-    save("phase1", "size_sweep" + ("_quick" if args.quick else ""), payload, plot(payload))
+    name = base + ("_quick" if args.quick else "") + (f"_part_{args.tag}" if args.tag else "")
+    save("phase1", name, payload, plot(payload))
 
 
 def plot(p):
