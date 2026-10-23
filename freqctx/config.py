@@ -39,6 +39,6 @@ class SystemConfig:
 
 @dataclass(frozen=True)
 class CSIConfig:
-    estimator: str = "ls_lin"           # "perfect" | "ls_nn" | "ls_lin"
+    estimator: str = "ls_lin"           # "perfect" | "ls_nn" | "ls_lin" | "ls_lmmse"
     pilot_snr_db: float = 20.0          # SNR par RE pilote a l'antenne BS
     delay_slots: int = 0                # ecart sondage -> slot de donnees

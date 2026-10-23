@@ -7,6 +7,9 @@ le canal vrai du slot de donnees) :
   MRT, ZF, RZF, WMMSE
   RZF+lissage(W) : RZF sur le CSI moyenne sur W SC voisines (baseline
                    classique du contexte frequentiel)
+CSI "LS-lmmse" : LS + interpolation LMMSE de Sionna avec la covariance
+frequentielle moyenne du scenario, estimee sur des tirages separes (graine
+SEED+1) -- borne classique de ce que le traitement frequentiel peut recuperer.
 
     python -m experiments.phase0_baselines [--quick] [--scenarios umi uma]
 """
@@ -19,7 +22,7 @@ from sionna.phy.config import config as sionna_config
 
 from channel import ChannelGenerator
 from config import CSIConfig, SystemConfig
-from csi import UplinkSounder, csi_at_bs, smooth_freq
+from csi import UplinkSounder, csi_at_bs, estimate_freq_cov, smooth_freq
 from metrics import sum_rate
 from precoders.classical import PRECODERS, rzf
 from utils import BLUES, COLORS, plt, save
@@ -31,6 +34,8 @@ CSI_CONDITIONS = {
     "parfait":           CSIConfig("perfect", 0, 0),
     "LS-lin p10":        CSIConfig("ls_lin", 10, 0),
     "LS-lin p20":        CSIConfig("ls_lin", 20, 0),
+    "LS-lmmse p10":      CSIConfig("ls_lmmse", 10, 0),
+    "LS-lmmse p20":      CSIConfig("ls_lmmse", 20, 0),
     "parfait +1 slot":   CSIConfig("perfect", 0, 1),
     "parfait +2 slots":  CSIConfig("perfect", 0, 2),
 }
@@ -38,7 +43,10 @@ CSI_CONDITIONS = {
 
 def evaluate(cfg, num_batches, batch_size):
     gen = ChannelGenerator(cfg)
-    sounders = {"lin": UplinkSounder(cfg, "lin")}
+    sionna_config.seed = SEED + 1                    # covariance : tirages separes
+    cov = estimate_freq_cov(gen)
+    sionna_config.seed = SEED                        # graine d'evaluation
+    sounders = {"lin": UplinkSounder(cfg, "lin"), "lmmse": UplinkSounder(cfg, "lmmse", cov)}
     acc = {c: {} for c in CSI_CONDITIONS}
     nmse = {c: [] for c in CSI_CONDITIONS}
 
@@ -106,7 +114,7 @@ def plot(all_res):
         ax.legend()
 
         ax = axes[r, 2]
-        conds = ["parfait", "LS-lin p20", "LS-lin p10", "parfait +1 slot", "parfait +2 slots"]
+        conds = ["parfait", "LS-lin p20", "LS-lin p10", "LS-lmmse p10", "parfait +2 slots"]
         for j, cond in enumerate(conds):
             rr = res[cond]["rate_bps_hz"]
             y = [rr["RZF" if W == 1 else f"RZF+lissage W={W}"][i20] for W in WIDTHS]

@@ -7,13 +7,32 @@ interpolation en frequence (Sionna LSChannelEstimator).
 """
 import tensorflow as tf
 from sionna.phy.channel import ApplyOFDMChannel
-from sionna.phy.ofdm import LSChannelEstimator, ResourceGrid, ResourceGridMapper
+from sionna.phy.ofdm import (LMMSEInterpolator, LSChannelEstimator, ResourceGrid,
+                             ResourceGridMapper)
 
 from config import CSIConfig, SystemConfig
 
 
+def estimate_freq_cov(gen, num_batches=32, batch_size=32):
+    """Covariance frequentielle moyenne du scenario, E[h h^H] sur l'axe SC
+    (moyenne sur tirages, utilisateurs, antennes ; slot 0). Statistique de
+    long terme, comme dans le tutoriel Sionna sur l'interpolation LMMSE."""
+    F = gen.cfg.num_sc
+    cov = tf.zeros([F, F], tf.complex64)
+    n = 0
+    for _ in range(num_batches):
+        h = tf.transpose(gen(batch_size)[:, 0], [0, 2, 3, 1])     # [B, K, M, F]
+        h = tf.reshape(h, [-1, F])
+        cov += tf.matmul(h, h, adjoint_a=True)
+        n += h.shape[0]
+    return tf.transpose(cov) / n                                 # E[h h^H], h colonne
+
+
 class UplinkSounder:
-    def __init__(self, cfg: SystemConfig, interpolation="lin"):
+    """interpolation : "lin" | "nn" (Sionna LS + interpolateur standard) ou
+    "lmmse" (Sionna LMMSEInterpolator, necessite cov_freq [F, F])."""
+
+    def __init__(self, cfg: SystemConfig, interpolation="lin", cov_freq=None):
         self.cfg = cfg
         self.rg = ResourceGrid(num_ofdm_symbols=1, fft_size=cfg.num_sc,
                                subcarrier_spacing=cfg.subcarrier_spacing,
@@ -21,7 +40,13 @@ class UplinkSounder:
                                pilot_pattern="kronecker", pilot_ofdm_symbol_indices=[0])
         self.mapper = ResourceGridMapper(self.rg)
         self.apply = ApplyOFDMChannel(add_awgn=True)
-        self.estimator = LSChannelEstimator(self.rg, interpolation_type=interpolation)
+        if interpolation == "lmmse":
+            interp = LMMSEInterpolator(self.rg.pilot_pattern,
+                                       cov_mat_time=tf.ones([1, 1], tf.complex64),
+                                       cov_mat_freq=cov_freq, order="f-t")
+            self.estimator = LSChannelEstimator(self.rg, interpolator=interp)
+        else:
+            self.estimator = LSChannelEstimator(self.rg, interpolation_type=interpolation)
 
     def __call__(self, h, pilot_snr_db):
         """h : [B, F, K, M] canal vrai au slot de sondage -> h_hat meme forme."""
