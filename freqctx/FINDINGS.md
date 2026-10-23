@@ -169,6 +169,33 @@ Mêmes réglages que le balayage sans signe. % de RZF :
 - **La combinaison coûte un peu au fort SNR.** Bloc répété + attention **signée** donnait 99,4 % (20 dB) et 96 % (25 dB). Bloc répété + attention **linéaire** donne environ 97,8 % et 93 %, soit environ 2 points de moins à 20 dB et 3 à 25 dB. C'est le prix de l'attention sans exponentielle, sans division ni tanh. **C'est un compromis pour le matériel, à trancher.**
 - **Bilan du candidat** : 9 648 paramètres, environ 139 k MAC par SC. Il égale RZF jusqu'à 15 dB, reste à 97-98 % à 20 dB et 92-94 % à 25 dB.
 
+---
+
+## Phase 2 — 2026-10-23
+
+### Le candidat entraîné sur le CSI estimé (par SC) — RETENU, résultat NÉGATIF (`results/phase2/estimated_csi_p10.*`, `_p20.*`)
+- **Question** : sans contexte fréquentiel, entraîner le modèle sur le CSI estimé (LS + interpolation linéaire, pilotes Sionna) lui permet-il de faire mieux que RZF(LS), voire que RZF(LMMSE) ?
+- **Réglages** : D32, 1 bloc × 4, perte relative à RZF(LS), graine 0, 40 000 pas, 1 024 drops (graine 1). Évaluation sur les tirages de la phase 0, avec le même bruit pilote pour toutes les méthodes. Référence supplémentaire : les modèles de la phase 1 (entraînés en CSI parfait) appliqués tels quels au LS. Parties a/b : srvgrm12 et srvgrm08.
+
+Débit somme à 20 dB (25 dB) :
+
+| | pilote 10 dB | pilote 20 dB |
+|---|---|---|
+| RZF (CSI parfait) | 26,18 (32,72) | 26,18 (32,72) |
+| **RZF (LMMSE)** | **23,51 (26,94)** | **25,58 (31,12)** |
+| RZF (LS) | 21,69 (24,07) | 25,22 (30,35) |
+| WMMSE (LS) | 22,09 (24,27) | 25,67 (30,59) |
+| phase 1, linéaire (CSI parfait) sur LS | 21,62 (23,68) | 24,70 (28,68) |
+| phase 1, signé (CSI parfait) sur LS | 21,89 | 25,19 |
+| **phase 2, linéaire (entraîné sur LS)** | 21,64 (23,63) | 24,60 (27,90) |
+| **phase 2, signé (entraîné sur LS)** | 21,45 (23,28) | 24,86 (29,05) |
+
+**Conclusions :**
+- **Entraîner sur le CSI estimé n'apporte rien quand on traite chaque SC seule.** Le modèle de la phase 2 fait comme RZF(LS) et comme le modèle de la phase 1, et reste en dessous de RZF(LMMSE) : 92 % de LMMSE à 20 dB avec le pilote à 10 dB.
+- **C'est logique.** Sur une seule SC, le modèle n'a qu'une observation bruitée du canal, et le bruit est indépendant de la SC voisine. Il ne peut donc rien débruiter. Il peut seulement ajuster la régularisation, et RZF le fait déjà presque optimalement.
+- **Pour le paper, c'est l'argument direct en faveur du contexte fréquentiel** : la marge (environ 1,8 bps/Hz jusqu'à LMMSE, 4,5 jusqu'au CSI parfait, pilote 10 dB, à 20 dB) n'est atteignable **qu'en regardant les SC voisines**. C'est l'objet de la phase 3.
+- *Au passage* : le petit écart du candidat au fort SNR (97 % de RZF en CSI parfait) se retrouve ici (pilote 20 dB, 25 dB de SNR de données : 27,9 à 29,1 contre 30,4 pour RZF(LS)).
+
 ## Prochaine étape
-Phase 2 (CSI estimé) avec le candidat, perte relative. Choix à faire : attention linéaire (pour le FPGA) ou signée (+2 à 3 points à fort SNR), ou les deux en parallèle.
+Phase 3 : donner au même modèle les W SC voisines du CSI estimé (W ∈ {1, 3, 5, 9, 13}), d'abord par simple concaténation dans le token, pilote 10 dB. Cible : battre RZF(LMMSE) (23,5 à 20 dB).
 Cible principale ensuite (phases 2–3) : le régime pilote 10 dB, où il reste 2,7 à 5,9 bps/Hz après LMMSE.

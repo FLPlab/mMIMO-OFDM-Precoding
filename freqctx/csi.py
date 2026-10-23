@@ -40,6 +40,9 @@ class UplinkSounder:
                                pilot_pattern="kronecker", pilot_ofdm_symbol_indices=[0])
         self.mapper = ResourceGridMapper(self.rg)
         self.apply = ApplyOFDMChannel(add_awgn=True)
+        # LMMSEInterpolator materialise des tenseurs [B, ..., F+1, F+1] (~3 Go a B=32) :
+        # on estime par paquets de `chunk` tirages (le bruit est tire avant -> meme resultat).
+        self.chunk = 4 if interpolation == "lmmse" else None
         if interpolation == "lmmse":
             interp = LMMSEInterpolator(self.rg.pilot_pattern,
                                        cov_mat_time=tf.ones([1, 1], tf.complex64),
@@ -56,7 +59,11 @@ class UplinkSounder:
         h_ul = tf.transpose(h, [0, 3, 2, 1])[:, None, :, :, None, None, :]
         no = tf.cast(10.0 ** (-pilot_snr_db / 10.0), tf.float32)
         y = self.apply(x, h_ul, no)
-        h_ls, _ = self.estimator(y, no)
+        if self.chunk:
+            h_ls = tf.concat([self.estimator(y[i:i + self.chunk], no)[0]
+                              for i in range(0, y.shape[0], self.chunk)], axis=0)
+        else:
+            h_ls, _ = self.estimator(y, no)
         return tf.transpose(h_ls[:, 0, :, :, 0, 0, :], [0, 3, 2, 1])
 
 
