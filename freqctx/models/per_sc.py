@@ -2,6 +2,9 @@
 
 Une SC = un ensemble de K tokens, un par utilisateur :
     token k = [Re h_k, Im h_k, snr_db/10]          (2M+1 valeurs)
+    avec window=W (phase 3) : h_k des W SC centrees sur la SC a precoder,
+    concatenes dans le token (2MW+1 valeurs) ; la sortie reste celle de la
+    SC centrale.
     -> Dense(D) -> L x [melange entre utilisateurs + FFN] -> Dense(2M) = w_k
     -> W [M, K], ||W||_F = 1.
 Pas d'encodage de position : permuter les utilisateurs permute les sorties.
@@ -76,8 +79,9 @@ class Block(keras.layers.Layer):
 
 class PerSCPrecoder(keras.Model):
     def __init__(self, num_bs_ant, d=32, layers=2, heads=2, mixer="attention",
-                 attn="softmax", gram=False, tied=False, phase_norm=False, **kw):
+                 attn="softmax", gram=False, tied=False, phase_norm=False, window=1, **kw):
         super().__init__(**kw)
+        self.window = window
         self.M, self.d, self.L, self.heads, self.mixer = num_bs_ant, d, layers, heads, mixer
         self.attn, self.gram, self.tied, self.phase_norm = attn, gram, tied, phase_norm
         self.embed = keras.layers.Dense(d)
@@ -86,13 +90,23 @@ class PerSCPrecoder(keras.Model):
         self.head = keras.layers.Dense(2 * num_bs_ant)
 
     def call(self, h, snr_db):
-        """h [N, K, M] complex64, snr_db [N] -> W [N, M, K] complex64."""
-        K = tf.shape(h)[1]
+        """h [N, K, M] (ou [N, W, K, M] avec window) complex64, snr_db [N]
+        -> W [N, M, K] complex64 (pour la SC centrale)."""
+        if self.window > 1:
+            feats = tf.transpose(h, [0, 2, 1, 3])                # [N, K, W, M]
+            K = tf.shape(h)[2]
+            feats = tf.reshape(tf.concat([tf.math.real(feats), tf.math.imag(feats)], -1),
+                               [tf.shape(h)[0], K, 2 * self.window * self.M])
+            h = h[:, self.window // 2]                           # SC centrale
+        else:
+            K = tf.shape(h)[1]
         if self.phase_norm:
             ref = tf.gather(h, tf.argmax(tf.abs(h), axis=-1), axis=-1, batch_dims=2)  # [N, K]
             h = h * tf.math.conj(ref / tf.cast(tf.abs(ref), ref.dtype))[..., None]
         snr = tf.tile(tf.reshape(snr_db / 10.0, [-1, 1, 1]), [1, K, 1])
-        x = self.embed(tf.concat([tf.math.real(h), tf.math.imag(h), snr], axis=-1))
+        if self.window == 1:
+            feats = tf.concat([tf.math.real(h), tf.math.imag(h)], axis=-1)
+        x = self.embed(tf.concat([feats, snr], axis=-1))
         edge = None
         if self.gram:
             g = tf.matmul(h, h, adjoint_b=True) / self.M         # G_kj = h_k h_j^H / M
@@ -106,7 +120,7 @@ class PerSCPrecoder(keras.Model):
     def macs_per_sc(self, K):
         """Multiplications-accumulations reelles par SC (inference)."""
         d, M = self.d, self.M
-        per_token = (2 * M + 1) * d + d * 2 * M            # embed + head
+        per_token = (2 * M * self.window + 1) * d + d * 2 * M   # embed + head
         mix = 3 * d * d + 2 * K * d if self.mixer == "attention" else d * d
         per_token += self.L * (mix + d * d + 2 * d * 2 * d)  # melange + out + FFN (x2)
         extra = 4 * K * self.M if self.phase_norm else 0

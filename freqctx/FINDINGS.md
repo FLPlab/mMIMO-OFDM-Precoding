@@ -196,6 +196,35 @@ Débit somme à 20 dB (25 dB) :
 - **Pour le paper, c'est l'argument direct en faveur du contexte fréquentiel** : la marge (environ 1,8 bps/Hz jusqu'à LMMSE, 4,5 jusqu'au CSI parfait, pilote 10 dB, à 20 dB) n'est atteignable **qu'en regardant les SC voisines**. C'est l'objet de la phase 3.
 - *Au passage* : le petit écart du candidat au fort SNR (97 % de RZF en CSI parfait) se retrouve ici (pilote 20 dB, 25 dB de SNR de données : 27,9 à 29,1 contre 30,4 pour RZF(LS)).
 
+---
+
+## Phase 3 — 2026-10-23
+
+### Fenêtre de SC voisines concaténée dans le token, pilote 10 dB — RETENU (`results/phase3/window_p10.*`, parties a–c srvgrm12, d srvgrm08)
+- **Question** : en donnant au modèle le CSI estimé (LS) des W SC centrées sur la SC à précoder, récupère-t-on la marge mesurée en phase 0 ? Bat-on la contrepartie classique (RZF sur le LS moyenné sur W), puis RZF(LMMSE) ?
+- **Réglages** : même modèle que la phase 2 (D32, 1 bloc × 4, attention linéaire, perte relative à RZF(LS)) ; seul changement, l'entrée de chaque token = 2·M·W valeurs (fenêtre bornée aux bords de la bande). Mêmes tirages et même bruit pilote pour tout.
+
+Débit somme à 20 dB (25 dB), bps/Hz :
+
+| W | transformer, fenêtre W | RZF + moyenne sur W | params | MAC/SC |
+|---|---|---|---|---|
+| 1 | 21,71 (23,75) | 21,69 (24,07) | 9,6 k | 139 k |
+| 3 | 22,11 (24,11) | 21,93 (24,41) | 10,7 k | 143 k |
+| 5 | 22,77 (25,37) | 22,27 (24,93) | 11,7 k | 148 k |
+| 9 | 23,05 (25,83) | 22,67 (25,65) | 13,7 k | 156 k |
+| **13** | **23,15 (25,98)** | 22,56 (25,65) | 15,8 k | 164 k |
+| *RZF(LMMSE)* | *23,51 (26,94)* | | | |
+| *RZF(CSI parfait)* | *26,18 (32,72)* | | | |
+
+**Conclusions :**
+- **Le contexte fréquentiel marche** : de W=1 à W=13, on gagne +1,44 bps/Hz à 20 dB (+6,6 %), pour seulement +6 k paramètres et +18 % de calcul.
+- **Le transformer fait mieux que la moyenne classique à fenêtre égale** (+0,5 à 0,6 bps/Hz à W=9 et 13), et il continue de progresser à W=13, là où la moyenne commence à redescendre (elle mélange des SC trop différentes).
+- **Mais il ne bat pas encore RZF(LMMSE)** : 98,5 % à 20 dB et 96,4 % à 25 dB. Le gain plafonne entre W=9 et 13 (+0,1).
+- **Deux causes possibles, à séparer avant d'aller plus loin** :
+  1. *L'estimation* : LMMSE utilise la covariance sur toute la bande (612 SC) et la structure exacte du peigne de pilotes, alors que le modèle ne voit que 13 SC déjà interpolées.
+  2. *Le précodage* : en CSI parfait, ce modèle ne fait déjà que 97-98 % de RZF à 20 dB et 92-94 % à 25 dB. Une partie de l'écart à LMMSE est donc probablement la limite du précodeur lui-même, pas de l'estimation.
+- *Technique* : la fusion des parties ne gardait que les références de la première partie (le lissage W=3, 5 et 9 manquait) ; corrigé dans `utils.merge_parts`.
+
 ## Prochaine étape
-Phase 3 : donner au même modèle les W SC voisines du CSI estimé (W ∈ {1, 3, 5, 9, 13}), d'abord par simple concaténation dans le token, pilote 10 dB. Cible : battre RZF(LMMSE) (23,5 à 20 dB).
+Séparer estimation et précodage : (a) le modèle W=1 avec le LMMSE en entrée (limite du précodeur seul) ; (b) un précodeur plus capable (attention signée, ou D=64) avec la fenêtre W=13. Ensuite seulement : attention en fréquence, pilote 20 dB, mélange de scénarios.
 Cible principale ensuite (phases 2–3) : le régime pilote 10 dB, où il reste 2,7 à 5,9 bps/Hz après LMMSE.

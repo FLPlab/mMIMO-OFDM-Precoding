@@ -56,6 +56,8 @@ def merge_parts(phase, base, plot_fn, sort_key=None):
     parts = sorted(glob.glob(os.path.join(RESULTS, phase, f"{base}_part_*.json")))
     ps = [json.load(open(f)) for f in parts]
     payload = {k: v for k, v in ps[0].items() if k not in ("meta", "runs")}
+    if "references" in payload:                  # references propres a une partie (ex. lissage W)
+        payload["references"] = {k: v for p in ps for k, v in p["references"].items()}
     payload["parts"] = [os.path.basename(f) for f in parts]
     payload["runs"] = sorted((r for p in ps for r in p["runs"]), key=sort_key)
     return save(phase, base, payload, plot_fn(payload))

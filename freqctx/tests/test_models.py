@@ -5,6 +5,7 @@ import numpy as np
 import tensorflow as tf
 
 from models.per_sc import PerSCPrecoder
+from train import WindowedPool
 
 
 def main():
@@ -30,7 +31,31 @@ def main():
             assert e2 < 1e-4, e2
         print(f"[ok] {kw or 'base'} : forme, puissance, equivariance (ecart {err:.1e}), "
               f"{m.count_params()} params, {m.macs_per_sc(K)} MAC/SC")
+    # fenetre (phase 3) : equivariance, et la SC centrale doit compter
+    hw = tf.complex(tf.random.normal([N, 5, K, M]), tf.random.normal([N, 5, K, M])) / np.sqrt(2)
+    m = PerSCPrecoder(M, d=16, layers=2, attn="linear", window=5)
+    w = m(hw, snr)
+    err = float(tf.reduce_max(tf.abs(m(tf.gather(hw, perm, axis=2), snr) - tf.gather(w, perm, axis=2))))
+    assert w.shape == (N, M, K) and err < 1e-5, err
+    print(f"[ok] window=5 : forme, equivariance (ecart {err:.1e}), {m.count_params()} params, "
+          f"{m.macs_per_sc(K)} MAC/SC")
+    test_windowed_pool()
     print("TOUS LES TESTS PASSENT")
+
+
+def test_windowed_pool():
+    h_in = tf.complex(tf.random.normal([3, 10, 4, 8]), 0.0)
+    h_t = h_in * 2
+    p = WindowedPool(h_in, h_t, 5)
+    x = p._windows(tf.constant([1, 2]), tf.constant([0, 9]))
+    assert x.shape == (2, 5, 4, 8)
+    assert tf.reduce_all(x[0, 2] == h_in[1, 0]) and tf.reduce_all(x[0, 0] == h_in[1, 0])  # bord g.
+    assert tf.reduce_all(x[1, 1] == h_in[2, 8]) and tf.reduce_all(x[1, 4] == h_in[2, 9])  # bord d.
+    xs, ys = next(p.chunks(2))
+    assert xs.shape == (20, 5, 4, 8) and tf.reduce_all(ys[3] == h_t[0, 3])
+    xi, yi = p.sample(6)
+    assert xi.shape == (6, 5, 4, 8) and yi.shape == (6, 4, 8)
+    print("[ok] WindowedPool : centre, bords bornes, paquets, tirage")
 
 
 if __name__ == "__main__":
