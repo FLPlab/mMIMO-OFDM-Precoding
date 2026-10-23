@@ -1,5 +1,34 @@
 # Journal des résultats
 
+## SYNTHÈSE (mise à jour 2026-10-23, à relire avant tout)
+
+**Le modèle actuel** (`models/per_sc.py`) : par sous-porteuse (SC), un token par utilisateur. Entrée = CSI estimé de la SC (et de ses W voisines, concaténées) → Dense(D) → **un seul bloc répété 4 fois** [attention **linéaire** entre utilisateurs + FFN] → Dense(2M) = w_k → normalisation de puissance. Perte = débit relatif à RZF. Mêmes poids pour toutes les SC.
+
+**Ce qui est établi** (M8K4, 20 MHz, UMi, débit à 20 dB sauf mention) :
+
+| # | Constat | Preuve |
+|---|---|---|
+| 1 | En CSI parfait, il n'y a presque rien à gagner par SC (WMMSE = RZF + 1,7 %) | phase 0 |
+| 2 | La marge est dans l'estimation : à pilote 10 dB, RZF passe de 26,2 (parfait) à 21,7 (LS) et 23,5 (LMMSE) | phase 0 |
+| 3 | Le softmax empêche de soustraire : +19 points avec des poids signés | phase 1, 2 × 2 |
+| 4 | Ce sont les itérations qui comptent, pas les paramètres : 1 bloc × 4 = 4 blocs, avec 3,7 fois moins de paramètres | phase 1, highsnr |
+| 5 | L'attention linéaire (sans exp, division ni tanh) vaut l'attention signée | phases 1, 2, 3 |
+| 6 | La perte relative à RZF corrige le faible SNR | phase 1, candidat |
+| 7 | **Sans voisines, entraîner sur du CSI estimé n'apporte rien** (= RZF(LS)) | phase 2 |
+| 8 | **Avec les voisines, le modèle bat le lissage classique** (23,15 contre 22,67) | phase 3 |
+| 9 | Le goulot avec la fenêtre est la largeur : D=64 donne 23,65 | phase 3, diagnostic |
+| 10 | **Mais il reste sous la meilleure méthode classique WMMSE(LMMSE)** : 23,65 contre 23,93 (98,8 %), 97 à 99 % à tous les SNR | phase 3, `wmmse_ref_p10` |
+
+**Négatifs** : sortie structurée W = Hᴴ C, biais Gram, normalisation de phase, attention signée avec fenêtre.
+
+**Ce que le modèle a pour lui face à WMMSE(LMMSE)** : il n'a pas besoin de la covariance du canal, il n'itère pas sur une inversion de matrice, il s'exécute en un temps fixe, et son attention n'a que des multiplications et des additions. **Ce qui lui manque** : 1 à 3 % de débit, et un coût de calcul de 590 k MAC/SC à D=64 (environ 420 fois RZF).
+
+**Questions ouvertes** : (a) une covariance fixe pour LMMSE perd-elle quand les scénarios sont mélangés ? (b) peut-on traiter la fenêtre plus économiquement que D=64 partout ? (c) une attention en fréquence (adaptative) apporte-t-elle quelque chose par rapport à la concaténation (un filtre appris fixe) ?
+
+---
+
+## Journal détaillé
+
 Une entrée par expérience : question → réglages → chiffres → verdict.
 - **Retenu** : le fichier est dans `results/<phase>/`, il peut servir dans le paper.
 - **Écarté** : les fichiers sont supprimés et seule l'entrée ci-dessous reste, pour s'en souvenir et ne pas refaire l'expérience.
@@ -245,6 +274,15 @@ Débit somme à 20 dB (25 dB), bps/Hz :
 - **Le vrai goulot était la largeur.** Avec D=64, la fenêtre W=13 **dépasse RZF(LMMSE)** de 0 à 20 dB (100,6 à 102,7 %), sans connaître la covariance du canal, et égale presque LMMSE à 25 dB (99,4 %). Comprimer 208 valeurs d'entrée en 32 dimensions perdait de l'information.
 - **Le prix est élevé** : 48 k paramètres et 590 k MAC par SC, soit 3,6 fois le modèle D32 et environ 420 fois RZF. Il faudra trouver un moyen moins coûteux de traiter la fenêtre (par exemple une première projection plus large seulement à l'entrée, ou une attention en fréquence).
 - **Réserve importante** : RZF(LMMSE) n'est pas la meilleure référence classique. Au faible SNR, WMMSE fait environ 5 % de mieux que RZF (0 dB), et environ 1,7 % à 20 dB. Les 102-103 % du modèle D64 à 0-10 dB sont donc probablement **en dessous de WMMSE(LMMSE)**, qui n'a pas encore été calculé. Il faut ajouter cette référence avant d'affirmer quoi que ce soit.
+
+### Référence WMMSE(LMMSE) — RETENU (`results/phase3/wmmse_ref_p10.json`)
+Pilote 10 dB, mêmes tirages. Débit somme (0 / 5 / 10 / 15 / 20 / 25 dB) :
+- RZF (LMMSE) : 5,07 / 8,85 / 13,61 / 18,79 / 23,51 / 26,94
+- **WMMSE (LMMSE) : 5,35 / 9,28 / 14,13 / 19,33 / 23,93 / 27,15**
+- RZF (CSI parfait) : 5,12 / 8,98 / 13,98 / 19,85 / 26,18 / 32,72
+- WMMSE (CSI parfait) : 5,39 / 9,40 / 14,49 / 20,38 / 26,63 / 32,97
+
+**Conclusion : le meilleur modèle (D64, W=13 : 5,21 / 9,10 / 13,94 / 19,10 / 23,65 / 26,78) reste à 97,4-98,8 % de WMMSE(LMMSE) à tous les SNR.** Il bat RZF(LMMSE), mais pas la meilleure méthode classique. Ma réserve du diagnostic était fondée.
 
 ## Prochaine étape
 1. Ajouter la référence WMMSE(LMMSE), la meilleure méthode classique, à toutes les comparaisons de la phase 3.
