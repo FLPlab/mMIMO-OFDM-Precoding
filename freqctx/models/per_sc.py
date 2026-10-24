@@ -45,6 +45,8 @@ Options (phase 1b/1c, 4), chacune testable separement :
     rzf_init=True   : W = RZF(h normalise) + correction apprise (tete initialisee
                       a zero : le modele demarre exactement sur RZF). Reintroduit
                       une inversion K x K par SC, comme RZF.
+    mrt_init=True   : W = MRT(h normalise) + correction apprise (MRT = canal
+                      conjugue, aucune inversion) ; tete initialisee a zero.
     gram=True   : le score de la paire (k, j) recoit un biais appris
                   f(Re G_kj, Im G_kj, |G_kj|), G = H H^H / M (produits
                   scalaires entre canaux, la premiere etape de RZF). Biais
@@ -53,7 +55,7 @@ Options (phase 1b/1c, 4), chacune testable separement :
 import keras
 import tensorflow as tf
 
-from precoders.classical import normalize_power, rzf
+from precoders.classical import mrt, normalize_power, rzf
 
 
 class Block(keras.layers.Layer):
@@ -95,10 +97,11 @@ class Block(keras.layers.Layer):
 class PerSCPrecoder(keras.Model):
     def __init__(self, num_bs_ant, d=32, layers=2, heads=2, mixer="attention",
                  attn="softmax", gram=False, tied=False, phase_norm=False, window=1,
-                 freq="concat", power_head=False, snr_every=False, rzf_init=False, **kw):
+                 freq="concat", power_head=False, snr_every=False, rzf_init=False, mrt_init=False,
+                 **kw):
         super().__init__(**kw)
         self.window, self.freq, self.power_head = window, freq, power_head
-        self.snr_every, self.rzf_init = snr_every, rzf_init
+        self.snr_every, self.rzf_init, self.mrt_init = snr_every, rzf_init, mrt_init
         if snr_every:
             self.snr_emb = keras.layers.Dense(d)
         if window > 1 and freq == "attention":
@@ -112,7 +115,8 @@ class PerSCPrecoder(keras.Model):
         n_blocks = 1 if tied else layers
         self.blocks = [Block(d, heads, mixer, attn=attn, gram=gram) for _ in range(n_blocks)]
         self.head = keras.layers.Dense(2 * num_bs_ant + (1 if power_head else 0),
-                                       kernel_initializer="zeros" if rzf_init else "glorot_uniform")
+                                       kernel_initializer="zeros" if (rzf_init or mrt_init)
+                                       else "glorot_uniform")
 
     def call(self, h, snr_db):
         """h [N, K, M] (ou [N, W, K, M] avec window) complex64, snr_db [N]
@@ -148,11 +152,14 @@ class PerSCPrecoder(keras.Model):
             x = self.blocks[0 if self.tied else i](x + se, edge)
         o = self.head(x)
         w = tf.complex(o[..., :self.M], o[..., self.M:2 * self.M])   # [N, K, M]
-        if self.rzf_init:                                          # depart sur RZF, correction apprise
+        if self.rzf_init or self.mrt_init:                         # depart classique + correction apprise
             e = tf.reduce_mean(tf.abs(h) ** 2, axis=[1, 2], keepdims=True)
             hn = h / tf.cast(tf.sqrt(e + 1e-12), h.dtype)              # echelle du canal normalisee
-            nv = tf.reshape(10.0 ** (-snr_db / 10.0), [-1, 1, 1])
-            w = w + tf.transpose(rzf(hn, nv), [0, 2, 1])
+            if self.rzf_init:
+                w0 = rzf(hn, tf.reshape(10.0 ** (-snr_db / 10.0), [-1, 1, 1]))
+            else:
+                w0 = mrt(hn)
+            w = w + tf.transpose(w0, [0, 2, 1])
         if self.power_head:
             w = w / tf.cast(tf.norm(w, axis=-1, keepdims=True), w.dtype)   # directions, norme 1
             p = tf.nn.softmax(o[..., 2 * self.M], axis=-1)                   # [N, K], somme 1

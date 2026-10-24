@@ -17,6 +17,7 @@ def main():
     perm = [2, 0, 3, 1]
     for kw in [{}, {"mixer": "mean"}, {"attn": "signed"}, {"attn": "linear"}, {"gram": True},
                {"attn": "linear", "snr_every": True}, {"attn": "linear", "rzf_init": True},
+               {"attn": "linear", "mrt_init": True},
                {"attn": "signed", "gram": True}, {"attn": "signed", "tied": True},
                {"attn": "signed", "phase_norm": True}]:
         m = PerSCPrecoder(M, d=16, layers=2, **kw)

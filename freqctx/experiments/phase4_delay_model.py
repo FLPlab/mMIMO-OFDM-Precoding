@@ -41,6 +41,7 @@ def main():
     ap.add_argument("--max_taps", type=int, default=None, help="ne garder que les L premiers retards (54 ns)")
     ap.add_argument("--snr_every", action="store_true", help="SNR ajoute avant chaque iteration du precodeur")
     ap.add_argument("--rzf_init", action="store_true", help="precodeur = RZF + correction apprise")
+    ap.add_argument("--mrt_init", action="store_true", help="precodeur = MRT + correction apprise (sans inversion)")
     ap.add_argument("--quick", action="store_true")
     ap.add_argument("--load", action="store_true", help="recharger les poids deja entraines (pas d'entrainement)")
     ap.add_argument("--train_drops", type=int, default=352, help="tirages d'entrainement par scenario")
@@ -71,12 +72,14 @@ def main():
     model = DelayDomainPrecoder(cfg.num_sc, cfg.num_users, cfg.num_bs_ant, est_d=args.est_d,
                                 angle_mask=args.angle, banded=args.banded,
                                 oversample=args.oversample, max_taps=args.max_taps,
-                                snr_every=args.snr_every, rzf_init=args.rzf_init, d=args.d, layers=4,
+                                snr_every=args.snr_every, rzf_init=args.rzf_init,
+                                mrt_init=args.mrt_init, d=args.d, layers=4,
                                 tied=True, attn="linear")
     tag = (("_angle" if args.angle else "") + ("_bande" if args.banded else "")
            + (f"_os{args.oversample}" if args.oversample > 1 else "")
            + (f"_L{args.max_taps}" if args.max_taps else "")
-           + ("_snrall" if args.snr_every else "") + ("_rzf0" if args.rzf_init else ""))
+           + ("_snrall" if args.snr_every else "") + ("_rzf0" if args.rzf_init else "")
+           + ("_mrt0" if args.mrt_init else ""))
     if not args.quick and (train_drops != 352 or steps != 40000):
         tag += f"_n{train_drops}_s{steps // 1000}k"                # donnees / entrainement non standard
     name = f"delay{tag}_est{args.est_d}_D{args.d}_T4_linear_melange_p10"
@@ -109,7 +112,7 @@ def main():
                "model": {"est_d": args.est_d, "d": args.d, "angle_mask": args.angle,
                          "banded": args.banded, "oversample": args.oversample,
                          "max_taps": args.max_taps, "snr_every": args.snr_every,
-                         "rzf_init": args.rzf_init, "layers": 4, "tied": True,
+                         "rzf_init": args.rzf_init, "mrt_init": args.mrt_init, "layers": 4, "tied": True,
                          "attn": "linear", "params": run["params"],
                          "macs_per_sc": run["macs_per_sc"]},
                "steps": steps, "train_drops_per_scenario": train_drops, "rates": rates, "delay_gains": gains,
