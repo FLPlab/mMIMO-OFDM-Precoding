@@ -1,34 +1,46 @@
 # Journal des résultats
 
-## SYNTHÈSE (mise à jour 2026-10-23, à relire avant tout)
+## SYNTHÈSE (triée le 2026-10-24, à relire avant tout)
 
-**Le modèle actuel** (`models/per_sc.py`) : par sous-porteuse (SC), un token par utilisateur. Entrée = CSI estimé de la SC (et de ses W voisines, concaténées) → Dense(D) → **un seul bloc répété 4 fois** [attention **linéaire** entre utilisateurs + FFN] → Dense(2M) = w_k → normalisation de puissance. Perte = débit relatif à RZF. Mêmes poids pour toutes les SC.
+Réglages par défaut : M=8, K=4, 612 SC (20 MHz), pilotes Sionna en peigne + LS, pilote 10 dB, débit à 20 dB. Chaque ligne renvoie à son entrée dans le journal détaillé et à son fichier `results/`.
 
-**Ce qui est établi** (M8K4, 20 MHz, UMi, débit à 20 dB sauf mention) :
+### A. L'histoire du paper (retenu, dans l'ordre logique)
 
-| # | Constat | Preuve |
+| # | Constat | Fichier |
 |---|---|---|
-| 1 | En CSI parfait, il n'y a presque rien à gagner par SC (WMMSE = RZF + 1,7 %) | phase 0 |
-| 2 | La marge est dans l'estimation : à pilote 10 dB, RZF passe de 26,2 (parfait) à 21,7 (LS) et 23,5 (LMMSE) | phase 0 |
-| 3 | Le softmax empêche de soustraire : +19 points avec des poids signés | phase 1, 2 × 2 |
-| 4 | Ce sont les itérations qui comptent, pas les paramètres : 1 bloc × 4 = 4 blocs, avec 3,7 fois moins de paramètres | phase 1, highsnr |
-| 5 | L'attention linéaire (sans exp, division ni tanh) vaut l'attention signée | phases 1, 2, 3 |
-| 6 | La perte relative à RZF corrige le faible SNR | phase 1, candidat |
-| 7 | **Sans voisines, entraîner sur du CSI estimé n'apporte rien** (= RZF(LS)) | phase 2 |
-| 8 | **Avec les voisines, le modèle bat le lissage classique** (23,15 contre 22,67) | phase 3 |
-| 9 | Le goulot avec la fenêtre est la largeur : D=64 donne 23,65 | phase 3, diagnostic |
-| 10 | **Mais il reste sous la meilleure méthode classique WMMSE(LMMSE)** : 23,65 contre 23,93 (98,8 %), 97 à 99 % à tous les SNR | phase 3, `wmmse_ref_p10` |
+| A1 | **En CSI parfait, il n'y a presque rien à gagner par SC** : WMMSE = RZF + 1,7 % | `phase0/baselines` |
+| A2 | **La marge est dans l'estimation** : RZF passe de 26,2 (parfait) à 21,7 (LS) et 23,5 (LMMSE) ; WMMSE(LMMSE) = 23,9 | `phase0/baselines`, `phase3/wmmse_ref_p10` |
+| A3 | **Entre utilisateurs, l'attention doit pouvoir soustraire** : softmax 74 % de RZF, signée 93 %, linéaire équivalente à la signée | `phase1/signed_gram`, `phase1/highsnr` |
+| A4 | **Ce sont les itérations qui comptent** : un seul bloc répété 4 fois = 4 blocs distincts, 3,7 fois moins de paramètres | `phase1/highsnr` |
+| A5 | **Sans contexte fréquentiel, apprendre sur du CSI estimé n'apporte rien** (= RZF(LS)) | `phase2/estimated_csi_p10`, `_p20` |
+| A6 | **Avec les SC voisines, le modèle bat le lissage classique** ; il faut une largeur D=64 | `phase3/window_p10`, `phase3/diagnostic_p10` |
+| A7 | **Quand la covariance est mal connue (mélange UMi/UMa/RMa), LMMSE perd 1 bps/Hz sur RMa (canal plat)** | `phase3/mixed_p10` |
+| A8 | **L'attention en fréquence (adaptative) bat WMMSE(LMMSE réaliste) sur RMa** (+0,64 à 20 dB, +1,32 à 25 dB), égalité en ville, sans covariance ni inversion ; fenêtre effective plus large sur RMa (10,9 contre 8,5 SC) | `phase3/mixed_p10_fattn_D64` |
 
-**Négatifs** : sortie structurée W = Hᴴ C, biais Gram, normalisation de phase, attention signée avec fenêtre.
+### B. Résultats d'appui (retenu, utile pour justifier des choix)
 
-**Ce que le modèle a pour lui face à WMMSE(LMMSE)** : il n'a pas besoin de la covariance du canal, il n'itère pas sur une inversion de matrice, il s'exécute en un temps fixe, et son attention n'a que des multiplications et des additions. **Ce qui lui manque** : 1 à 3 % de débit, et un coût de calcul de 590 k MAC/SC à D=64 (environ 420 fois RZF).
+| # | Constat | Fichier |
+|---|---|---|
+| B1 | Bande de cohérence : 9 SC à corrélation 0,9 ; RMa bien plus plat (0,98 sur 1 RB) | `phase0/channel_stats`, journal phase 3 |
+| B2 | Le transformer simple a besoin de D=128 et L=4 pour égaler RZF en CSI parfait ; la profondeur compte plus que la largeur ; l'attention bat une moyenne de 18 points | `phase1/size_sweep`, `size_sweep_signed` |
+| B3 | La perte relative à RZF corrige le faible SNR | `phase1/candidate` |
+| B4 | Fenêtre concaténée W=49 : +0,2 / +0,44 bps/Hz sur RMa face à WMMSE(LMMSE réaliste), confirmé sur 3 graines (écart-type 0,01) | `phase3/mixed_p10_W49*` |
+| B5 | La fenêtre large et la spécialisation par scénario comptent autant l'une que l'autre | `phase3/mixed_p10_specialiste_rma` |
 
-| 11 | **Scénarios mélangés : LMMSE avec covariance moyenne perd 1 bps/Hz sur RMa (canal plat)** ; notre modèle à filtre fixe W=13 ne le récupère pas (24,09 contre 24,20 pour WMMSE(LMMSE mélange), 25,24 pour l'oracle) | phase 3, `mixed_p10` |
-| 12 | **La fenêtre large et la spécialisation comptent autant l'une que l'autre** (+0,3 et +0,4 bps/Hz) | phase 3, `mixed_p10_W49`, `_specialiste_rma` |
-| 13 | **Avec W=49, le généraliste dépasse WMMSE(LMMSE mélange) sur RMa, confirmé sur 3 graines** : +0,20 bps/Hz à 20 dB, +0,44 à 25 dB (écart-type 0,01). Ailleurs, il est à environ 99 % de WMMSE(LMMSE) | phase 3, `mixed_p10_W49*` |
-| 14 | **L'attention en fréquence (D64, W49) bat la concaténation et récupère la moitié de l'écart à l'oracle sur RMa** : +0,64 bps/Hz sur WMMSE(LMMSE mélange) à 20 dB, +1,32 à 25 dB ; égalité sur UMi/UMa ; moins cher (595 k MAC). Elle élargit sa fenêtre sur RMa (10,9 SC contre 8,5). À D=32, elle s'effondre | phase 3, `mixed_p10_fattn_*` |
+### C. Négatifs (à citer brièvement, ne pas refaire)
+Sortie structurée W = Hᴴ C ; biais Gram ; normalisation de phase ; attention signée avec fenêtre ; attention en fréquence à D=32 ; RZF robuste ; interpolation au plus proche voisin.
 
-**Questions ouvertes** : (a) graines et bootstrap pour l'attention en fréquence ; (b) les 0,40 bps/Hz restants sur RMa jusqu'à l'oracle ; (c) le coût (595 k MAC/SC, environ 420 fois RZF) ; (d) le précodeur reste sous WMMSE au faible SNR ; (e) le profil d'attention périodique (structure des pilotes ?).
+### D. Limites connues du résultat actuel
+- Le gain ne tient que là où la covariance est mal adaptée (RMa) et à SNR moyen/fort ; au faible SNR, environ −0,2 bps/Hz partout (limite du précodeur).
+- Une seule configuration : M8K4, pilote 10 dB **seulement** (le modèle ne reçoit pas le SNR pilote), canal sans vieillissement.
+- Une seule graine pour l'attention en fréquence ; pas de bootstrap sur les tirages.
+- Coût : 595 k MAC/SC. À comparer à la **chaîne complète** LMMSE + WMMSE (estimée à 150-200 k MAC/SC avec inversions en double précision, à calculer précisément), pas à RZF seul.
+
+### E. Plan (simple, sans s'éparpiller)
+1. **Massif M=64, K=8** : même modèle, mêmes références, coût de la chaîne classique complète.
+2. **Carte de fonctionnement** (sans réentraîner) : étalement des retards en continu, SNR pilote.
+3. **À la fin** : graines, robustesse, coûts précis.
+**Mis de côté** : vieillissement du CSI, ray-tracing, BLER LDPC, contrôle du débit, PRG, quantification.
 
 ---
 
