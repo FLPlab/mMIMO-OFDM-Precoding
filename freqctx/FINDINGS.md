@@ -41,7 +41,7 @@ Sortie structurée W = Hᴴ C ; biais Gram ; normalisation de phase ; attention 
 - Coût : 595 k MAC/SC. À comparer à la **chaîne complète** LMMSE + WMMSE (estimée à 150-200 k MAC/SC avec inversions en double précision, à calculer précisément), pas à RZF seul.
 
 ### E. Plan (simple, sans s'éparpiller)
-0. **(2026-10-24) Candidat actuel : estimation dans le domaine des retards sur une grille 2× plus fine (306 retards) avec filtre complexe sur 3 retards voisins + précodeur D64 par SC, entraîné sur 1 056 tirages par scénario et 80 000 pas** (`phase4/delay_model_bande_os2_n1056_s80k_D64`). +1,6 à +1,7 bps/Hz à 20 dB sur la meilleure référence classique ; reste 0,2-0,4 jusqu'au génie. Estimation terminée. Prochain : faible SNR, puis massif.
+0. **(2026-10-24) Candidat actuel : estimation dans le domaine des retards sur une grille 2× plus fine (306 retards) avec filtre complexe sur 3 retards voisins + précodeur D64 par SC, entraîné sur 1 056 tirages par scénario et 80 000 pas** (`phase4/delay_model_bande_os2_n1056_s80k_D64`). +1,6 à +1,7 bps/Hz à 20 dB sur la meilleure référence classique ; reste 0,2-0,4 jusqu'au génie. Estimation terminée. Faible SNR : écart accepté (variante RZF documentée). Prochain : massif.
 1. **Massif M=64, K=8** (après le point 0) : même modèle, mêmes références, coût de la chaîne classique complète.
 2. **Carte de fonctionnement** (sans réentraîner) : étalement des retards en continu, SNR pilote.
 3. **À la fin** : graines, robustesse, coûts précis.
@@ -660,7 +660,13 @@ Base : candidat grille 2× (écart à la meilleure référence classique réalis
 - **Rappeler le SNR à chaque itération ne change rien.** Le compromis entre SNR ne venait pas d'un manque d'information sur le SNR dans le bloc.
 - **Démarrer depuis RZF comble l'essentiel du trou au faible SNR** : de −0,12 à −0,16 vers −0,03 à −0,05 bps/Hz à 0 dB (+0,09 à +0,12), sans rien perdre ailleurs, et avec un petit gain à 25 dB (+0,16 à +0,25). Le modèle est désormais **au niveau de la meilleure référence classique au faible SNR** et au-dessus dès 10 dB.
 - **Le prix** : une inversion 4×4 par SC (celle de RZF ; environ 1 400 MAC, négligeable), qui fait perdre l'argument « aucune inversion de matrice ».
-- **Décision à prendre avec l'utilisateur.**
+- **Décision (utilisateur)** : ne pas mettre RZF au cœur du modèle (cela affaiblit le propos « le transformer apprend à précoder »). Tester d'abord un départ sans inversion (MRT) ; sinon accepter le petit écart.
+
+### Faible SNR : départ depuis MRT (sans inversion) — ÉCARTÉ, écart accepté (`..._mrt0_...`)
+- Précodeur = MRT (canal conjugué, aucune inversion) + correction apprise, tête initialisée à zéro.
+- **Aucun effet** : 0 dB −0,11 / −0,13 / −0,16 face au classique (identique au candidat), 20 dB −0,03 par rapport au candidat.
+- **Interprétation** : ce n'est pas un « raccourci » quelconque qui aidait, c'est la structure de RZF elle-même (l'inversion régularisée), qui donne le bon compromis au faible SNR.
+- **Décision finale (règle convenue)** : on garde le modèle **sans inversion** et on **accepte l'écart au faible SNR** (−0,1 à −0,16 bps/Hz à 0-5 dB, soit 2 à 3 %). Le départ depuis RZF est documenté comme **variante** (au niveau du classique partout, au prix d'une inversion 4×4 par SC).
 
 ## Prochaine étape
 (1) 3 graines pour l'attention en fréquence D64. (2) Réduire le coût. (3) Bootstrap sur les tirages. (4) Faire le point avant d'aller plus loin (pilote 20 dB, vieillissement, M64).
