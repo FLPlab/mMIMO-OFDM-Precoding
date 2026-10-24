@@ -39,8 +39,11 @@ def main():
     ap.add_argument("--banded", action="store_true", help="filtre complexe sur 3 retards voisins")
     ap.add_argument("--quick", action="store_true")
     ap.add_argument("--load", action="store_true", help="recharger les poids deja entraines (pas d'entrainement)")
+    ap.add_argument("--train_drops", type=int, default=352, help="tirages d'entrainement par scenario")
+    ap.add_argument("--steps", type=int, default=40000)
     args = ap.parse_args()
-    steps, train_drops, eval_drops = (2000, 64, 32) if args.quick else (40000, 352, 192)
+    steps, train_drops, eval_drops = ((2000, 64, 32) if args.quick
+                                      else (args.steps, args.train_drops, 192))
     ref_file = json.load(open(os.path.join(RESULTS, "phase3", "mixed_p10.json")))
     genie = json.load(open(os.path.join(RESULTS, "phase4", "genie_bound_p10.json")))["results"]
     cand = json.load(open(os.path.join(RESULTS, "phase3", "mixed_p10_fattn_D64.json")))
@@ -65,6 +68,8 @@ def main():
                                 angle_mask=args.angle, banded=args.banded, d=args.d, layers=4,
                                 tied=True, attn="linear")
     tag = ("_angle" if args.angle else "") + ("_bande" if args.banded else "")
+    if not args.quick and (train_drops != 352 or steps != 40000):
+        tag += f"_n{train_drops}_s{steps // 1000}k"                # donnees / entrainement non standard
     name = f"delay{tag}_est{args.est_d}_D{args.d}_T4_linear_melange_p10"
     if args.load:
         model(ev["umi"][0][:1], tf.zeros([1]))
@@ -96,14 +101,15 @@ def main():
                          "banded": args.banded, "layers": 4, "tied": True,
                          "attn": "linear", "params": run["params"],
                          "macs_per_sc": run["macs_per_sc"]},
-               "steps": steps, "rates": rates, "delay_gains": gains,
+               "steps": steps, "train_drops_per_scenario": train_drops, "rates": rates, "delay_gains": gains,
                "training_history": run["history"],
                "compare": {s: {"WMMSE (LMMSE melange)": ref_file["references"][s]["WMMSE (LMMSE melange)"],
                                "WMMSE (LMMSE oracle)": ref_file["references"][s]["WMMSE (LMMSE oracle)"],
                                "WMMSE (genie par lien)": genie[s]["WMMSE (genie par lien)"],
                                "candidat freq. W49": list(cand["models"].values())[0][s]}
                            for s in SCENARIOS}}
-    save("phase4", f"delay_model{tag}_D{args.d}" + ("_quick" if args.quick else ""), payload,
+    est = f"_est{args.est_d}" if args.est_d != 32 else ""
+    save("phase4", f"delay_model{tag}{est}_D{args.d}" + ("_quick" if args.quick else ""), payload,
          plot(payload))
 
 

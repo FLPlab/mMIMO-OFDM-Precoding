@@ -40,7 +40,7 @@ Sortie structurée W = Hᴴ C ; biais Gram ; normalisation de phase ; attention 
 - Coût : 595 k MAC/SC. À comparer à la **chaîne complète** LMMSE + WMMSE (estimée à 150-200 k MAC/SC avec inversions en double précision, à calculer précisément), pas à RZF seul.
 
 ### E. Plan (simple, sans s'éparpiller)
-0. **(2026-10-24) Candidat actuel : estimation dans le domaine des retards avec filtre complexe sur 3 retards voisins + précodeur D64 par SC** (`phase4/delay_model_bande_D64`). Reste : 0,9-1,2 bps/Hz jusqu'au génie, faible SNR, coût, une seule graine.
+0. **(2026-10-24) Candidat actuel : estimation dans le domaine des retards avec filtre complexe sur 3 retards voisins + précodeur D64 par SC, entraîné sur 1 056 tirages par scénario et 80 000 pas** (`phase4/delay_model_bande_n1056_s80k_D64`). Reste : 0,7-0,9 bps/Hz jusqu'au génie, faible SNR, coût, une seule graine.
 1. **Massif M=64, K=8** (après le point 0) : même modèle, mêmes références, coût de la chaîne classique complète.
 2. **Carte de fonctionnement** (sans réentraîner) : étalement des retards en continu, SNR pilote.
 3. **À la fin** : graines, robustesse, coûts précis.
@@ -601,6 +601,21 @@ Débit à 20 dB (bps/Hz) :
 - **Le goulot est l'estimation** : à précodeur fixé (le nôtre), remplacer notre représentation par le génie fait gagner environ 1,0 bps/Hz (UMi +1,01, UMa +1,06, RMa +0,70).
 - **Le précodeur ne pèse que pour une petite part** : WMMSE sur notre estimation fait +0,06 à +0,19 à 20 dB, et environ +0,2 à 0 dB (le trou au faible SNR connu). Avec une bonne estimation, notre précodeur est à 0,1-0,2 de WMMSE.
 - **Décision proposée** : rouvrir l'estimation, de façon encadrée (3 essais au plus : plus de données, module plus grand, grille de retards sur-échantillonnée ; seuil +0,2 à 20 dB), puisque c'est là qu'est la marge et que le module est l'entrée du précodeur.
+
+### Estimation rouverte (cadre : 3 essais, seuil +0,2 à 20 dB) — essais (i) et (ii)
+Base : modèle « retards + filtre à bande + précodeur D64 » (24,99 / 24,59 / 25,29 à 20 dB). Mêmes tirages d'évaluation.
+
+| Essai (un seul changement) | UMi 20 dB | UMa 20 dB | RMa 20 dB | 25 dB | params | Verdict |
+|---|---|---|---|---|---|---|
+| **(i) 3× plus de données (1 056 tirages par scénario) et 80 000 pas** (`delay_model_bande_n1056_s80k_D64`) | **25,24 (+0,26)** | **24,83 (+0,25)** | **25,50 (+0,21)** | +0,48 à +0,52 | 58 k | **RETENU** |
+| (ii) module plus grand, D=64 au lieu de 32 (`delay_model_bande_est64_D64`) | 25,04 (+0,05) | 24,63 (+0,05) | 25,30 (+0,01) | +0,00 à +0,09 | 114 k | ÉCARTÉ |
+
+**Conclusions :**
+- **Le modèle manquait de données, pas de capacité.** Trois fois plus de tirages (et deux fois plus de pas) apportent +0,21 à +0,26 bps/Hz à 20 dB et environ +0,5 à 25 dB, un peu aussi au faible SNR (+0,05 à 0 dB). Doubler la largeur du module n'apporte presque rien.
+- *Limite* : (i) change à la fois la quantité de données et le nombre de pas ; on ne sait pas lequel des deux compte le plus.
+- **Nouveau candidat** : le même modèle, entraîné avec 1 056 tirages par scénario et 80 000 pas. Face à la meilleure référence classique réaliste (WMMSE robuste, LMMSE mélange) : **+1,07 / +1,10 / +1,16 bps/Hz à 20 dB (+4,4 / +4,6 / +4,8 %)** et **+2,17 / +2,14 / +2,61 à 25 dB** ; égalité à 10 dB ; −0,15 à −0,22 à 0-5 dB.
+- **Écart restant au génie à 20 dB : 0,85 / 0,94 / 0,69 bps/Hz.**
+- Reste l'essai (iii), la grille de retards sur-échantillonnée, à faire avec ce nouveau réglage de données.
 
 ## Prochaine étape
 (1) 3 graines pour l'attention en fréquence D64. (2) Réduire le coût. (3) Bootstrap sur les tirages. (4) Faire le point avant d'aller plus loin (pilote 20 dB, vieillissement, M64).

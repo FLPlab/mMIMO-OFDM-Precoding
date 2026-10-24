@@ -222,7 +222,7 @@ svg text{font-family:"JetBrains Mono",ui-monospace,monospace}
   <div class="cols">
     <div class="panel"><h3>Taille totale</h3><div class="big">58 422 <span style="font-size:1rem;color:var(--muted)">paramètres</span></div><p class="caption">Estimation ≈ 22,8 k (dont 4,9 k d'embedding de position), précodeur 35,7 k.</p></div>
     <div class="panel"><h3>Calcul par sous-porteuse</h3><div class="big">≈ 602 k <span style="font-size:1rem;color:var(--muted)">MAC</span></div><p class="caption">Précodeur 541 k (90 %), estimation ≈ 61 k au plus (une vraie FFT coûterait moins).</p></div>
-    <div class="panel"><h3>Entraînement</h3><p class="caption" style="color:var(--ink)">Perte : −moyenne de débit(W) / débit(RZF sur le LS). SNR tiré entre 0 et 25 dB par tirage. Adam, pas 1e-3, décroissance cosinus, 40 000 pas, lots de 4 tirages (2 448 SC), 1 056 tirages (352 par scénario). Environ 10 min sur une L40S.</p></div>
+    <div class="panel"><h3>Entraînement</h3><p class="caption" style="color:var(--ink)">Perte : −moyenne de débit(W) / débit(RZF sur le LS). SNR tiré entre 0 et 25 dB par tirage. Adam, pas 1e-3, décroissance cosinus, 80 000 pas, lots de 4 tirages (2 448 SC), 3 168 tirages (1 056 par scénario). Environ 25 min sur une L40S.</p></div>
   </div>
 </section>
 
@@ -236,17 +236,17 @@ svg text{font-family:"JetBrains Mono",ui-monospace,monospace}
       <tbody>
         <tr><td rowspan="5">20 dB</td><td>WMMSE, canal parfait (borne absolue)</td><td class="num">26,74</td><td class="num">26,46</td><td class="num">26,56</td></tr>
         <tr><td>WMMSE, estimation génie par lien</td><td class="num">26,09</td><td class="num">25,77</td><td class="num">26,19</td></tr>
-        <tr><td><b>notre modèle</b></td><td class="num"><b>24,99</b></td><td class="num"><b>24,59</b></td><td class="num"><b>25,29</b></td></tr>
+        <tr><td><b>notre modèle</b></td><td class="num"><b>25,24</b></td><td class="num"><b>24,83</b></td><td class="num"><b>25,50</b></td></tr>
         <tr><td>meilleure référence classique réaliste</td><td class="num">24,18</td><td class="num">23,74</td><td class="num">24,35</td></tr>
-        <tr><td>écart</td><td class="num pos">+0,81</td><td class="num pos">+0,85</td><td class="num pos">+0,94</td></tr>
-        <tr><td rowspan="3">25 dB</td><td><b>notre modèle</b></td><td class="num"><b>29,21</b></td><td class="num"><b>28,68</b></td><td class="num"><b>29,97</b></td></tr>
+        <tr><td>écart</td><td class="num pos">+1,07</td><td class="num pos">+1,10</td><td class="num pos">+1,16</td></tr>
+        <tr><td rowspan="3">25 dB</td><td><b>notre modèle</b></td><td class="num"><b>29,73</b></td><td class="num"><b>29,18</b></td><td class="num"><b>30,45</b></td></tr>
         <tr><td>meilleure référence classique réaliste</td><td class="num">27,57</td><td class="num">27,05</td><td class="num">27,80</td></tr>
-        <tr><td>écart</td><td class="num pos">+1,65</td><td class="num pos">+1,63</td><td class="num pos">+2,13</td></tr>
-        <tr><td>0 à 10 dB</td><td>écart à la référence classique</td><td class="num neg">−0,06 à −0,20</td><td class="num neg">−0,05 à −0,22</td><td class="num neg">−0,15 à −0,25</td></tr>
+        <tr><td>écart</td><td class="num pos">+2,17</td><td class="num pos">+2,14</td><td class="num pos">+2,61</td></tr>
+        <tr><td>0 à 10 dB</td><td>écart à la référence classique</td><td class="num neg">−0,01 à −0,15</td><td class="num neg">−0,01 à −0,17</td><td class="num neg">−0,11 à −0,22</td></tr>
       </tbody>
     </table>
   </div>
-  <p class="caption">Avec le simple masque (avant le filtre à bande), retards gardés en moyenne : 23 (UMi), 24 (UMa), 14 (RMa, canal plus compact). Fichiers : <code>results/phase4/delay_model_bande_D64.json</code>, <code>delay_model_D64.json</code>, <code>robust_ref_p10.json</code>, <code>genie_bound_p10.json</code>. Une seule graine pour ce modèle.</p>
+  <p class="caption">Avec le simple masque (avant le filtre à bande), retards gardés en moyenne : 23 (UMi), 24 (UMa), 14 (RMa, canal plus compact). Fichiers : <code>results/phase4/delay_model_bande_n1056_s80k_D64.json</code>, <code>delay_model_bande_D64.json</code>, <code>delay_model_D64.json</code>, <code>robust_ref_p10.json</code>, <code>genie_bound_p10.json</code>. Une seule graine pour ce modèle.</p>
 </section>
 
 <section>
@@ -271,6 +271,7 @@ svg text{font-family:"JetBrains Mono",ui-monospace,monospace}
     <div class="step dropped"><span class="tag">phase 4 · sondages précédents</span><h3>Profil des trajets sur 4 sondages passés<span class="verdict d">écarté</span></h3><p>Chaque retard reçoit sa puissance moyenne sur 4 sondages passés (espacés de 2 ms) : aucun effet (±0,03 bps/Hz). Un LMMSE classique construit sur ce même historique n'est guère meilleur que le LMMSE de covariance moyenne. L'écart au génie reste de 0,9 à 1,4 bps/Hz.</p><p class="why">Le génie connaît les retards exacts, hors de la grille : sa covariance n'a pas de fuite. Le masque et le LMMSE historique travaillent sur la grille, où chaque trajet fuit sur ses voisins. L'écart restant ressemble donc à de la fuite.</p></div>
     <div class="step kept"><span class="tag">phase 4 · fuite</span><h3>Filtre complexe sur 3 retards voisins<span class="verdict k">retenu</span></h3><p>Au lieu d'un gain réel par retard, une combinaison complexe des retards t−1, t, t+1, commune aux antennes. À 20 dB : +0,19 / +0,18 / +0,24 (UMi / UMa / RMa) ; à 25 dB : +0,28 à +0,39 ; à 0 dB : −0,04. Juste sous le seuil fixé (+0,2), gardé car il ne coûte que 165 paramètres.</p><p class="why">Recolle l'énergie d'un trajet hors grille qui fuit sur ses voisins. Il ne referme qu'environ 15 % de l'écart au génie : la fuite n'explique qu'une partie de ce qui reste. Dernier effort sur l'estimation.</p></div>
     <div class="step kept"><span class="tag">phase 4 · attribution</span><h3>L'écart restant vient de l'estimation<span class="verdict k">retenu</span></h3><p>Avec notre précodeur, remplacer notre représentation par l'estimation génie fait gagner environ 1 bps/Hz ; remplacer notre précodeur par WMMSE ne fait gagner que 0,06 à 0,19. Le module sort le canal multiplié par environ 4,8 (et tourné en phase), et le précodeur s'est adapté à cette échelle.</p><p class="why">Le module n'est pas un estimateur de canal : c'est la représentation apprise que reçoit le précodeur. La marge restante est dans cette représentation.</p></div>
+    <div class="step kept"><span class="tag">phase 4 · données</span><h3>Trois fois plus de données d'entraînement<span class="verdict k">retenu</span></h3><p>1 056 tirages par scénario au lieu de 352, et 80 000 pas au lieu de 40 000 : +0,26 / +0,25 / +0,21 bps/Hz à 20 dB, environ +0,5 à 25 dB. Un module d'estimation deux fois plus large (D=64) n'apporte que +0,01 à +0,05 (écarté).</p><p class="why">Le modèle manquait de données, pas de capacité. Le changement ne touche pas l'architecture.</p></div>
   </div>
 </section>
 
