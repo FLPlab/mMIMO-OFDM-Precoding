@@ -582,6 +582,26 @@ Débit (bps/Hz) et écart au masque :
 - Il ne referme qu'environ 15 % de l'écart restant au génie : la fuite n'explique donc qu'une partie de cet écart.
 - **Décision (utilisateur, 2026-10-24) : GARDÉ**, malgré le seuil manqué de peu, parce qu'il ne coûte presque rien. C'est le dernier effort sur l'estimation.
 
+### Attribution : estimation ou précodeur ? — RETENU (`results/phase4/attribution_p10.json`)
+- **Question** : l'écart restant au génie (environ 1 bps/Hz à 20 dB) vient-il du module d'estimation ou du précodeur ? On croise estimation (notre module / génie / canal parfait) et précodeur (le nôtre / WMMSE / RZF), avec le modèle retenu rechargé depuis ses poids, sur les mêmes tirages.
+- **Découverte** : appris ensemble sur le débit, le module sort le canal **multiplié par environ 4,8** (le précodeur normalise sa puissance, l'échelle est libre), et le précodeur s'est adapté à cette échelle. Donné un canal à l'échelle normale (génie ou parfait), notre précodeur s'effondre (13 à 14 bps/Hz). Même remise à l'échelle (énergie = LS moins bruit, réaliste), la sortie du module a une « erreur » de +2 dB, sans doute une rotation de phase par utilisateur, qui ne change pas le débit. **Le module est une représentation apprise pour le précodeur, pas un estimateur de canal.**
+
+Débit à 20 dB (bps/Hz) :
+
+| | UMi | UMa | RMa |
+|---|---|---|---|
+| notre modèle complet | 24,99 | 24,59 | 25,29 |
+| notre estimation (échelle corrigée) + WMMSE | 25,05 | 24,66 | 25,48 |
+| **génie (à l'échelle du module) + notre précodeur** | **26,00** | **25,65** | **25,99** |
+| génie + WMMSE | 26,09 | 25,77 | 26,19 |
+| canal parfait (échelle du module) + notre précodeur | 26,61 | 26,29 | 26,32 |
+| canal parfait + WMMSE | 26,74 | 26,46 | 26,56 |
+
+**Conclusions :**
+- **Le goulot est l'estimation** : à précodeur fixé (le nôtre), remplacer notre représentation par le génie fait gagner environ 1,0 bps/Hz (UMi +1,01, UMa +1,06, RMa +0,70).
+- **Le précodeur ne pèse que pour une petite part** : WMMSE sur notre estimation fait +0,06 à +0,19 à 20 dB, et environ +0,2 à 0 dB (le trou au faible SNR connu). Avec une bonne estimation, notre précodeur est à 0,1-0,2 de WMMSE.
+- **Décision proposée** : rouvrir l'estimation, de façon encadrée (3 essais au plus : plus de données, module plus grand, grille de retards sur-échantillonnée ; seuil +0,2 à 20 dB), puisque c'est là qu'est la marge et que le module est l'entrée du précodeur.
+
 ## Prochaine étape
 (1) 3 graines pour l'attention en fréquence D64. (2) Réduire le coût. (3) Bootstrap sur les tirages. (4) Faire le point avant d'aller plus loin (pilote 20 dB, vieillissement, M64).
 Cible principale ensuite (phases 2–3) : le régime pilote 10 dB, où il reste 2,7 à 5,9 bps/Hz après LMMSE.
