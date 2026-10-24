@@ -40,7 +40,7 @@ Sortie structurée W = Hᴴ C ; biais Gram ; normalisation de phase ; attention 
 - Coût : 595 k MAC/SC. À comparer à la **chaîne complète** LMMSE + WMMSE (estimée à 150-200 k MAC/SC avec inversions en double précision, à calculer précisément), pas à RZF seul.
 
 ### E. Plan (simple, sans s'éparpiller)
-0. **(2026-10-24) Nouveau candidat : estimation dans le domaine des retards + précodeur D64 par SC** (`phase4/delay_model_D64`). Reste : 1,1-1,4 bps/Hz jusqu'au génie, faible SNR, coût, une seule graine.
+0. **(2026-10-24) Candidat actuel : estimation dans le domaine des retards avec filtre complexe sur 3 retards voisins + précodeur D64 par SC** (`phase4/delay_model_bande_D64`). Reste : 0,9-1,2 bps/Hz jusqu'au génie, faible SNR, coût, une seule graine.
 1. **Massif M=64, K=8** (après le point 0) : même modèle, mêmes références, coût de la chaîne classique complète.
 2. **Carte de fonctionnement** (sans réentraîner) : étalement des retards en continu, SNR pilote.
 3. **À la fin** : graines, robustesse, coûts précis.
@@ -580,7 +580,7 @@ Débit (bps/Hz) et écart au masque :
 - **Le gain est réel et cohérent** (environ 20 fois la variabilité entre graines), il grandit avec le SNR (+0,28 à +0,39 à 25 dB), au prix d'une très légère perte à 0 dB (−0,04).
 - **Mais il est juste sous le seuil fixé d'avance** (+0,2 dans les trois scénarios à 20 dB) : +0,19 et +0,18 en ville, +0,24 sur RMa.
 - Il ne referme qu'environ 15 % de l'écart restant au génie : la fuite n'explique donc qu'une partie de cet écart.
-- **Décision à prendre avec l'utilisateur** (règle stricte : écarter ; argument pour garder : coût quasi nul).
+- **Décision (utilisateur, 2026-10-24) : GARDÉ**, malgré le seuil manqué de peu, parce qu'il ne coûte presque rien. C'est le dernier effort sur l'estimation.
 
 ## Prochaine étape
 (1) 3 graines pour l'attention en fréquence D64. (2) Réduire le coût. (3) Bootstrap sur les tirages. (4) Faire le point avant d'aller plus loin (pilote 20 dB, vieillissement, M64).
