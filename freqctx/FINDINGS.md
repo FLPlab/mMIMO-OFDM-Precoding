@@ -24,9 +24,10 @@
 **Ce que le modèle a pour lui face à WMMSE(LMMSE)** : il n'a pas besoin de la covariance du canal, il n'itère pas sur une inversion de matrice, il s'exécute en un temps fixe, et son attention n'a que des multiplications et des additions. **Ce qui lui manque** : 1 à 3 % de débit, et un coût de calcul de 590 k MAC/SC à D=64 (environ 420 fois RZF).
 
 | 11 | **Scénarios mélangés : LMMSE avec covariance moyenne perd 1 bps/Hz sur RMa (canal plat)** ; notre modèle à filtre fixe W=13 ne le récupère pas (24,09 contre 24,20 pour WMMSE(LMMSE mélange), 25,24 pour l'oracle) | phase 3, `mixed_p10` |
-| 12 | **La fenêtre large et la spécialisation comptent autant l'une que l'autre** (+0,3 et +0,4 bps/Hz). Avec W=49, le généraliste **dépasse WMMSE(LMMSE mélange) sur RMa** (24,38 contre 24,20 à 20 dB ; 27,97 contre 27,54 à 25 dB), mais l'écart à 20 dB est dans la variabilité entre graines | phase 3, `mixed_p10_W49`, `_specialiste_rma` |
+| 12 | **La fenêtre large et la spécialisation comptent autant l'une que l'autre** (+0,3 et +0,4 bps/Hz) | phase 3, `mixed_p10_W49`, `_specialiste_rma` |
+| 13 | **Avec W=49, le généraliste dépasse WMMSE(LMMSE mélange) sur RMa, confirmé sur 3 graines** : +0,20 bps/Hz à 20 dB, +0,44 à 25 dB (écart-type 0,01). Ailleurs, il est à environ 99 % de WMMSE(LMMSE) | phase 3, `mixed_p10_W49*` |
 
-**Questions ouvertes** : (a) le dépassement de WMMSE(LMMSE) sur RMa tient-il sur 3 graines ? (b) une attention en fréquence (adaptative) récupère-t-elle les 0,8 bps/Hz restants jusqu'à l'oracle ? (c) peut-on réduire le coût (738 k MAC/SC à W=49) ? (d) le précodeur reste sous WMMSE au faible SNR.
+**Questions ouvertes** : (a) bootstrap sur les tirages d'évaluation ; (b) une attention en fréquence (adaptative) récupère-t-elle les 0,8 bps/Hz restants jusqu'à l'oracle ? (c) peut-on réduire le coût (738 k MAC/SC à W=49) ? (d) le précodeur reste sous WMMSE au faible SNR.
 
 ---
 
@@ -333,6 +334,25 @@ Débit somme à 20 dB (25 dB), bps/Hz :
 - **Le spécialiste n'est pas une solution** : il s'effondre hors de RMa (UMi : 22,83). Il sert de borne : avec un filtre fixe adapté à RMa, on atteindrait 24,47.
 - **Le coût monte** : W=49 = 85 k paramètres et 738 k MAC/SC (environ 530 fois RZF).
 
+### Fenêtre W=49 sur le mélange, 3 graines — RETENU (`results/phase3/mixed_p10_W49.*`, `_W49_s1.*`, `_W49_s2.*`)
+- **Question** : le dépassement de WMMSE(LMMSE mélange) sur RMa tient-il d'une graine à l'autre ?
+- **Réglages** : identiques à W49 graine 0 ; graines 1 et 2 (initialisation des poids et tirage des lots). Données d'entraînement et d'évaluation identiques.
+
+Moyenne sur 3 graines (écart-type) et écart à WMMSE(LMMSE mélange), bps/Hz :
+
+| | 0 dB | 10 dB | 15 dB | 20 dB | 25 dB |
+|---|---|---|---|---|---|
+| UMi | 5,22 (0,01) / −0,15 | 14,05 (0,01) / −0,16 | 19,30 / −0,14 | 23,99 (0,01) / −0,08 | 27,33 (0,01) / **0,00** |
+| UMa | 5,15 (0,02) / −0,17 | 13,78 / −0,20 | 18,89 / −0,20 | 23,45 / −0,17 | 26,67 / −0,12 |
+| **RMa** | 5,27 (0,02) / −0,17 | 14,15 / −0,19 | 19,49 / −0,05 | **24,39 (0,01) / +0,20** | **27,98 (0,01) / +0,44** |
+
+**Conclusions :**
+- **La variabilité entre graines est très faible** à cette taille (écart-type d'environ 0,01 bps/Hz). Mon estimation précédente d'environ 0,3 bps/Hz venait des petits modèles D32 ; elle était trop pessimiste ici.
+- **Le dépassement sur RMa est confirmé** : +0,20 bps/Hz à 20 dB et +0,44 à 25 dB, pour les 3 graines (au minimum +0,18 et +0,43), soit environ 20 fois l'écart-type.
+- **Ailleurs, le modèle reste légèrement sous WMMSE(LMMSE mélange)** : −0,15 à −0,20 bps/Hz au faible et moyen SNR dans les trois scénarios, et sur UMa à tous les SNR. Il égale WMMSE sur UMi à 25 dB.
+- **Bilan honnête** : le modèle bat la meilleure méthode classique réaliste **seulement là où sa covariance est mal adaptée (RMa) et à fort SNR**. Ailleurs, il fait environ 99 % de WMMSE(LMMSE), sans covariance et sans inversion de matrice.
+- *Limite* : les écarts sont mesurés sur un seul ensemble d'évaluation (192 tirages par scénario, apparié). La variabilité entre graines est maîtrisée ; la variabilité liée au choix des tirages ne l'est pas encore (un bootstrap sur les tirages le ferait).
+
 ## Prochaine étape
-(1) Confirmer le résultat RMa W=49 sur 3 graines. (2) Attention en fréquence (adaptative) sur le mélange, pour viser l'oracle. (3) Réduire le coût du traitement de la fenêtre.
+(1) Attention en fréquence (adaptative) sur le mélange, pour viser l'oracle (0,85 bps/Hz restants sur RMa). (2) Réduire le coût du traitement de la fenêtre. (3) Bootstrap sur les tirages pour les écarts à WMMSE.
 Cible principale ensuite (phases 2–3) : le régime pilote 10 dB, où il reste 2,7 à 5,9 bps/Hz après LMMSE.

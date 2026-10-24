@@ -48,6 +48,7 @@ def main():
     ap.add_argument("--train", default="umi,uma,rma", help="scenarios d'entrainement")
     ap.add_argument("--window", type=int, default=13)
     ap.add_argument("--tag", default="", help="suffixe du fichier de resultats")
+    ap.add_argument("--seed", type=int, default=0, help="init des poids + tirage des lots")
     args = ap.parse_args()
     W, train_scen = args.window, args.train.split(",")
     model_kw = {**MODEL, "window": W}
@@ -97,8 +98,8 @@ def main():
                           for i in range(len(SNRS_DB))]}
     label = "melange" if len(train_scen) == len(SCENARIOS) else "+".join(train_scen)
     model = PerSCPrecoder(cfg.num_bs_ant, **model_kw)
-    run = run_variant(f"D64_T4_linear_W{W}_{label}_p10", model, train_pool, pools[train_scen[0]],
-                      SNRS_DB, {"RZF": refs[train_scen[0]]["RZF (LS)"]}, steps, seed=0,
+    run = run_variant(f"D64_T4_linear_W{W}_{label}_p10" + (f"_s{args.seed}" if args.seed else ""), model, train_pool, pools[train_scen[0]],
+                      SNRS_DB, {"RZF": refs[train_scen[0]]["RZF (LS)"]}, steps, seed=args.seed,
                       loss="rel_rzf", weights_dir=None if args.quick else W3)
     models = {f"modele W={W} (entraine {label})": {s: evaluate(model, p, SNRS_DB)
                                                      for s, p in pools.items()}}
@@ -112,7 +113,8 @@ def main():
     for name, per in models.items():
         print(name, "@20dB", {s: round(v[4], 2) for s, v in per.items()})
 
-    payload = {"scenarios": SCENARIOS, "train_scenarios": train_scen, "pilot_snr_db": PILOT,
+    payload = {"scenarios": SCENARIOS, "train_scenarios": train_scen, "seed": args.seed,
+               "pilot_snr_db": PILOT,
                "window": W, "model": model_kw,
                "snrs_db": SNRS_DB, "steps": steps, "train_drops_per_scenario": train_drops,
                "eval_drops_per_scenario": eval_drops, "references": refs, "models": models,
