@@ -38,6 +38,7 @@ def main():
     ap.add_argument("--angle", action="store_true", help="gain par (retard, angle) (variante b)")
     ap.add_argument("--banded", action="store_true", help="filtre complexe sur 3 retards voisins")
     ap.add_argument("--quick", action="store_true")
+    ap.add_argument("--load", action="store_true", help="recharger les poids deja entraines (pas d'entrainement)")
     args = ap.parse_args()
     steps, train_drops, eval_drops = (2000, 64, 32) if args.quick else (40000, 352, 192)
     ref_file = json.load(open(os.path.join(RESULTS, "phase3", "mixed_p10.json")))
@@ -65,14 +66,20 @@ def main():
                                 tied=True, attn="linear")
     tag = ("_angle" if args.angle else "") + ("_bande" if args.banded else "")
     name = f"delay{tag}_est{args.est_d}_D{args.d}_T4_linear_melange_p10"
-    run = run_variant(name, model, train_pool, DropPool(*ev["umi"]), SNRS_DB,
-                      {"RZF": ref_file["references"]["umi"]["RZF (LS)"]}, steps, seed=0,
-                      loss="rel_rzf", weights_dir=None if args.quick else W4)
+    if args.load:
+        model(ev["umi"][0][:1], tf.zeros([1]))
+        model.load_weights(os.path.join(W4, f"{name}.weights.h5"))
+        run = {"params": int(model.count_params()), "macs_per_sc": model.macs_per_sc(cfg.num_users),
+               "history": [], "reloaded": True}
+    else:
+        run = run_variant(name, model, train_pool, DropPool(*ev["umi"]), SNRS_DB,
+                          {"RZF": ref_file["references"]["umi"]["RZF (LS)"]}, steps, seed=0,
+                          loss="rel_rzf", weights_dir=None if args.quick else W4)
     rates, gains = {}, {}
     for scen in SCENARIOS:
         pool = DropPool(*ev[scen])
         rates[scen] = evaluate(model, pool, SNRS_DB)
-        hc, _ = next(pool.chunks(16))
+        hc, _, _ = next(pool.chunks(16))
         model(hc, tf.fill([hc.shape[0]], 20.0))
         g = model.estimator.last_gain.numpy()                  # [B, K, N, 1 ou M]
         gains[scen] = {"profile": g.mean(axis=(0, 1, 3)).tolist(),

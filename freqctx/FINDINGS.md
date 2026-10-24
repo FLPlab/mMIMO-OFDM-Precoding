@@ -562,6 +562,26 @@ Débit à 20 dB (bps/Hz) :
 - Sur ces nouveaux tirages, le modèle (sans historique) bat toujours la meilleure référence classique, historique compris : +0,97 / +0,58 / +0,42 à 20 dB, +1,63 / +1,13 / +1,15 à 25 dB.
 - **Règle convenue** : écart > 0,5 bps/Hz et signature de fuite → on fait **le dernier effort d'estimation** : un filtre complexe sur 3 retards voisins au lieu d'un gain par retard. On le garde seulement s'il apporte ≥ +0,2 bps/Hz à 20 dB dans les trois scénarios.
 
+### Filtre complexe sur 3 retards voisins (dernier effort d'estimation) — À LA LIMITE DE LA RÈGLE (`results/phase4/delay_model_bande_D64.*`)
+- **Question** : remplacer le gain réel par retard par une combinaison complexe des retards t−1, t, t+1 (commune aux antennes) récupère-t-il une partie de la fuite ?
+- **Réglages** : identiques au modèle « retards + D64 » (mêmes tirages, graine 0), seul l'étage de sortie du module change (+165 paramètres, calcul inchangé). *Incident* : l'évaluation finale avait planté (paquets à 3 éléments depuis l'option historique) ; corrigé, et le modèle a été réévalué à partir de ses poids sauvegardés (option `--load`), sans réentraîner.
+
+Débit (bps/Hz) et écart au masque :
+
+| | UMi | UMa | RMa |
+|---|---|---|---|
+| masque, 20 dB | 24,80 | 24,40 | 25,05 |
+| **filtre à bande, 20 dB** | **24,99 (+0,19)** | **24,59 (+0,18)** | **25,29 (+0,24)** |
+| filtre à bande, 25 dB | 29,21 (+0,29) | 28,68 (+0,28) | 29,97 (+0,39) |
+| filtre à bande, 0 dB | 5,17 (−0,04) | 5,11 (−0,04) | 5,21 (−0,04) |
+| écart restant au génie, 20 dB | 1,10 | 1,19 | 0,90 |
+
+**Conclusions :**
+- **Le gain est réel et cohérent** (environ 20 fois la variabilité entre graines), il grandit avec le SNR (+0,28 à +0,39 à 25 dB), au prix d'une très légère perte à 0 dB (−0,04).
+- **Mais il est juste sous le seuil fixé d'avance** (+0,2 dans les trois scénarios à 20 dB) : +0,19 et +0,18 en ville, +0,24 sur RMa.
+- Il ne referme qu'environ 15 % de l'écart restant au génie : la fuite n'explique donc qu'une partie de cet écart.
+- **Décision à prendre avec l'utilisateur** (règle stricte : écarter ; argument pour garder : coût quasi nul).
+
 ## Prochaine étape
 (1) 3 graines pour l'attention en fréquence D64. (2) Réduire le coût. (3) Bootstrap sur les tirages. (4) Faire le point avant d'aller plus loin (pilote 20 dB, vieillissement, M64).
 Cible principale ensuite (phases 2–3) : le régime pilote 10 dB, où il reste 2,7 à 5,9 bps/Hz après LMMSE.
