@@ -43,7 +43,8 @@ class UplinkSounder:
         self.apply = ApplyOFDMChannel(add_awgn=True)
         # LMMSEInterpolator materialise des tenseurs [B, ..., F+1, F+1] (~3 Go a B=32) :
         # on estime par paquets de `chunk` tirages (le bruit est tire avant -> meme resultat).
-        self.chunk = 4 if interpolation == "lmmse" else None
+        self.chunk = (max(1, 128 // (cfg.num_users * cfg.num_bs_ant))  # 4 en M8K4, 1 en massif
+                      if interpolation == "lmmse" else None)
         if interpolation == "lmmse":
             interp = LMMSEInterpolator(self.rg.pilot_pattern,
                                        cov_mat_time=tf.ones([1, 1], tf.complex64),
