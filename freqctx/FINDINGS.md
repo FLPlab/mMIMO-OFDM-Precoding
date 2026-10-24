@@ -646,6 +646,22 @@ Base : candidat grille 2× (306 retards ; 25,76 / 25,36 / 26,03 à 20 dB ; 63 k 
 - **Couper les retards au-delà de 3,5 µs fait perdre en ville** (−0,17 UMi, −0,29 UMa) mais pas sur RMa (−0,02) : les canaux urbains ont des trajets tardifs au-delà de 3,5 µs, le canal rural est compact. Le gain de calcul est faible (−16 %). On garde toute la plage de retards.
 - **Fin de l'estimation** : le candidat reste la grille 2× avec tous les retards.
 
+### Faible SNR : SNR à chaque itération (A) et départ depuis RZF (B)
+Base : candidat grille 2× (écart à la meilleure référence classique réaliste à 0 / 5 dB : −0,12 / −0,08 (UMi), −0,13 / −0,10 (UMa), −0,16 / −0,16 (RMa)).
+
+| Essai (un seul changement, dans le précodeur) | 0 dB (vs classique) | 5 dB (vs classique) | 20 dB (vs candidat) | 25 dB (vs candidat) | Verdict |
+|---|---|---|---|---|---|
+| (A) SNR ajouté avant chaque itération (`..._snrall_...`) | −0,11 / −0,13 / −0,16 | −0,08 / −0,09 / −0,16 | −0,03 / −0,04 / −0,03 | −0,06 à −0,08 | ÉCARTÉ (aucun effet) |
+| **(B) précodeur = RZF + correction apprise** (`..._rzf0_...`) | **−0,03 / −0,04 / −0,05** | **−0,01 / −0,01 / −0,04** | +0,04 / +0,03 / +0,04 | **+0,16 / +0,16 / +0,25** | **à décider** |
+
+(UMi / UMa / RMa.)
+
+**Conclusions :**
+- **Rappeler le SNR à chaque itération ne change rien.** Le compromis entre SNR ne venait pas d'un manque d'information sur le SNR dans le bloc.
+- **Démarrer depuis RZF comble l'essentiel du trou au faible SNR** : de −0,12 à −0,16 vers −0,03 à −0,05 bps/Hz à 0 dB (+0,09 à +0,12), sans rien perdre ailleurs, et avec un petit gain à 25 dB (+0,16 à +0,25). Le modèle est désormais **au niveau de la meilleure référence classique au faible SNR** et au-dessus dès 10 dB.
+- **Le prix** : une inversion 4×4 par SC (celle de RZF ; environ 1 400 MAC, négligeable), qui fait perdre l'argument « aucune inversion de matrice ».
+- **Décision à prendre avec l'utilisateur.**
+
 ## Prochaine étape
 (1) 3 graines pour l'attention en fréquence D64. (2) Réduire le coût. (3) Bootstrap sur les tirages. (4) Faire le point avant d'aller plus loin (pilote 20 dB, vieillissement, M64).
 Cible principale ensuite (phases 2–3) : le régime pilote 10 dB, où il reste 2,7 à 5,9 bps/Hz après LMMSE.
