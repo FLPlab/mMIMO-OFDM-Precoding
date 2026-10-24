@@ -23,9 +23,10 @@
 
 **Ce que le modèle a pour lui face à WMMSE(LMMSE)** : il n'a pas besoin de la covariance du canal, il n'itère pas sur une inversion de matrice, il s'exécute en un temps fixe, et son attention n'a que des multiplications et des additions. **Ce qui lui manque** : 1 à 3 % de débit, et un coût de calcul de 590 k MAC/SC à D=64 (environ 420 fois RZF).
 
-| 11 | **Scénarios mélangés : LMMSE avec covariance moyenne perd 1 bps/Hz sur RMa (canal plat)** ; notre modèle à filtre fixe ne le récupère pas (24,09 contre 24,20 pour WMMSE(LMMSE mélange), 25,24 pour l'oracle) | phase 3, `mixed_p10` |
+| 11 | **Scénarios mélangés : LMMSE avec covariance moyenne perd 1 bps/Hz sur RMa (canal plat)** ; notre modèle à filtre fixe W=13 ne le récupère pas (24,09 contre 24,20 pour WMMSE(LMMSE mélange), 25,24 pour l'oracle) | phase 3, `mixed_p10` |
+| 12 | **La fenêtre large et la spécialisation comptent autant l'une que l'autre** (+0,3 et +0,4 bps/Hz). Avec W=49, le généraliste **dépasse WMMSE(LMMSE mélange) sur RMa** (24,38 contre 24,20 à 20 dB ; 27,97 contre 27,54 à 25 dB), mais l'écart à 20 dB est dans la variabilité entre graines | phase 3, `mixed_p10_W49`, `_specialiste_rma` |
 
-**Questions ouvertes** : (a) est-ce la fenêtre trop étroite (W=13) ou le filtre fixe qui empêche de profiter de RMa ? (b) une attention en fréquence (adaptative) récupère-t-elle le 1 bps/Hz ? (c) peut-on traiter la fenêtre plus économiquement que D=64 partout ?
+**Questions ouvertes** : (a) le dépassement de WMMSE(LMMSE) sur RMa tient-il sur 3 graines ? (b) une attention en fréquence (adaptative) récupère-t-elle les 0,8 bps/Hz restants jusqu'à l'oracle ? (c) peut-on réduire le coût (738 k MAC/SC à W=49) ? (d) le précodeur reste sous WMMSE au faible SNR.
 
 ---
 
@@ -311,6 +312,27 @@ Débit somme à 20 dB (bps/Hz) :
 - **Deux raisons possibles, à séparer** : (1) le filtre est fixe, alors que RMa demanderait de moyenner plus largement ; (2) **W=13 est trop étroit pour RMa**, où le canal reste corrélé sur des dizaines de SC, alors que LMMSE utilise toute la bande.
 - **Pour le paper**, c'est la situation qui justifie un traitement fréquentiel **adaptatif** : il y a 1 bps/Hz à gagner sur RMa par rapport à la meilleure méthode classique réaliste, et la concaténation ne le prend pas.
 
+### Spécialiste RMa et fenêtre large W=49 — RETENU (`results/phase3/mixed_p10_specialiste_rma.*`, `mixed_p10_W49.*`)
+- **Question** : sur RMa, est-ce la fenêtre trop étroite (W=13) ou le filtre fixe (pas d'adaptation) qui empêche notre modèle de récupérer le 1 bps/Hz perdu par LMMSE « mélange » ?
+- **Réglages** : identiques au test mélangé (D64, 1 bloc × 4, linéaire, pilote 10 dB, 1 056 tirages d'entraînement au total, mêmes tirages d'évaluation). Spécialiste : W=13, entraîné sur RMa seul. Généraliste large : W=49 (4 RB), entraîné sur le mélange.
+
+Débit somme à 20 dB (25 dB), bps/Hz :
+
+| | UMi | UMa | RMa |
+|---|---|---|---|
+| WMMSE (LMMSE oracle) | 24,02 (27,23) | 23,45 (26,47) | 25,24 (29,61) |
+| **WMMSE (LMMSE mélange)**, référence réaliste | **24,07 (27,33)** | **23,62 (26,79)** | **24,20 (27,54)** |
+| généraliste W=13 (test précédent) | 23,70 (26,85) | 23,16 (26,20) | 24,09 (27,45) |
+| **généraliste W=49** | **23,99 (27,34)** | **23,45 (26,67)** | **24,38 (27,97)** |
+| spécialiste RMa W=13 | 22,83 (25,80) | 22,02 (24,79) | **24,47 (28,17)** |
+
+**Conclusions :**
+- **Les deux causes comptent, à parts à peu près égales.** Élargir la fenêtre (W=13 → 49) fait gagner +0,3 bps/Hz **dans les trois scénarios**. Se spécialiser sur RMa fait gagner +0,4 sur RMa. Aucun des deux n'atteint l'oracle (25,24) : il reste 0,8 à 0,9 bps/Hz sur RMa.
+- **Première fois que le modèle dépasse WMMSE(LMMSE mélange)** : le généraliste W=49 sur RMa à 20 dB (24,38 contre 24,20, +0,7 %) et à 25 dB (27,97 contre 27,54, +1,6 %). Il l'égale sur UMi à fort SNR, et reste légèrement en dessous sur UMa (99,3 % à 20 dB). **Attention** : +0,18 bps/Hz est **du même ordre que la variabilité entre graines** (environ 0,3 bps/Hz). Il faut 3 graines avant de l'affirmer ; à 25 dB, l'écart (+0,43) est plus solide.
+- **Au faible SNR, le modèle reste sous WMMSE partout** (RMa à 0 dB : 5,26 contre 5,45). C'est la limite du précodeur, déjà vue en CSI parfait (environ RZF + 2 %, contre RZF + 5 % pour WMMSE), et non de l'estimation.
+- **Le spécialiste n'est pas une solution** : il s'effondre hors de RMa (UMi : 22,83). Il sert de borne : avec un filtre fixe adapté à RMa, on atteindrait 24,47.
+- **Le coût monte** : W=49 = 85 k paramètres et 738 k MAC/SC (environ 530 fois RZF).
+
 ## Prochaine étape
-Sur le mélange UMi + UMa + RMa : (1) fenêtre plus large (W = 25, 49) avec la même concaténation, pour savoir si c'est la largeur qui manque ; (2) si ça ne suffit pas, une attention en fréquence (filtre adaptatif).
+(1) Confirmer le résultat RMa W=49 sur 3 graines. (2) Attention en fréquence (adaptative) sur le mélange, pour viser l'oracle. (3) Réduire le coût du traitement de la fenêtre.
 Cible principale ensuite (phases 2–3) : le régime pilote 10 dB, où il reste 2,7 à 5,9 bps/Hz après LMMSE.
