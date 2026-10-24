@@ -633,6 +633,19 @@ Base : candidat « retards + filtre à bande + précodeur D64, 1 056 tirages/sc�
 - **Écart restant au génie à 20 dB : 0,33 / 0,41 / 0,17 bps/Hz** (il était de 1,1 à 1,4 au début de la phase 4). À 25 dB : 0,75 / 0,89 / 0,41.
 - **Fin de l'estimation**, comme convenu. Une grille encore plus fine (4×) pourrait apporter un peu plus, mais on s'arrête ici.
 
+### Grille 4× plus fine, et ne garder que les premiers retards — ÉCARTÉS
+Base : candidat grille 2× (306 retards ; 25,76 / 25,36 / 26,03 à 20 dB ; 63 k params ; 702 k MAC/SC).
+
+| Essai (un seul changement) | UMi 20 dB | UMa 20 dB | RMa 20 dB | params | MAC/SC | Verdict |
+|---|---|---|---|---|---|---|
+| grille 4× plus fine (612 retards, 13,5 ns) (`delay_model_bande_os4_n1056_s80k_D64`) | 25,75 (−0,01) | 25,34 (−0,02) | 26,01 (−0,02) | 73 k | 1 020 k | ÉCARTÉ (saturé, plus cher) |
+| grille 2×, 64 premiers retards seulement (3,5 µs ; 136 retards) (`delay_model_bande_os2_L64_n1056_s80k_D64`) | 25,59 (−0,17) | 25,07 (−0,29) | 26,01 (−0,02) | 58 k | 593 k | ÉCARTÉ |
+
+**Conclusions :**
+- **La finesse de la grille est saturée à 2×** : passer à 4× ne change rien et coûte 45 % de calcul en plus.
+- **Couper les retards au-delà de 3,5 µs fait perdre en ville** (−0,17 UMi, −0,29 UMa) mais pas sur RMa (−0,02) : les canaux urbains ont des trajets tardifs au-delà de 3,5 µs, le canal rural est compact. Le gain de calcul est faible (−16 %). On garde toute la plage de retards.
+- **Fin de l'estimation** : le candidat reste la grille 2× avec tous les retards.
+
 ## Prochaine étape
 (1) 3 graines pour l'attention en fréquence D64. (2) Réduire le coût. (3) Bootstrap sur les tirages. (4) Faire le point avant d'aller plus loin (pilote 20 dB, vieillissement, M64).
 Cible principale ensuite (phases 2–3) : le régime pilote 10 dB, où il reste 2,7 à 5,9 bps/Hz après LMMSE.
