@@ -84,6 +84,7 @@ svg text{font-family:"JetBrains Mono",ui-monospace,monospace}
     <span class="fact"><b>K=4</b>utilisateurs, 1 antenne</span>
     <span class="fact"><b>F=612</b>SC (51 RB, 30 kHz, 20 MHz)</span>
     <span class="fact"><b>N=153</b>SC pilotes par utilisateur (peigne 1 sur 4)</span>
+    <span class="fact"><b>306</b>retards (grille 2× plus fine, 27 ns)</span>
     <span class="fact"><b>10 dB</b>SNR pilote</span>
     <span class="fact"><b>0–25 dB</b>SNR de données</span>
     <span class="fact"><b>UMi+UMa+RMa</b>Sionna TR 38.901, mélangés</span>
@@ -120,11 +121,11 @@ svg text{font-family:"JetBrains Mono",ui-monospace,monospace}
 
         <rect x="312" y="56" width="108" height="90" rx="6" style="fill:var(--surface);stroke:var(--line);stroke-dasharray:4 3"/>
         <text x="366" y="80" text-anchor="middle" style="fill:var(--ink);font-weight:600">IFFT</text>
-        <text x="366" y="100" text-anchor="middle" style="fill:var(--muted)">fixe, 0 param.</text>
-        <text x="366" y="128" text-anchor="middle" style="fill:var(--signal)">153 retards</text>
+        <text x="366" y="100" text-anchor="middle" style="fill:var(--muted)">2× fine, 0 param.</text>
+        <text x="366" y="128" text-anchor="middle" style="fill:var(--signal)">306 retards</text>
 
         <rect x="442" y="48" width="196" height="106" rx="6" style="fill:var(--surface);stroke:var(--gain);stroke-width:1.6"/>
-        <text x="540" y="72" text-anchor="middle" style="fill:var(--ink);font-weight:600">Transformer des retards</text>
+        <text x="540" y="72" text-anchor="middle" style="fill:var(--ink);font-weight:600">Transformer des 306 retards</text>
         <text x="540" y="92" text-anchor="middle" style="fill:var(--muted)">token = 1 retard (17 val.)</text>
         <text x="540" y="110" text-anchor="middle" style="fill:var(--muted)">2 couches softmax, D=32</text>
         <text x="540" y="138" text-anchor="middle" style="fill:var(--gain);font-weight:600">filtre t−1, t, t+1</text>
@@ -204,11 +205,11 @@ svg text{font-family:"JetBrains Mono",ui-monospace,monospace}
         <tr class="stage est"><td colspan="4">Estimation (code : <code>models/delay_domain.py</code>, <code>DelayEstimator</code>)</td></tr>
         <tr><td>Entrée</td><td class="shape">[B, 612, 4, 8]</td><td>LS + interpolation linéaire du sondage montant (pilotes « kronecker » de Sionna, SNR 10 dB).</td><td class="num">0</td></tr>
         <tr><td>Extraction du peigne</td><td class="shape">[B, 4, 153, 8]</td><td>Pour l'utilisateur k, les 153 SC où il a émis : k, k+4, k+8, …</td><td class="num">0</td></tr>
-        <tr><td>IFFT</td><td class="shape">[B, 4, 153, 8]</td><td>153 retards espacés de 54 ns (dont 4 retards « négatifs » pour la fuite du premier trajet).</td><td class="num">0</td></tr>
-        <tr><td>Tokens de retard</td><td class="shape">[B·4, 153, 17]</td><td>Par retard : Re et Im sur les 8 antennes, plus log de la puissance moyenne.</td><td class="num">0</td></tr>
-        <tr><td>Embedding + position</td><td class="shape">[B·4, 153, 32]</td><td>Dense 17→32, plus un vecteur appris par position de retard (153 × 32).</td><td class="num">≈ 5,5 k</td></tr>
-        <tr><td>2 couches transformer</td><td class="shape">[B·4, 153, 32]</td><td>Normalisation, attention softmax entre les 153 retards (2 têtes de 16), FFN 32→64→32. Ici le softmax convient : il s'agit de sélectionner.</td><td class="num">≈ 17 k</td></tr>
-        <tr><td>Filtre par retard</td><td class="shape">[B, 4, 153, 3]</td><td>Dense 32→6 : un coefficient complexe pour le retard t (partie réelle passée par une sigmoïde) et un pour chacun des voisins t−1 et t+1. Départ : 0,95 au centre, 0 aux voisins, donc le modèle part du LS.</td><td class="num">198</td></tr>
+        <tr><td>IFFT sur grille fine</td><td class="shape">[B, 4, 306, 8]</td><td>306 retards espacés de 27 ns (grille deux fois plus fine que les 54 ns naturels, dont 8 retards « négatifs » pour la fuite du premier trajet). Avec tous les gains à 1, la paire IFFT/FFT redonne exactement le LS aux SC pilotes.</td><td class="num">0</td></tr>
+        <tr><td>Tokens de retard</td><td class="shape">[B·4, 306, 17]</td><td>Par retard : Re et Im sur les 8 antennes, plus log de la puissance moyenne.</td><td class="num">0</td></tr>
+        <tr><td>Embedding + position</td><td class="shape">[B·4, 306, 32]</td><td>Dense 17→32, plus un vecteur appris par position de retard (306 × 32).</td><td class="num">≈ 10 k</td></tr>
+        <tr><td>2 couches transformer</td><td class="shape">[B·4, 306, 32]</td><td>Normalisation, attention softmax entre les 306 retards (2 têtes de 16), FFN 32→64→32. Ici le softmax convient : il s'agit de sélectionner.</td><td class="num">≈ 17 k</td></tr>
+        <tr><td>Filtre par retard</td><td class="shape">[B, 4, 306, 3]</td><td>Dense 32→6 : un coefficient complexe pour le retard t (partie réelle passée par une sigmoïde) et un pour chacun des voisins t−1 et t+1. Départ : 0,95 au centre, 0 aux voisins, donc le modèle part du LS.</td><td class="num">198</td></tr>
         <tr><td>Filtrage + FFT</td><td class="shape">[B, 612, 4, 8]</td><td>Chaque retard devient c₀·g(t) + c₋·g(t−1) + c₊·g(t+1), avec les mêmes coefficients sur les 8 antennes, puis retour sur les 612 SC.</td><td class="num">0</td></tr>
         <tr class="stage"><td colspan="4">Précodage (code : <code>models/per_sc.py</code>, <code>PerSCPrecoder</code>, <code>tied=True</code>, <code>attn="linear"</code>)</td></tr>
         <tr><td>Tokens d'utilisateur</td><td class="shape">[B·612, 4, 17]</td><td>Pour chaque SC : un token par utilisateur, Re et Im de ĥ_k (8 antennes), plus SNR/10.</td><td class="num">0</td></tr>
@@ -220,8 +221,8 @@ svg text{font-family:"JetBrains Mono",ui-monospace,monospace}
     </table>
   </div>
   <div class="cols">
-    <div class="panel"><h3>Taille totale</h3><div class="big">58 422 <span style="font-size:1rem;color:var(--muted)">paramètres</span></div><p class="caption">Estimation ≈ 22,8 k (dont 4,9 k d'embedding de position), précodeur 35,7 k.</p></div>
-    <div class="panel"><h3>Calcul par sous-porteuse</h3><div class="big">≈ 602 k <span style="font-size:1rem;color:var(--muted)">MAC</span></div><p class="caption">Précodeur 541 k (90 %), estimation ≈ 61 k au plus (une vraie FFT coûterait moins).</p></div>
+    <div class="panel"><h3>Taille totale</h3><div class="big">63 318 <span style="font-size:1rem;color:var(--muted)">paramètres</span></div><p class="caption">Estimation ≈ 27,7 k (dont 9,8 k d'embedding de position), précodeur 35,7 k.</p></div>
+    <div class="panel"><h3>Calcul par sous-porteuse</h3><div class="big">≈ 702 k <span style="font-size:1rem;color:var(--muted)">MAC</span></div><p class="caption">Précodeur 541 k (77 %), estimation ≈ 161 k au plus (transformées comptées en produits de matrices ; une vraie FFT coûterait moins).</p></div>
     <div class="panel"><h3>Entraînement</h3><p class="caption" style="color:var(--ink)">Perte : −moyenne de débit(W) / débit(RZF sur le LS). SNR tiré entre 0 et 25 dB par tirage. Adam, pas 1e-3, décroissance cosinus, 80 000 pas, lots de 4 tirages (2 448 SC), 3 168 tirages (1 056 par scénario). Environ 25 min sur une L40S.</p></div>
   </div>
 </section>
@@ -236,17 +237,18 @@ svg text{font-family:"JetBrains Mono",ui-monospace,monospace}
       <tbody>
         <tr><td rowspan="5">20 dB</td><td>WMMSE, canal parfait (borne absolue)</td><td class="num">26,74</td><td class="num">26,46</td><td class="num">26,56</td></tr>
         <tr><td>WMMSE, estimation génie par lien</td><td class="num">26,09</td><td class="num">25,77</td><td class="num">26,19</td></tr>
-        <tr><td><b>notre modèle</b></td><td class="num"><b>25,24</b></td><td class="num"><b>24,83</b></td><td class="num"><b>25,50</b></td></tr>
+        <tr><td><b>notre modèle</b></td><td class="num"><b>25,76</b></td><td class="num"><b>25,36</b></td><td class="num"><b>26,03</b></td></tr>
         <tr><td>meilleure référence classique réaliste</td><td class="num">24,18</td><td class="num">23,74</td><td class="num">24,35</td></tr>
-        <tr><td>écart</td><td class="num pos">+1,07</td><td class="num pos">+1,10</td><td class="num pos">+1,16</td></tr>
-        <tr><td rowspan="3">25 dB</td><td><b>notre modèle</b></td><td class="num"><b>29,73</b></td><td class="num"><b>29,18</b></td><td class="num"><b>30,45</b></td></tr>
+        <tr><td>écart</td><td class="num pos">+1,58</td><td class="num pos">+1,63</td><td class="num pos">+1,68</td></tr>
+        <tr><td rowspan="3">25 dB</td><td><b>notre modèle</b></td><td class="num"><b>30,56</b></td><td class="num"><b>30,04</b></td><td class="num"><b>31,36</b></td></tr>
         <tr><td>meilleure référence classique réaliste</td><td class="num">27,57</td><td class="num">27,05</td><td class="num">27,80</td></tr>
-        <tr><td>écart</td><td class="num pos">+2,17</td><td class="num pos">+2,14</td><td class="num pos">+2,61</td></tr>
-        <tr><td>0 à 10 dB</td><td>écart à la référence classique</td><td class="num neg">−0,01 à −0,15</td><td class="num neg">−0,01 à −0,17</td><td class="num neg">−0,11 à −0,22</td></tr>
+        <tr><td>écart</td><td class="num pos">+3,00</td><td class="num pos">+2,99</td><td class="num pos">+3,53</td></tr>
+        <tr><td>10 dB</td><td>écart à la référence classique</td><td class="num pos">+0,12</td><td class="num pos">+0,12</td><td class="num">0,00</td></tr>
+        <tr><td>0 à 5 dB</td><td>écart à la référence classique</td><td class="num neg">−0,08 à −0,12</td><td class="num neg">−0,10 à −0,13</td><td class="num neg">−0,16</td></tr>
       </tbody>
     </table>
   </div>
-  <p class="caption">Avec le simple masque (avant le filtre à bande), retards gardés en moyenne : 23 (UMi), 24 (UMa), 14 (RMa, canal plus compact). Fichiers : <code>results/phase4/delay_model_bande_n1056_s80k_D64.json</code>, <code>delay_model_bande_D64.json</code>, <code>delay_model_D64.json</code>, <code>robust_ref_p10.json</code>, <code>genie_bound_p10.json</code>. Une seule graine pour ce modèle.</p>
+  <p class="caption">Avec le simple masque (avant le filtre à bande), retards gardés en moyenne : 23 (UMi), 24 (UMa), 14 (RMa, canal plus compact). Fichiers : <code>results/phase4/delay_model_bande_os2_n1056_s80k_D64.json</code>, <code>delay_model_bande_n1056_s80k_D64.json</code>, <code>delay_model_bande_D64.json</code>, <code>delay_model_D64.json</code>, <code>robust_ref_p10.json</code>, <code>genie_bound_p10.json</code>. Une seule graine pour ce modèle.</p>
 </section>
 
 <section>
@@ -272,6 +274,7 @@ svg text{font-family:"JetBrains Mono",ui-monospace,monospace}
     <div class="step kept"><span class="tag">phase 4 · fuite</span><h3>Filtre complexe sur 3 retards voisins<span class="verdict k">retenu</span></h3><p>Au lieu d'un gain réel par retard, une combinaison complexe des retards t−1, t, t+1, commune aux antennes. À 20 dB : +0,19 / +0,18 / +0,24 (UMi / UMa / RMa) ; à 25 dB : +0,28 à +0,39 ; à 0 dB : −0,04. Juste sous le seuil fixé (+0,2), gardé car il ne coûte que 165 paramètres.</p><p class="why">Recolle l'énergie d'un trajet hors grille qui fuit sur ses voisins. Il ne referme qu'environ 15 % de l'écart au génie : la fuite n'explique qu'une partie de ce qui reste. Dernier effort sur l'estimation.</p></div>
     <div class="step kept"><span class="tag">phase 4 · attribution</span><h3>L'écart restant vient de l'estimation<span class="verdict k">retenu</span></h3><p>Avec notre précodeur, remplacer notre représentation par l'estimation génie fait gagner environ 1 bps/Hz ; remplacer notre précodeur par WMMSE ne fait gagner que 0,06 à 0,19. Le module sort le canal multiplié par environ 4,8 (et tourné en phase), et le précodeur s'est adapté à cette échelle.</p><p class="why">Le module n'est pas un estimateur de canal : c'est la représentation apprise que reçoit le précodeur. La marge restante est dans cette représentation.</p></div>
     <div class="step kept"><span class="tag">phase 4 · données</span><h3>Trois fois plus de données d'entraînement<span class="verdict k">retenu</span></h3><p>1 056 tirages par scénario au lieu de 352, et 80 000 pas au lieu de 40 000 : +0,26 / +0,25 / +0,21 bps/Hz à 20 dB, environ +0,5 à 25 dB. Un module d'estimation deux fois plus large (D=64) n'apporte que +0,01 à +0,05 (écarté).</p><p class="why">Le modèle manquait de données, pas de capacité. Le changement ne touche pas l'architecture.</p></div>
+    <div class="step kept"><span class="tag">phase 4 · grille fine</span><h3>Grille de retards deux fois plus fine<span class="verdict k">retenu</span></h3><p>306 retards espacés de 27 ns au lieu de 153 espacés de 54 ns : +0,51 / +0,53 / +0,52 bps/Hz à 20 dB, environ +0,9 à 25 dB. L'écart au génie tombe à 0,33 / 0,41 / 0,17 bps/Hz. Doubler encore les données n'apporte que +0,04 (saturé, écarté).</p><p class="why">Un trajet hors grille tombe plus près d'un point de la grille et fuit moins sur ses voisins : la fuite était l'essentiel de l'écart restant. Fin du travail sur l'estimation.</p></div>
   </div>
 </section>
 

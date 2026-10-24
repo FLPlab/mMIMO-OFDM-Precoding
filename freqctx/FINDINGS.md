@@ -18,7 +18,8 @@ Réglages par défaut : M=8, K=4, 612 SC (20 MHz), pilotes Sionna en peigne + LS
 | A8 | **L'attention en fréquence (adaptative) bat WMMSE(LMMSE réaliste) sur RMa** (+0,64 à 20 dB, +1,32 à 25 dB), égalité en ville ; fenêtre effective plus large sur RMa (10,9 contre 8,5 SC) | `phase3/mixed_p10_fattn_D64` |
 | A9 | **La marge restante est dans l'estimation** : borne génie par lien ≈ 2 bps/Hz au-dessus ; élargir la fenêtre (153 SC) n'y change rien (lissage à poids positifs) | `phase4/genie_bound_p10`, `mixed_p10_fattn_D64_W153` |
 | A10 | **Estimer dans le domaine des retards (toute la bande) bat WMMSE(LMMSE réaliste) dans les TROIS scénarios** : +3 à 3,5 % à 20 dB, +6 à 7 % à 25 dB ; garde 14 retards sur RMa contre 23-24 en ville (adaptatif, interprétable) ; 40 % de l'écart au génie comblé | `phase4/delay_model_D64` |
-| A11 | **Le gain tient face à un WMMSE robuste** (erreur d'estimation prise en compte) : +0,62 à +0,70 bps/Hz à 20 dB, +1,35 à +1,74 à 25 dB ; la version robuste n'apporte que +0,1 au classique | `phase4/robust_ref_p10` |
+| A11 | **Le gain tient face à un WMMSE robuste** (erreur d'estimation prise en compte) ; la version robuste n'apporte que +0,1 au classique | `phase4/robust_ref_p10` |
+| A12 | **L'écart restant venait de l'estimation (attribution), et surtout de la fuite** : filtre à bande (+0,2), 3× plus de données (+0,25), grille de retards 2× plus fine (+0,5). Modèle final : **+1,6 à +1,7 bps/Hz (+6,5 à 6,9 %) à 20 dB et +3,0 à +3,5 à 25 dB sur WMMSE robuste réaliste**, au-dessus dès 10 dB ; à 0,2-0,4 bps/Hz du génie | `phase4/attribution_p10`, `delay_model_bande_os2_n1056_s80k_D64` |
 
 ### B. Résultats d'appui (retenu, utile pour justifier des choix)
 
@@ -40,7 +41,7 @@ Sortie structurée W = Hᴴ C ; biais Gram ; normalisation de phase ; attention 
 - Coût : 595 k MAC/SC. À comparer à la **chaîne complète** LMMSE + WMMSE (estimée à 150-200 k MAC/SC avec inversions en double précision, à calculer précisément), pas à RZF seul.
 
 ### E. Plan (simple, sans s'éparpiller)
-0. **(2026-10-24) Candidat actuel : estimation dans le domaine des retards avec filtre complexe sur 3 retards voisins + précodeur D64 par SC, entraîné sur 1 056 tirages par scénario et 80 000 pas** (`phase4/delay_model_bande_n1056_s80k_D64`). Reste : 0,7-0,9 bps/Hz jusqu'au génie, faible SNR, coût, une seule graine.
+0. **(2026-10-24) Candidat actuel : estimation dans le domaine des retards sur une grille 2× plus fine (306 retards) avec filtre complexe sur 3 retards voisins + précodeur D64 par SC, entraîné sur 1 056 tirages par scénario et 80 000 pas** (`phase4/delay_model_bande_os2_n1056_s80k_D64`). +1,6 à +1,7 bps/Hz à 20 dB sur la meilleure référence classique ; reste 0,2-0,4 jusqu'au génie. Estimation terminée. Prochain : faible SNR, puis massif.
 1. **Massif M=64, K=8** (après le point 0) : même modèle, mêmes références, coût de la chaîne classique complète.
 2. **Carte de fonctionnement** (sans réentraîner) : étalement des retards en continu, SNR pilote.
 3. **À la fin** : graines, robustesse, coûts précis.
@@ -616,6 +617,21 @@ Base : modèle « retards + filtre à bande + précodeur D64 » (24,99 / 24,59 /
 - **Nouveau candidat** : le même modèle, entraîné avec 1 056 tirages par scénario et 80 000 pas. Face à la meilleure référence classique réaliste (WMMSE robuste, LMMSE mélange) : **+1,07 / +1,10 / +1,16 bps/Hz à 20 dB (+4,4 / +4,6 / +4,8 %)** et **+2,17 / +2,14 / +2,61 à 25 dB** ; égalité à 10 dB ; −0,15 à −0,22 à 0-5 dB.
 - **Écart restant au génie à 20 dB : 0,85 / 0,94 / 0,69 bps/Hz.**
 - Reste l'essai (iii), la grille de retards sur-échantillonnée, à faire avec ce nouveau réglage de données.
+
+### Estimation rouverte — essai (iii) grille de retards fine, et 2× plus de données
+Base : candidat « retards + filtre à bande + précodeur D64, 1 056 tirages/scénario, 80 000 pas » (25,24 / 24,83 / 25,50 à 20 dB).
+
+| Essai (un seul changement) | UMi 20 dB | UMa 20 dB | RMa 20 dB | 25 dB | params | MAC/SC | Verdict |
+|---|---|---|---|---|---|---|---|
+| **(iii) grille 2× plus fine** (306 retards espacés de 27 ns) (`delay_model_bande_os2_n1056_s80k_D64`) | **25,76 (+0,51)** | **25,36 (+0,53)** | **26,03 (+0,52)** | +0,83 à +0,92 | 63 k | 702 k | **RETENU** |
+| 2× plus de données (2 112 tirages/scénario) (`delay_model_bande_n2112_s80k_D64`) | 25,27 (+0,03) | 24,87 (+0,04) | 25,54 (+0,04) | +0,05 à +0,08 | 58 k | 602 k | ÉCARTÉ (saturé) |
+
+**Conclusions :**
+- **La fuite était bien le problème principal restant** : avec une grille deux fois plus fine, +0,51 à +0,53 bps/Hz à 20 dB et environ +0,9 à 25 dB, dans les trois scénarios. Le gain apparaît dès 10 dB (+0,12).
+- **Les données sont saturées** : doubler encore les tirages n'apporte que +0,03 à +0,04. Pas besoin de plus de données à cette taille de problème.
+- **Nouveau candidat** (grille fine, filtre à bande, précodeur D64, 1 056 tirages/scénario, 80 000 pas) face à la meilleure référence classique réaliste : **+1,58 / +1,63 / +1,68 bps/Hz à 20 dB (+6,5 / +6,9 / +6,9 %)** et **+3,00 / +2,99 / +3,53 à 25 dB** ; **désormais au-dessus dès 10 dB** (+0,12 / +0,12 / 0,00) ; encore −0,12 à −0,16 à 0-5 dB.
+- **Écart restant au génie à 20 dB : 0,33 / 0,41 / 0,17 bps/Hz** (il était de 1,1 à 1,4 au début de la phase 4). À 25 dB : 0,75 / 0,89 / 0,41.
+- **Fin de l'estimation**, comme convenu. Une grille encore plus fine (4×) pourrait apporter un peu plus, mais on s'arrête ici.
 
 ## Prochaine étape
 (1) 3 graines pour l'attention en fréquence D64. (2) Réduire le coût. (3) Bootstrap sur les tirages. (4) Faire le point avant d'aller plus loin (pilote 20 dB, vieillissement, M64).
