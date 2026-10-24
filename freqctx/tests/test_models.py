@@ -39,6 +39,14 @@ def main():
     assert w.shape == (N, M, K) and err < 1e-5, err
     print(f"[ok] window=5 : forme, equivariance (ecart {err:.1e}), {m.count_params()} params, "
           f"{m.macs_per_sc(K)} MAC/SC")
+    m = PerSCPrecoder(M, d=16, layers=2, attn="linear", window=5, freq="attention")
+    w = m(hw, snr)
+    err = float(tf.reduce_max(tf.abs(m(tf.gather(hw, perm, axis=2), snr) - tf.gather(w, perm, axis=2))))
+    a = m.last_freq_attention
+    assert w.shape == (N, M, K) and err < 1e-5, err
+    assert np.allclose(tf.reduce_sum(a, axis=2).numpy(), 1.0, atol=1e-5)
+    print(f"[ok] window=5, attention en frequence : equivariance (ecart {err:.1e}), poids somme 1, "
+          f"{m.count_params()} params, {m.macs_per_sc(K)} MAC/SC")
     test_windowed_pool()
     print("TOUS LES TESTS PASSENT")
 

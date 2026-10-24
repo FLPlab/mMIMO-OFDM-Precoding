@@ -11,6 +11,7 @@ Modeles : D64, W=13, attention lineaire, (a) entraine sur le melange,
     python -m experiments.phase3_mixed [--quick]
     python -m experiments.phase3_mixed --train rma --tag specialiste_rma   # entraine sur RMa seul
     python -m experiments.phase3_mixed --window 49 --tag W49              # fenetre plus large
+    python -m experiments.phase3_mixed --window 49 --freq attention --tag fattn_D64
 L'evaluation porte toujours sur les trois scenarios ; meme nombre total de
 tirages d'entrainement (1056) quel que soit --train.
 """
@@ -49,9 +50,11 @@ def main():
     ap.add_argument("--window", type=int, default=13)
     ap.add_argument("--tag", default="", help="suffixe du fichier de resultats")
     ap.add_argument("--seed", type=int, default=0, help="init des poids + tirage des lots")
+    ap.add_argument("--freq", default="concat", choices=["concat", "attention"])
+    ap.add_argument("--d", type=int, default=64)
     args = ap.parse_args()
     W, train_scen = args.window, args.train.split(",")
-    model_kw = {**MODEL, "window": W}
+    model_kw = {**MODEL, "window": W, "freq": args.freq, "d": args.d}
     steps, total_train, eval_drops = (2000, 192, 32) if args.quick else (40000, 1056, 192)
     train_drops = total_train // len(train_scen) // 32 * 32
     nv = lambda s: 10.0 ** (-s[0] / 10.0)
@@ -98,11 +101,24 @@ def main():
                           for i in range(len(SNRS_DB))]}
     label = "melange" if len(train_scen) == len(SCENARIOS) else "+".join(train_scen)
     model = PerSCPrecoder(cfg.num_bs_ant, **model_kw)
-    run = run_variant(f"D64_T4_linear_W{W}_{label}_p10" + (f"_s{args.seed}" if args.seed else ""), model, train_pool, pools[train_scen[0]],
+    fq = "_fattn" if args.freq == "attention" else ""
+    run = run_variant(f"D{args.d}_T4_linear_W{W}{fq}_{label}_p10" + (f"_s{args.seed}" if args.seed else ""), model, train_pool, pools[train_scen[0]],
                       SNRS_DB, {"RZF": refs[train_scen[0]]["RZF (LS)"]}, steps, seed=args.seed,
                       loss="rel_rzf", weights_dir=None if args.quick else W3)
-    models = {f"modele W={W} (entraine {label})": {s: evaluate(model, p, SNRS_DB)
-                                                     for s, p in pools.items()}}
+    models = {f"modele W={W}{fq} D{args.d} (entraine {label})": {s: evaluate(model, p, SNRS_DB)
+                                                                    for s, p in pools.items()}}
+    attn_profile = {}
+    if args.freq == "attention":                         # largeur adaptative ? (SNR 20 dB)
+        for scen, p in pools.items():
+            x, _ = next(p.chunks(16))
+            model(x, tf.fill([x.shape[0]], 20.0))
+            a = model.last_freq_attention.numpy()        # [N, K, W, heads]
+            prof = a.mean(axis=(0, 1, 3))
+            eff = 1.0 / np.sum(a ** 2, axis=2)           # nb effectif de voisines par (N, K, tete)
+            attn_profile[scen] = {"profile": prof.tolist(), "eff_width_mean": float(eff.mean()),
+                                  "eff_width_p10_p90": np.percentile(eff, [10, 90]).tolist()}
+            print(f"attention {scen} : largeur effective moyenne {eff.mean():.1f} SC "
+                  f"(p10-p90 {np.percentile(eff, 10):.1f}-{np.percentile(eff, 90):.1f})")
     path = os.path.join(W3, UMI_ONLY + ".weights.h5")
     if W == 13 and not args.tag and os.path.exists(path):
         m_umi = PerSCPrecoder(cfg.num_bs_ant, **model_kw)
@@ -118,6 +134,7 @@ def main():
                "window": W, "model": model_kw,
                "snrs_db": SNRS_DB, "steps": steps, "train_drops_per_scenario": train_drops,
                "eval_drops_per_scenario": eval_drops, "references": refs, "models": models,
+               "freq_attention_profile": attn_profile,
                "training_history": run["history"]}
     name = "mixed_p10" + (f"_{args.tag}" if args.tag else "") + ("_quick" if args.quick else "")
     save("phase3", name, payload, plot(payload))
@@ -129,7 +146,11 @@ def plot(p):
             "WMMSE (LMMSE oracle)"]
     names = keys + list(p["models"])
     colors = ["#9ec5f4", "#6da7ec", "#2a78d6", "#f2a27e", "#eb6834", "#1baf7a", "#008300"]
-    fig, ax = plt.subplots(figsize=(10, 4))
+    prof = p.get("freq_attention_profile")
+    if prof:
+        fig, (ax, ax2) = plt.subplots(1, 2, figsize=(14, 4.2), gridspec_kw={"width_ratios": [2.2, 1]})
+    else:
+        fig, ax = plt.subplots(figsize=(10, 4))
     x = np.arange(len(p["scenarios"]))
     width = 0.8 / len(names)
     for j, n in enumerate(names):
@@ -144,7 +165,15 @@ def plot(p):
     lo = min(min((p["references"][s][n] if n in keys else p["models"][n][s])[i20] for n in names)
              for s in p["scenarios"])
     ax.set_ylim(lo - 1.5, None)
-    ax.legend(fontsize=7, ncol=2)
+    ax.legend(fontsize=7, ncol=2, loc="lower right")
+    if prof:
+        off = np.arange(p["window"]) - p["window"] // 2
+        for s, c in zip(p["scenarios"], ["#2a78d6", "#eb6834", "#1baf7a"]):
+            ax2.plot(off, prof[s]["profile"], color=c, lw=1.5,
+                     label=f"{s.upper()} ({prof[s]['eff_width_mean']:.0f} SC eff.)")
+        ax2.set(xlabel="Ecart a la SC precodee [SC]", ylabel="Poids d'attention moyen",
+                title="Attention en frequence (SNR 20 dB)")
+        ax2.legend(fontsize=7)
     fig.tight_layout()
     return fig
 

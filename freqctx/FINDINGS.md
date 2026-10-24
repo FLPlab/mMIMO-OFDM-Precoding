@@ -26,8 +26,9 @@
 | 11 | **Scénarios mélangés : LMMSE avec covariance moyenne perd 1 bps/Hz sur RMa (canal plat)** ; notre modèle à filtre fixe W=13 ne le récupère pas (24,09 contre 24,20 pour WMMSE(LMMSE mélange), 25,24 pour l'oracle) | phase 3, `mixed_p10` |
 | 12 | **La fenêtre large et la spécialisation comptent autant l'une que l'autre** (+0,3 et +0,4 bps/Hz) | phase 3, `mixed_p10_W49`, `_specialiste_rma` |
 | 13 | **Avec W=49, le généraliste dépasse WMMSE(LMMSE mélange) sur RMa, confirmé sur 3 graines** : +0,20 bps/Hz à 20 dB, +0,44 à 25 dB (écart-type 0,01). Ailleurs, il est à environ 99 % de WMMSE(LMMSE) | phase 3, `mixed_p10_W49*` |
+| 14 | **L'attention en fréquence (D64, W49) bat la concaténation et récupère la moitié de l'écart à l'oracle sur RMa** : +0,64 bps/Hz sur WMMSE(LMMSE mélange) à 20 dB, +1,32 à 25 dB ; égalité sur UMi/UMa ; moins cher (595 k MAC). Elle élargit sa fenêtre sur RMa (10,9 SC contre 8,5). À D=32, elle s'effondre | phase 3, `mixed_p10_fattn_*` |
 
-**Questions ouvertes** : (a) bootstrap sur les tirages d'évaluation ; (b) une attention en fréquence (adaptative) récupère-t-elle les 0,8 bps/Hz restants jusqu'à l'oracle ? (c) peut-on réduire le coût (738 k MAC/SC à W=49) ? (d) le précodeur reste sous WMMSE au faible SNR.
+**Questions ouvertes** : (a) graines et bootstrap pour l'attention en fréquence ; (b) les 0,40 bps/Hz restants sur RMa jusqu'à l'oracle ; (c) le coût (595 k MAC/SC, environ 420 fois RZF) ; (d) le précodeur reste sous WMMSE au faible SNR ; (e) le profil d'attention périodique (structure des pilotes ?).
 
 ---
 
@@ -353,6 +354,32 @@ Moyenne sur 3 graines (écart-type) et écart à WMMSE(LMMSE mélange), bps/Hz :
 - **Bilan honnête** : le modèle bat la meilleure méthode classique réaliste **seulement là où sa covariance est mal adaptée (RMa) et à fort SNR**. Ailleurs, il fait environ 99 % de WMMSE(LMMSE), sans covariance et sans inversion de matrice.
 - *Limite* : les écarts sont mesurés sur un seul ensemble d'évaluation (192 tirages par scénario, apparié). La variabilité entre graines est maîtrisée ; la variabilité liée au choix des tirages ne l'est pas encore (un bootstrap sur les tirages le ferait).
 
+### Attention en fréquence (fenêtre 49, mélange) — RETENU (`results/phase3/mixed_p10_fattn_D64.*`, `_fattn_D32.*`)
+- **Question** : remplacer la concaténation (filtre fixe) par une attention en fréquence (moyenne pondérée adaptative) récupère-t-il le 0,85 bps/Hz qui reste sur RMa jusqu'à l'oracle ? Le modèle élargit-il sa fenêtre sur RMa ?
+- **Modèle** (`freq="attention"`) : pour chaque utilisateur, la SC centrale (requête) interroge ses 49 voisines (clés et valeurs, plus une position relative apprise), softmax sur la fenêtre, 2 têtes. Le résultat s'ajoute à l'embedding de la SC centrale, puis le reste est inchangé (1 bloc linéaire × 4). Softmax volontaire : en fréquence, on lisse. Coût compté avec les projections de chaque SC calculées une seule fois (fenêtre glissante).
+- **Réglages** : identiques à W49 concat (mélange, pilote 10 dB, graine 0).
+
+Débit somme à 20 dB (25 dB), bps/Hz :
+
+| | UMi | UMa | RMa | params | MAC/SC |
+|---|---|---|---|---|---|
+| WMMSE (LMMSE oracle) | 24,02 (27,23) | 23,45 (26,47) | 25,24 (29,61) | | |
+| WMMSE (LMMSE mélange) | 24,07 (27,33) | 23,62 (26,79) | 24,20 (27,54) | | |
+| concat W49 D64 (3 graines) | 23,99 (27,33) | 23,45 (26,67) | 24,39 (27,98) | 85 k | 738 k |
+| **attention en fréquence W49 D64** | **24,08 (27,51)** | **23,52 (26,79)** | **24,84 (28,86)** | **46 k** | **595 k** |
+| attention en fréquence W49 D32 | 22,09 (24,26) | 21,47 (23,49) | 22,72 (25,21) | 14 k | 162 k |
+
+Largeur effective de l'attention (1/Σa², nombre de voisines réellement utilisées, SNR 20 dB) : UMi 8,7 SC, UMa 8,2 SC, **RMa 10,9 SC** (D64).
+
+**Conclusions :**
+- **L'attention en fréquence fait mieux que la concaténation partout à moyen et fort SNR, et beaucoup mieux sur RMa** : +0,44 bps/Hz à 20 dB et +0,88 à 25 dB. Elle récupère **environ la moitié** de l'écart à l'oracle (il restait 0,85 bps/Hz à 20 dB, il en reste 0,40).
+- **Face à WMMSE(LMMSE mélange), la meilleure référence réaliste** : **+0,64 bps/Hz sur RMa à 20 dB (+2,6 %) et +1,32 à 25 dB (+4,8 %)** ; égalité sur UMi à 20 dB et +0,17 à 25 dB ; −0,10 sur UMa à 20 dB, égalité à 25 dB. Au faible SNR (0 à 10 dB), toujours −0,15 à −0,2 partout : c'est la limite du précodeur, pas de l'estimation.
+- **Le modèle adapte bien sa fenêtre au canal** : il utilise plus de voisines sur RMa (10,9) que sur UMi/UMa (8,2 à 8,7), sans connaître le scénario. L'écart est modéré mais systématique ; on voit aussi sur la figure que RMa met plus de poids loin de la SC centrale.
+- **Il est en plus moins cher que la concaténation** : 46 k paramètres au lieu de 85 k, 595 k MAC au lieu de 738 k.
+- **Négatif : à D=32, l'attention en fréquence s'effondre** (−1,9 bps/Hz à 20 dB par rapport à la concaténation D64). La largeur D=64 reste nécessaire.
+- *Observation à creuser* : le profil d'attention a des pics à ±1, ±5, ±9 SC… (période 4 = le peigne des pilotes des 4 utilisateurs) et un creux en 0 (la SC centrale est déjà dans l'embedding). Le modèle semble avoir appris la structure des pilotes.
+- *Limite* : une seule graine (la dispersion mesurée pour la concaténation était d'environ 0,01 bps/Hz, mais elle n'est pas encore mesurée pour l'attention).
+
 ## Prochaine étape
-(1) Attention en fréquence (adaptative) sur le mélange, pour viser l'oracle (0,85 bps/Hz restants sur RMa). (2) Réduire le coût du traitement de la fenêtre. (3) Bootstrap sur les tirages pour les écarts à WMMSE.
+(1) 3 graines pour l'attention en fréquence D64. (2) Réduire le coût. (3) Bootstrap sur les tirages. (4) Faire le point avant d'aller plus loin (pilote 20 dB, vieillissement, M64).
 Cible principale ensuite (phases 2–3) : le régime pilote 10 dB, où il reste 2,7 à 5,9 bps/Hz après LMMSE.

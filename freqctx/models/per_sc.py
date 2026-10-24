@@ -2,9 +2,14 @@
 
 Une SC = un ensemble de K tokens, un par utilisateur :
     token k = [Re h_k, Im h_k, snr_db/10]          (2M+1 valeurs)
-    avec window=W (phase 3) : h_k des W SC centrees sur la SC a precoder,
-    concatenes dans le token (2MW+1 valeurs) ; la sortie reste celle de la
-    SC centrale.
+    avec window=W (phase 3) : h_k des W SC centrees sur la SC a precoder ;
+    la sortie reste celle de la SC centrale. `freq` = comment on les combine :
+      "concat"    : concatenes dans le token (2MW+1 valeurs) -> filtre FIXE appris
+      "attention" : la SC centrale interroge ses W voisines (softmax sur la
+                    fenetre, position relative apprise) -> moyenne ponderee
+                    ADAPTATIVE (depend du canal), ajoutee a l'embedding de la
+                    SC centrale. Softmax voulu ici : en frequence on lisse
+                    (moyenne positive), on ne soustrait pas.
     -> Dense(D) -> L x [melange entre utilisateurs + FFN] -> Dense(2M) = w_k
     -> W [M, K], ||W||_F = 1.
 Pas d'encodage de position : permuter les utilisateurs permute les sorties.
@@ -79,9 +84,15 @@ class Block(keras.layers.Layer):
 
 class PerSCPrecoder(keras.Model):
     def __init__(self, num_bs_ant, d=32, layers=2, heads=2, mixer="attention",
-                 attn="softmax", gram=False, tied=False, phase_norm=False, window=1, **kw):
+                 attn="softmax", gram=False, tied=False, phase_norm=False, window=1,
+                 freq="concat", **kw):
         super().__init__(**kw)
-        self.window = window
+        self.window, self.freq = window, freq
+        if window > 1 and freq == "attention":
+            self.f_q = keras.layers.Dense(d)
+            self.f_kv = keras.layers.Dense(2 * d)
+            self.f_pos = keras.layers.Embedding(window, d)   # position relative dans la fenetre
+            self.f_out = keras.layers.Dense(d)
         self.M, self.d, self.L, self.heads, self.mixer = num_bs_ant, d, layers, heads, mixer
         self.attn, self.gram, self.tied, self.phase_norm = attn, gram, tied, phase_norm
         self.embed = keras.layers.Dense(d)
@@ -92,7 +103,12 @@ class PerSCPrecoder(keras.Model):
     def call(self, h, snr_db):
         """h [N, K, M] (ou [N, W, K, M] avec window) complex64, snr_db [N]
         -> W [N, M, K] complex64 (pour la SC centrale)."""
-        if self.window > 1:
+        h_win = None
+        if self.window > 1 and self.freq == "attention":
+            h_win = tf.transpose(h, [0, 2, 1, 3])                # [N, K, W, M]
+            h = h[:, self.window // 2]
+            K = tf.shape(h)[1]
+        elif self.window > 1:
             feats = tf.transpose(h, [0, 2, 1, 3])                # [N, K, W, M]
             K = tf.shape(h)[2]
             feats = tf.reshape(tf.concat([tf.math.real(feats), tf.math.imag(feats)], -1),
@@ -104,9 +120,11 @@ class PerSCPrecoder(keras.Model):
             ref = tf.gather(h, tf.argmax(tf.abs(h), axis=-1), axis=-1, batch_dims=2)  # [N, K]
             h = h * tf.math.conj(ref / tf.cast(tf.abs(ref), ref.dtype))[..., None]
         snr = tf.tile(tf.reshape(snr_db / 10.0, [-1, 1, 1]), [1, K, 1])
-        if self.window == 1:
+        if self.window == 1 or h_win is not None:
             feats = tf.concat([tf.math.real(h), tf.math.imag(h)], axis=-1)
         x = self.embed(tf.concat([feats, snr], axis=-1))
+        if h_win is not None:
+            x = x + self._freq_attention(h_win, feats)
         edge = None
         if self.gram:
             g = tf.matmul(h, h, adjoint_b=True) / self.M         # G_kj = h_k h_j^H / M
@@ -117,10 +135,34 @@ class PerSCPrecoder(keras.Model):
         w = tf.complex(o[..., :self.M], o[..., self.M:])   # [N, K, M]
         return normalize_power(tf.transpose(w, [0, 2, 1]))
 
+    def _freq_attention(self, h_win, center_feats):
+        """h_win [N, K, W, M], center_feats [N, K, 2M] -> [N, K, D]. Une requete
+        (SC centrale) par utilisateur, W cles/valeurs (les voisines)."""
+        N, K = tf.shape(h_win)[0], tf.shape(h_win)[1]
+        W, d, nh = self.window, self.d, self.heads
+        dh = d // nh
+        fw = tf.concat([tf.math.real(h_win), tf.math.imag(h_win)], -1)          # [N, K, W, 2M]
+        kv = self.f_kv(fw) + tf.tile(self.f_pos(tf.range(W)), [1, 2])[None, None]
+        k, v = tf.split(kv, 2, axis=-1)                                         # [N, K, W, d]
+        q = self.f_q(center_feats)                                              # [N, K, d]
+        k = tf.reshape(k, [N, K, W, nh, dh])
+        v = tf.reshape(v, [N, K, W, nh, dh])
+        q = tf.reshape(q, [N, K, 1, nh, dh])
+        a = tf.nn.softmax(tf.reduce_sum(q * k, -1) / dh ** 0.5, axis=2)         # [N, K, W, nh]
+        self.last_freq_attention = a
+        m = tf.reshape(tf.reduce_sum(a[..., None] * v, axis=2), [N, K, d])
+        return self.f_out(m)
+
     def macs_per_sc(self, K):
         """Multiplications-accumulations reelles par SC (inference)."""
         d, M = self.d, self.M
-        per_token = (2 * M * self.window + 1) * d + d * 2 * M   # embed + head
+        if self.window > 1 and self.freq == "attention":
+            # projections cle/valeur calculees UNE fois par SC et reutilisees par
+            # toutes les fenetres qui la contiennent (fenetre glissante)
+            per_token = (2 * M + 1) * d + d * 2 * M                  # embed + head
+            per_token += 2 * M * 2 * d + 2 * M * d + 2 * self.window * d + d * d
+        else:
+            per_token = (2 * M * self.window + 1) * d + d * 2 * M   # embed + head
         mix = 3 * d * d + 2 * K * d if self.mixer == "attention" else d * d
         per_token += self.L * (mix + d * d + 2 * d * 2 * d)  # melange + out + FFN (x2)
         extra = 4 * K * self.M if self.phase_norm else 0
