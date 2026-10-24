@@ -16,6 +16,7 @@ def main():
     snr = tf.random.uniform([N], 0, 25)
     perm = [2, 0, 3, 1]
     for kw in [{}, {"mixer": "mean"}, {"attn": "signed"}, {"attn": "linear"}, {"gram": True},
+               {"attn": "linear", "snr_every": True}, {"attn": "linear", "rzf_init": True},
                {"attn": "signed", "gram": True}, {"attn": "signed", "tied": True},
                {"attn": "signed", "phase_norm": True}]:
         m = PerSCPrecoder(M, d=16, layers=2, **kw)
@@ -54,6 +55,14 @@ def main():
     assert err < 1e-5 and np.allclose(tf.reduce_sum(tf.abs(w) ** 2, [1, 2]).numpy(), 1.0, atol=1e-4)
     print(f"[ok] tete de puissance : equivariance (ecart {err:.1e}), puissance 1, "
           f"{m.count_params()} params, {m.macs_per_sc(K)} MAC/SC")
+    from precoders.classical import rzf as rzf_ref
+    m = PerSCPrecoder(M, d=16, layers=2, attn="linear", rzf_init=True)
+    m(h, snr)
+    m.head.bias.assign(tf.zeros_like(m.head.bias))
+    hn = h / tf.cast(tf.sqrt(tf.reduce_mean(tf.abs(h) ** 2, axis=[1, 2], keepdims=True)), h.dtype)
+    err = float(tf.reduce_max(tf.abs(m(h, snr) - rzf_ref(hn, tf.reshape(10.0 ** (-snr / 10.0), [-1, 1, 1])))))
+    assert err < 1e-5, err
+    print(f"[ok] rzf_init : demarre exactement sur RZF (ecart {err:.1e})")
     test_windowed_pool()
     test_delay_domain()
     print("TOUS LES TESTS PASSENT")

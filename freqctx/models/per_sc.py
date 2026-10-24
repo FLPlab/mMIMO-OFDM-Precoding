@@ -40,6 +40,11 @@ Options (phase 1b/1c, 4), chacune testable separement :
                       forte soit reelle positive. Exact : le SINR ne depend que
                       de |h_k w_j|, donc W optimal est invariant a la phase
                       propre de chaque utilisateur -> variable inutile retiree.
+    snr_every=True  : un vecteur appris a partir du SNR est ajoute aux tokens
+                      avant CHAQUE iteration du bloc (pas seulement a l'entree)
+    rzf_init=True   : W = RZF(h normalise) + correction apprise (tete initialisee
+                      a zero : le modele demarre exactement sur RZF). Reintroduit
+                      une inversion K x K par SC, comme RZF.
     gram=True   : le score de la paire (k, j) recoit un biais appris
                   f(Re G_kj, Im G_kj, |G_kj|), G = H H^H / M (produits
                   scalaires entre canaux, la premiere etape de RZF). Biais
@@ -48,7 +53,7 @@ Options (phase 1b/1c, 4), chacune testable separement :
 import keras
 import tensorflow as tf
 
-from precoders.classical import normalize_power
+from precoders.classical import normalize_power, rzf
 
 
 class Block(keras.layers.Layer):
@@ -90,9 +95,12 @@ class Block(keras.layers.Layer):
 class PerSCPrecoder(keras.Model):
     def __init__(self, num_bs_ant, d=32, layers=2, heads=2, mixer="attention",
                  attn="softmax", gram=False, tied=False, phase_norm=False, window=1,
-                 freq="concat", power_head=False, **kw):
+                 freq="concat", power_head=False, snr_every=False, rzf_init=False, **kw):
         super().__init__(**kw)
         self.window, self.freq, self.power_head = window, freq, power_head
+        self.snr_every, self.rzf_init = snr_every, rzf_init
+        if snr_every:
+            self.snr_emb = keras.layers.Dense(d)
         if window > 1 and freq == "attention":
             self.f_q = keras.layers.Dense(d)
             self.f_kv = keras.layers.Dense(2 * d)
@@ -103,7 +111,8 @@ class PerSCPrecoder(keras.Model):
         self.embed = keras.layers.Dense(d)
         n_blocks = 1 if tied else layers
         self.blocks = [Block(d, heads, mixer, attn=attn, gram=gram) for _ in range(n_blocks)]
-        self.head = keras.layers.Dense(2 * num_bs_ant + (1 if power_head else 0))
+        self.head = keras.layers.Dense(2 * num_bs_ant + (1 if power_head else 0),
+                                       kernel_initializer="zeros" if rzf_init else "glorot_uniform")
 
     def call(self, h, snr_db):
         """h [N, K, M] (ou [N, W, K, M] avec window) complex64, snr_db [N]
@@ -134,10 +143,16 @@ class PerSCPrecoder(keras.Model):
         if self.gram:
             g = tf.matmul(h, h, adjoint_b=True) / self.M         # G_kj = h_k h_j^H / M
             edge = tf.stack([tf.math.real(g), tf.math.imag(g), tf.abs(g)], axis=-1)
+        se = self.snr_emb(snr) if self.snr_every else 0.0
         for i in range(self.L):
-            x = self.blocks[0 if self.tied else i](x, edge)
+            x = self.blocks[0 if self.tied else i](x + se, edge)
         o = self.head(x)
         w = tf.complex(o[..., :self.M], o[..., self.M:2 * self.M])   # [N, K, M]
+        if self.rzf_init:                                          # depart sur RZF, correction apprise
+            e = tf.reduce_mean(tf.abs(h) ** 2, axis=[1, 2], keepdims=True)
+            hn = h / tf.cast(tf.sqrt(e + 1e-12), h.dtype)              # echelle du canal normalisee
+            nv = tf.reshape(10.0 ** (-snr_db / 10.0), [-1, 1, 1])
+            w = w + tf.transpose(rzf(hn, nv), [0, 2, 1])
         if self.power_head:
             w = w / tf.cast(tf.norm(w, axis=-1, keepdims=True), w.dtype)   # directions, norme 1
             p = tf.nn.softmax(o[..., 2 * self.M], axis=-1)                   # [N, K], somme 1
@@ -179,6 +194,10 @@ class PerSCPrecoder(keras.Model):
             extra += 4 * K * K * self.M + self.L * K * K * 3 * self.heads
         if self.power_head:
             extra += K * (d + 4 * M + 2)                       # score + normalisation + racine
+        if self.snr_every:
+            extra += self.L * K * d
+        if self.rzf_init:
+            extra += 4 * (K * K * M + K ** 3 + M * K * K + M * K)   # RZF
         return K * per_token + extra
 
 
