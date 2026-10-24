@@ -11,6 +11,10 @@ Un seul modele, appris de bout en bout sur le debit, en deux parties :
      h_k  = DFT(gain * g_k) sur les F SC                            (fixe)
    Un gain entre 0 et 1 par retard = la forme du filtre de Wiener ; un trajet
    arrive avec le meme retard sur toutes les antennes, d'ou un gain commun.
+   Option history=True (phase 4f) : chaque token de retard recoit en plus le
+   log de sa puissance moyenne sur les sondages PRECEDENTS (profil des trajets,
+   qui varie lentement) -- l'information que la borne genie connait d'avance.
+   Le modele recoit alors call(h_ls, snr_db, aux=pdp), pdp [B, K, N].
    Option angle_mask=True (variante b) : les antennes passent d'abord dans le
    domaine ANGULAIRE (DFT unitaire sur les M/2 antennes de chaque polarisation ;
    ordre Sionna : antennes 0..M/2-1 = polarisation 1, M/2..M-1 = polarisation 2),
@@ -30,10 +34,10 @@ from models.per_sc import Block, PerSCPrecoder
 
 class DelayEstimator(keras.layers.Layer):
     def __init__(self, num_sc, num_users, num_bs_ant, d=32, layers=2, heads=2, guard=4,
-                 gain_bias_init=3.0, angle_mask=False, **kw):
+                 gain_bias_init=3.0, angle_mask=False, history=False, **kw):
         super().__init__(**kw)
         F, K, self.M = num_sc, num_users, num_bs_ant
-        self.angle_mask = angle_mask
+        self.angle_mask, self.history = angle_mask, history
         half = num_bs_ant // 2
         u = np.exp(-2j * np.pi * np.outer(np.arange(half), np.arange(half)) / half) / np.sqrt(half)
         U = np.zeros((num_bs_ant, num_bs_ant), complex)
@@ -55,7 +59,14 @@ class DelayEstimator(keras.layers.Layer):
                                        bias_initializer=keras.initializers.Constant(gain_bias_init))
         # gain_bias_init=3 -> gains initiaux ~0.95 : le modele part de l'estimation LS
 
-    def call(self, h_ls):
+    def delays(self, h_ls):
+        """IDFT du LS du peigne de chaque utilisateur : [B, F, K, M] -> [B, K, N, M]."""
+        B = tf.shape(h_ls)[0]
+        hk = tf.transpose(h_ls, [0, 2, 1, 3])
+        y = tf.gather(hk, tf.tile(self.pilot_idx[None], [B, 1, 1]), axis=2, batch_dims=2)
+        return tf.einsum("ktn,bknm->bktm", self.idft, y)
+
+    def call(self, h_ls, pdp=None):
         B = tf.shape(h_ls)[0]
         K, N = self.pilot_idx.shape
         hk = tf.transpose(h_ls, [0, 2, 1, 3])                      # [B, K, F, M]
@@ -64,9 +75,11 @@ class DelayEstimator(keras.layers.Layer):
         if self.angle_mask:
             g = tf.matmul(g, self.U)                               # antennes -> angles
         p = tf.reduce_mean(tf.abs(g) ** 2, axis=-1, keepdims=True)
-        feats = tf.concat([tf.math.real(g), tf.math.imag(g),
-                           tf.math.log(p + 1e-9) / 10.0], axis=-1)  # [B, K, N, 2M+1]
-        x = self.embed(tf.reshape(feats, [B * K, N, 2 * self.M + 1])) + self.pos(tf.range(N))[None]
+        parts = [tf.math.real(g), tf.math.imag(g), tf.math.log(p + 1e-9) / 10.0]
+        if self.history:                                           # profil des sondages precedents
+            parts.append(tf.math.log(pdp[..., None] + 1e-9) / 10.0)
+        feats = tf.concat(parts, axis=-1)                          # [B, K, N, 2M+1(+1)]
+        x = self.embed(tf.reshape(feats, [B * K, N, feats.shape[-1]])) + self.pos(tf.range(N))[None]
         for blk in self.blocks:
             x = blk(x)                                             # attention entre les N retards
         gain = tf.sigmoid(self.gain(x))                            # [B*K, N, 1 ou M]
@@ -81,16 +94,16 @@ class DelayEstimator(keras.layers.Layer):
 
 class DelayDomainPrecoder(keras.Model):
     def __init__(self, num_sc, num_users, num_bs_ant, est_d=32, est_layers=2, angle_mask=False,
-                 **precoder_kw):
+                 history=False, **precoder_kw):
         super().__init__()
         self.F, self.K, self.M = num_sc, num_users, num_bs_ant
         self.estimator = DelayEstimator(num_sc, num_users, num_bs_ant, d=est_d, layers=est_layers,
-                                        angle_mask=angle_mask)
+                                        angle_mask=angle_mask, history=history)
         self.precoder = PerSCPrecoder(num_bs_ant, **precoder_kw)
         self.est_d, self.est_layers = est_d, est_layers
 
-    def call(self, h_ls, snr_db):
-        h_hat = self.estimator(h_ls)                               # [B, F, K, M]
+    def call(self, h_ls, snr_db, aux=None):
+        h_hat = self.estimator(h_ls, aux)                          # [B, F, K, M]
         B = tf.shape(h_hat)[0]
         w = self.precoder(tf.reshape(h_hat, [B * self.F, self.K, self.M]),
                           tf.repeat(snr_db, self.F))

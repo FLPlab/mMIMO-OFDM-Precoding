@@ -132,7 +132,7 @@ def delay_domain_estimate(h_ls, pilot_snr_db, num_taps=None, kappa=None, guard=4
     return tf.stack(out, axis=-2)                                # [..., F, K, M]
 
 
-def genie_lmmse(h_ls, h_true, cir, frequencies, pilot_snr_db):
+def genie_lmmse(h_ls, h_true, cir, frequencies, pilot_snr_db, t_idx=0):
     """Borne "genie" : LMMSE par lien avec la covariance frequentielle EXACTE
     du lien, R(f1, f2) = sum_l p_l exp(-j 2 pi (f1 - f2) tau_l), construite a
     partir des retards et puissances de ses trajets (CIR Sionna du slot 0),
@@ -140,6 +140,7 @@ def genie_lmmse(h_ls, h_true, cir, frequencies, pilot_snr_db):
     le plafond d'une estimation lineaire adaptee a chaque lien.
     h_ls, h_true : [B, F, K, M] ; cir = (a, tau) du ChannelGenerator."""
     a, tau = cir
+    a = a[..., t_idx:t_idx + 1]                                     # instant du sondage
     F, K = h_ls.shape[1], h_ls.shape[2]
     N = F // K
     sigma2 = 10.0 ** (-pilot_snr_db / 10.0) / K                    # bruit LS (|p|^2 = K)
@@ -158,4 +159,31 @@ def genie_lmmse(h_ls, h_true, cir, frequencies, pilot_snr_db):
         R_yy = tf.gather(R_hy, idx, axis=1) + tf.cast(sigma2, tf.complex64) * tf.eye(N, dtype=tf.complex64)
         y = tf.gather(h_ls[:, :, k, :], idx, axis=1)                                       # [B, N, M]
         out.append(tf.matmul(R_hy, tf.linalg.solve(R_yy, y)))                             # [B, F, M]
+    return tf.stack(out, axis=2)
+
+
+def pdp_lmmse(h_ls, pdp_raw, pilot_snr_db, guard=4):
+    """Contrepartie CLASSIQUE de l'historique : LMMSE par lien dont la covariance
+    est construite a partir du profil des trajets mesure sur les sondages
+    precedents, sur la grille des retards : R(f1, f2) = sum_t p_t exp(-j 2 pi
+    (f1 - f2) t / F), avec p_t = max(pdp_raw_t - bruit par retard, 0).
+    h_ls [B, F, K, M] ; pdp_raw [B, K, N] (puissance moyenne par retard, bruit
+    compris, meme convention que DelayEstimator)."""
+    F, K = h_ls.shape[1], h_ls.shape[2]
+    N = F // K
+    t = np.arange(N)
+    t_signed = np.where(t < N - guard, t, t - N)
+    sigma2 = 10.0 ** (-pilot_snr_db / 10.0) / K                    # bruit LS par pilote
+    p = tf.nn.relu(tf.cast(pdp_raw, tf.float32) - sigma2 / N)       # puissance utile par retard
+    e = tf.constant(np.exp(-2j * np.pi * np.outer(np.arange(F), t_signed) / F), tf.complex64)  # [F, N]
+    out = []
+    for k in range(K):
+        pk = tf.cast(p[:, k], tf.complex64)                         # [B, N]
+        R = tf.matmul(e[None] * pk[:, None, :], tf.tile(e[None], [tf.shape(pk)[0], 1, 1]),
+                      adjoint_b=True)                               # [B, F, F]
+        idx = k + K * np.arange(N)
+        R_hy = tf.gather(R, idx, axis=2)
+        R_yy = tf.gather(R_hy, idx, axis=1) + tf.cast(sigma2, tf.complex64) * tf.eye(N, dtype=tf.complex64)
+        y = tf.gather(h_ls[:, :, k, :], idx, axis=1)
+        out.append(tf.matmul(R_hy, tf.linalg.solve(R_yy, y)))
     return tf.stack(out, axis=2)

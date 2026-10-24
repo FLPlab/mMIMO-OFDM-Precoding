@@ -23,6 +23,7 @@ class SystemConfig:
     max_speed_kmh: float = 30.0
     indoor_probability: float = None    # None = valeur 3GPP du scenario
     num_slots: int = 3                  # slot 0 = sondage, slots 1.. = donnees (vieillissement)
+    slot_step: int = 1                  # ecart entre deux instants generes, en slots
 
     @property
     def num_sc(self):

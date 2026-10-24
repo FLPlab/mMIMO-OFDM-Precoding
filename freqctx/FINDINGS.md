@@ -541,6 +541,27 @@ Débit à 20 dB (bps/Hz) :
 - La variance d'erreur annoncée par Sionna est juste en moyenne quand la covariance est bonne ; avec la covariance du mélange, elle est trop pessimiste sur RMa (0,0099 contre 0,0074) et trop optimiste sur UMa (0,0099 contre 0,0117). La calibrer ne change presque rien.
 - **Seule exception** : sur RMa, le WMMSE robuste avec la **covariance oracle** (irréaliste : il faut connaître le scénario) nous bat de 0,28 bps/Hz à 20 dB.
 
+### Sondages précédents (profil des trajets) — NÉGATIF (`results/phase4/history.*`, parties refs / model / history)
+- **Question** : donner au masque, pour chaque retard, sa puissance moyenne sur les 4 sondages précédents (espacés de 2 ms, mêmes trajets, phases qui évoluent avec la mobilité) rapproche-t-il du génie ?
+- **Réglages** : nouvelles données (5 instants par tirage), donc tout refait sur les mêmes tirages : modèle sans historique, modèle avec historique (seul changement), références. Données à l'instant du dernier sondage.
+
+Débit à 20 dB (bps/Hz) :
+
+| | UMi | UMa | RMa |
+|---|---|---|---|
+| WMMSE (génie par lien) | 25,79 | 25,86 | 26,22 |
+| **modèle sans historique** | **24,86** | **24,49** | **24,85** |
+| **modèle avec historique** | **24,86** | **24,49** | **24,83** |
+| WMMSE (LMMSE construit sur l'historique) | 23,89 | 23,91 | 24,41 |
+| WMMSE robuste (LMMSE mélange) | 23,86 | 23,72 | 24,36 |
+| WMMSE (LMMSE mélange) | 23,75 | 23,60 | 24,21 |
+
+**Conclusions :**
+- **L'historique n'apporte rien** au modèle (±0,03 bps/Hz). Le LMMSE classique construit sur ce même historique n'est guère meilleur que le LMMSE de covariance moyenne (+0,05 à +0,3).
+- **L'écart au génie (0,9 à 1,4 bps/Hz) ne vient donc pas d'un manque de connaissance du profil des trajets sur la grille des retards.** Le génie connaît les retards **exacts**, hors grille : sa covariance n'a pas de fuite. Notre masque et le LMMSE « historique » travaillent tous deux sur la grille des retards, où chaque trajet fuit sur ses voisins. **L'écart restant ressemble donc à de la fuite.**
+- Sur ces nouveaux tirages, le modèle (sans historique) bat toujours la meilleure référence classique, historique compris : +0,97 / +0,58 / +0,42 à 20 dB, +1,63 / +1,13 / +1,15 à 25 dB.
+- **Règle convenue** : écart > 0,5 bps/Hz et signature de fuite → on fait **le dernier effort d'estimation** : un filtre complexe sur 3 retards voisins au lieu d'un gain par retard. On le garde seulement s'il apporte ≥ +0,2 bps/Hz à 20 dB dans les trois scénarios.
+
 ## Prochaine étape
 (1) 3 graines pour l'attention en fréquence D64. (2) Réduire le coût. (3) Bootstrap sur les tirages. (4) Faire le point avant d'aller plus loin (pilote 20 dB, vieillissement, M64).
 Cible principale ensuite (phases 2–3) : le régime pilote 10 dB, où il reste 2,7 à 5,9 bps/Hz après LMMSE.

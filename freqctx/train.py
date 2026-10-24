@@ -97,20 +97,29 @@ class DropPool:
     traitent toute la bande d'un coup (domaine des retards). Un lot = des
     tirages complets ; le debit est calcule sur toutes leurs SC."""
 
-    def __init__(self, h_in, h_true):
-        self.h_in, self.h_true = h_in, h_true
+    def __init__(self, h_in, h_true, aux=None):
+        """aux : information supplementaire par tirage, passee au modele
+        (ex. profil des trajets des sondages precedents [D, K, N])."""
+        self.h_in, self.h_true, self.aux = h_in, h_true, aux
         self.F = h_in.shape[1]
 
     def sample(self, batch_drops):
         d = tf.random.uniform([batch_drops], 0, self.h_in.shape[0], dtype=tf.int32)
-        return tf.gather(self.h_in, d), tf.gather(self.h_true, d)
+        aux = None if self.aux is None else tf.gather(self.aux, d)
+        return tf.gather(self.h_in, d), tf.gather(self.h_true, d), aux
 
     def chunks(self, drops_per_chunk=16):
         for d0 in range(0, self.h_in.shape[0], drops_per_chunk):
-            yield self.h_in[d0:d0 + drops_per_chunk], self.h_true[d0:d0 + drops_per_chunk]
+            sl = slice(d0, d0 + drops_per_chunk)
+            yield self.h_in[sl], self.h_true[sl], (None if self.aux is None else self.aux[sl])
 
     def subset(self, step):
-        return DropPool(self.h_in[::step], self.h_true[::step])
+        return DropPool(self.h_in[::step], self.h_true[::step],
+                        None if self.aux is None else self.aux[::step])
+
+
+def _call(model, h_in, snr, aux):
+    return model(h_in, snr) if aux is None else model(h_in, snr, aux=aux)
 
 
 def _flat_rate(h_true, w, snr_db):
@@ -149,8 +158,8 @@ def evaluate(precoder, data, snrs_db, chunk=65536):
     if isinstance(data, DropPool):
         out = []
         for snr in snrs_db:
-            r = [_flat_rate(ht, precoder(hc, tf.fill([hc.shape[0]], float(snr))),
-                            tf.fill([hc.shape[0]], float(snr))) for hc, ht in data.chunks()]
+            r = [_flat_rate(ht, _call(precoder, hc, tf.fill([hc.shape[0]], float(snr)), ax),
+                            tf.fill([hc.shape[0]], float(snr))) for hc, ht, ax in data.chunks()]
             out.append(float(tf.reduce_mean(tf.concat(r, 0))))
         return out
     if isinstance(data, WindowedPool):
@@ -187,10 +196,10 @@ def train(model, pool, steps=20000, batch=2048, lr=3e-3, snr_range=(0.0, 25.0), 
 
     @tf.function
     def step_drop():
-        h_in, h = pool.sample(drops_per_batch)                    # [Bd, F, K, M]
+        h_in, h, aux = pool.sample(drops_per_batch)               # [Bd, F, K, M]
         snr = tf.random.uniform([drops_per_batch], *snr_range)
         with tf.GradientTape() as tape:
-            r = _flat_rate(h, model(h_in, snr), snr)
+            r = _flat_rate(h, _call(model, h_in, snr, aux), snr)
             if loss == "rel_rzf":
                 K, M = h.shape[-2], h.shape[-1]
                 nv = tf.repeat(10.0 ** (-snr / 10.0), pool.F)
@@ -247,8 +256,9 @@ def run_variant(name, model, pool, h_eval, snrs_db, ref, steps, weights_dir=None
                 seed=0, loss="rate", snr_range=(0.0, 25.0)):
     """Entraine, evalue et resume un modele ; sauve les poids si weights_dir.
     La graine fixe l'initialisation des poids ET le tirage des donnees."""
+    aux0 = None
     if isinstance(pool, DropPool):
-        sample_in = next(pool.chunks(1))[0]
+        sample_in, _, aux0 = next(pool.chunks(1))
     elif isinstance(pool, WindowedPool):
         sample_in = next(pool.chunks(1))[0][:2]
     else:
@@ -256,7 +266,7 @@ def run_variant(name, model, pool, h_eval, snrs_db, ref, steps, weights_dir=None
     K = sample_in.shape[-2]
     print(f"== {name}")
     keras.utils.set_random_seed(seed)
-    model(sample_in, tf.zeros([sample_in.shape[0]]))  # construit les poids (init graine)
+    _call(model, sample_in, tf.zeros([sample_in.shape[0]]), aux0)  # construit les poids (init graine)
     val = (subsample(h_eval, 20), [0, 10, 20])
     hist = train(model, pool, steps=steps, lr=lr, seed=seed, log_every=max(steps // 4, 1),
                  val=val, loss=loss, snr_range=snr_range)
