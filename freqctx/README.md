@@ -22,6 +22,7 @@ freqctx/
   utils.py               sauvegarde résultats (json + png/pdf + commit git), style figures
   results/<phase>/       un fichier par expérience complète : <expérience>.{json,png,pdf}
   FINDINGS.md            journal : question -> chiffres -> verdict (retenu / négatif / écarté)
+  docs/architecture.html page de l'architecture actuelle + historique des choix (publiée en artefact, mise à jour à chaque résultat validé)
 ```
 
 Règles :
