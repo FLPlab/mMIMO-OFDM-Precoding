@@ -668,6 +668,29 @@ Base : candidat grille 2× (écart à la meilleure référence classique réalis
 - **Interprétation** : ce n'est pas un « raccourci » quelconque qui aidait, c'est la structure de RZF elle-même (l'inversion régularisée), qui donne le bon compromis au faible SNR.
 - **Décision finale (règle convenue)** : on garde le modèle **sans inversion** et on **accepte l'écart au faible SNR** (−0,1 à −0,16 bps/Hz à 0-5 dB, soit 2 à 3 %). Le départ depuis RZF est documenté comme **variante** (au niveau du classique partout, au prix d'une inversion 4×4 par SC).
 
+---
+
+## Phase 5 — MIMO massif (2026-10-24)
+
+### Modèle M8K4 transposé tel quel en M=64, K=8 — NÉGATIF (`results/phase5/massive_refs.json`, `massive_model.json`)
+- **Réglages** : M=64 (1 rangée de 32 colonnes, double polarisation), K=8, 50 RB = 600 SC (peigne 1 SC sur 8), pilote 10 dB, mélange UMi/UMa/RMa. Données d'évaluation générées une fois (96 tirages/scénario) et partagées par les références et le modèle. Modèle : celui retenu en M8K4 sans modification (retards grille 2× + filtre à bande + précodeur D64, 1 bloc linéaire × 4), 352 tirages/scénario, 40 000 pas (environ 15 min). 76 k paramètres, 1,64 M MAC/SC (contre environ 19 M pour LMMSE + WMMSE).
+
+Débit somme (bps/Hz), UMi (UMa et RMa identiques à ±1) :
+
+| SNR | 0 | 5 | 10 | 15 | 20 | 25 |
+|---|---|---|---|---|---|---|
+| **notre modèle** | **14,1** | **22,1** | **28,7** | **32,5** | **34,3** | **34,9** |
+| RZF (LS) | 23,5 | 35,2 | 47,1 | 57,9 | 66,3 | 71,6 |
+| WMMSE robuste (LMMSE mélange) | 23,9 | 35,8 | 48,0 | 59,5 | 69,0 | 75,2 |
+| WMMSE (génie par lien) | 24,0 | 36,1 | 48,8 | 61,6 | 73,7 | 84,3 |
+| WMMSE (CSI parfait) | 24,0 | 36,1 | 49,0 | 62,1 | 75,3 | 88,5 |
+
+**Conclusions :**
+- **Le modèle transposé tel quel échoue** : environ 50 à 60 % de RZF(LS), et il plafonne vers 35 bps/Hz. L'objectif d'entraînement (débit relatif à RZF) n'atteint que 0,62.
+- **Le contexte change** : avec 64 antennes pour 8 utilisateurs, RZF sur le simple LS est déjà très bon (66 bps/Hz à 20 dB, à 9 bps/Hz du CSI parfait), et la marge d'estimation jusqu'au génie est d'environ 5 bps/Hz.
+- **Hypothèse principale (à tester)** : le précodeur D=64 doit produire, pour chaque utilisateur, un vecteur de 64 antennes complexes (128 nombres réels) à partir d'un état de 64 nombres, tout en gérant l'interférence entre 8 utilisateurs. C'est un goulot de largeur, comme celui vu en M8K4 avec la fenêtre.
+- **Prochain** : diagnostic en CSI parfait, précodeur seul : (a) D plus large, (b) sortie structurée W = Ĥᴴ C (le modèle ne produit que les K×K coefficients ; le précodeur optimal est toujours de cette forme, et ça supprime la dépendance en M de la sortie, sans inversion).
+
 ## Prochaine étape
 (1) 3 graines pour l'attention en fréquence D64. (2) Réduire le coût. (3) Bootstrap sur les tirages. (4) Faire le point avant d'aller plus loin (pilote 20 dB, vieillissement, M64).
 Cible principale ensuite (phases 2–3) : le régime pilote 10 dB, où il reste 2,7 à 5,9 bps/Hz après LMMSE.
