@@ -18,6 +18,7 @@ Réglages par défaut : M=8, K=4, 612 SC (20 MHz), pilotes Sionna en peigne + LS
 | A8 | **L'attention en fréquence (adaptative) bat WMMSE(LMMSE réaliste) sur RMa** (+0,64 à 20 dB, +1,32 à 25 dB), égalité en ville ; fenêtre effective plus large sur RMa (10,9 contre 8,5 SC) | `phase3/mixed_p10_fattn_D64` |
 | A9 | **La marge restante est dans l'estimation** : borne génie par lien ≈ 2 bps/Hz au-dessus ; élargir la fenêtre (153 SC) n'y change rien (lissage à poids positifs) | `phase4/genie_bound_p10`, `mixed_p10_fattn_D64_W153` |
 | A10 | **Estimer dans le domaine des retards (toute la bande) bat WMMSE(LMMSE réaliste) dans les TROIS scénarios** : +3 à 3,5 % à 20 dB, +6 à 7 % à 25 dB ; garde 14 retards sur RMa contre 23-24 en ville (adaptatif, interprétable) ; 40 % de l'écart au génie comblé | `phase4/delay_model_D64` |
+| A11 | **Le gain tient face à un WMMSE robuste** (erreur d'estimation prise en compte) : +0,62 à +0,70 bps/Hz à 20 dB, +1,35 à +1,74 à 25 dB ; la version robuste n'apporte que +0,1 au classique | `phase4/robust_ref_p10` |
 
 ### B. Résultats d'appui (retenu, utile pour justifier des choix)
 
@@ -519,6 +520,26 @@ Débit à 20 dB (25 dB), bps/Hz :
 - **L'essentiel du trou au faible SNR vient du compromis entre SNR** : spécialisé sur 0-10 dB, le même précodeur passe de 97,1 à 99,1 % de WMMSE à 0 dB. Il reste environ 1 % structurel.
 - En CSI parfait, le précodeur généraliste est **au niveau de WMMSE à 15-25 dB** (99,7 à 100 %).
 - **Piste de correction** (un seul changement) : mieux conditionner le modèle sur le SNR (le SNR n'entre aujourd'hui qu'une fois, à l'embedding), ou démarrer la boucle depuis RZF et n'apprendre que la correction.
+
+### Référence robuste : WMMSE à erreur moyenne sur LMMSE — RETENU (`results/phase4/robust_ref_p10.json`)
+- **Question** : un WMMSE qui tient compte de l'erreur d'estimation (covariance d'erreur diagonale de l'estimateur LMMSE de Sionna, ajoutée aux termes d'interférence) efface-t-il notre gain ?
+- **Réglages** : mêmes tirages et même bruit pilote ; deux versions de la variance d'erreur (annoncée par Sionna ; calibrée sur l'erreur réelle moyenne du scénario) ; deux covariances LMMSE (mélange, oracle). Contrôle : WMMSE classique retrouvé au centième.
+
+Débit à 20 dB (bps/Hz) :
+
+| | UMi | UMa | RMa |
+|---|---|---|---|
+| WMMSE (LMMSE mélange) | 24,07 | 23,62 | 24,20 |
+| **WMMSE robuste (LMMSE mélange)**, meilleure des deux versions | **24,18** | **23,74** | **24,35** |
+| WMMSE robuste (LMMSE oracle) | 24,12 | 23,57 | 25,33 |
+| **notre modèle (retards + D64)** | **24,80** | **24,40** | **25,05** |
+
+Écart de notre modèle à la **meilleure référence classique réaliste** (robuste, covariance mélange, meilleure des deux versions) : **+0,62 / +0,67 / +0,70 à 20 dB** et **+1,36 / +1,35 / +1,74 à 25 dB** ; +0,07 à +0,17 à 15 dB ; −0,09 à −0,24 de 0 à 10 dB.
+
+**Conclusions :**
+- **La version robuste n'apporte qu'environ +0,1 bps/Hz** à WMMSE. **Notre gain tient** : il ne vient pas d'une simple meilleure régularisation, mais d'une meilleure estimation du canal (ce qu'un précodage robuste ne peut pas récupérer).
+- La variance d'erreur annoncée par Sionna est juste en moyenne quand la covariance est bonne ; avec la covariance du mélange, elle est trop pessimiste sur RMa (0,0099 contre 0,0074) et trop optimiste sur UMa (0,0099 contre 0,0117). La calibrer ne change presque rien.
+- **Seule exception** : sur RMa, le WMMSE robuste avec la **covariance oracle** (irréaliste : il faut connaître le scénario) nous bat de 0,28 bps/Hz à 20 dB.
 
 ## Prochaine étape
 (1) 3 graines pour l'attention en fréquence D64. (2) Réduire le coût. (3) Bootstrap sur les tirages. (4) Faire le point avant d'aller plus loin (pilote 20 dB, vieillissement, M64).

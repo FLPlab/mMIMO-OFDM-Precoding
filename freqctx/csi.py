@@ -52,20 +52,25 @@ class UplinkSounder:
         else:
             self.estimator = LSChannelEstimator(self.rg, interpolation_type=interpolation)
 
-    def __call__(self, h, pilot_snr_db):
-        """h : [B, F, K, M] canal vrai au slot de sondage -> h_hat meme forme."""
+    def __call__(self, h, pilot_snr_db, return_err_var=False):
+        """h : [B, F, K, M] canal vrai au slot de sondage -> h_hat meme forme.
+        return_err_var : renvoie aussi la variance d'erreur que l'estimateur
+        Sionna associe a chaque element (base de la reference robuste)."""
         B = tf.shape(h)[0]
         x = self.mapper(tf.zeros([B, self.cfg.num_users, 1, 0], tf.complex64))
         # [B, F, K, M] -> [B, 1, M, K, 1, 1, F]
         h_ul = tf.transpose(h, [0, 3, 2, 1])[:, None, :, :, None, None, :]
         no = tf.cast(10.0 ** (-pilot_snr_db / 10.0), tf.float32)
         y = self.apply(x, h_ul, no)
-        if self.chunk:
-            h_ls = tf.concat([self.estimator(y[i:i + self.chunk], no)[0]
-                              for i in range(0, y.shape[0], self.chunk)], axis=0)
-        else:
-            h_ls, _ = self.estimator(y, no)
-        return tf.transpose(h_ls[:, 0, :, :, 0, 0, :], [0, 3, 2, 1])
+        step = self.chunk or y.shape[0]
+        outs = [self.estimator(y[i:i + step], no) for i in range(0, y.shape[0], step)]
+        h_ls = tf.concat([o[0] for o in outs], axis=0)
+        h_hat = tf.transpose(h_ls[:, 0, :, :, 0, 0, :], [0, 3, 2, 1])
+        if not return_err_var:
+            return h_hat
+        err = tf.concat([o[1] for o in outs], axis=0)
+        return h_hat, tf.transpose(tf.math.real(tf.cast(err, tf.complex64))[:, 0, :, :, 0, 0, :],
+                                   [0, 3, 2, 1])
 
 
 def csi_at_bs(h, csi: CSIConfig, sounder: UplinkSounder):
