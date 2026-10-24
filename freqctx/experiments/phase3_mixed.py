@@ -52,9 +52,12 @@ def main():
     ap.add_argument("--seed", type=int, default=0, help="init des poids + tirage des lots")
     ap.add_argument("--freq", default="concat", choices=["concat", "attention"])
     ap.add_argument("--d", type=int, default=64)
+    ap.add_argument("--power_head", action="store_true")
+    ap.add_argument("--out_phase", default="phase3", help="dossier de resultats (phase4 : ameliorations)")
     args = ap.parse_args()
     W, train_scen = args.window, args.train.split(",")
-    model_kw = {**MODEL, "window": W, "freq": args.freq, "d": args.d}
+    model_kw = {**MODEL, "window": W, "freq": args.freq, "d": args.d,
+                "power_head": args.power_head}
     steps, total_train, eval_drops = (2000, 192, 32) if args.quick else (40000, 1056, 192)
     train_drops = total_train // len(train_scen) // 32 * 32
     nv = lambda s: 10.0 ** (-s[0] / 10.0)
@@ -101,7 +104,7 @@ def main():
                           for i in range(len(SNRS_DB))]}
     label = "melange" if len(train_scen) == len(SCENARIOS) else "+".join(train_scen)
     model = PerSCPrecoder(cfg.num_bs_ant, **model_kw)
-    fq = "_fattn" if args.freq == "attention" else ""
+    fq = ("_fattn" if args.freq == "attention" else "") + ("_ph" if args.power_head else "")
     run = run_variant(f"D{args.d}_T4_linear_W{W}{fq}_{label}_p10" + (f"_s{args.seed}" if args.seed else ""), model, train_pool, pools[train_scen[0]],
                       SNRS_DB, {"RZF": refs[train_scen[0]]["RZF (LS)"]}, steps, seed=args.seed,
                       loss="rel_rzf", weights_dir=None if args.quick else W3)
@@ -137,7 +140,7 @@ def main():
                "freq_attention_profile": attn_profile,
                "training_history": run["history"]}
     name = "mixed_p10" + (f"_{args.tag}" if args.tag else "") + ("_quick" if args.quick else "")
-    save("phase3", name, payload, plot(payload))
+    save(args.out_phase, name, payload, plot(payload))
 
 
 def plot(p):

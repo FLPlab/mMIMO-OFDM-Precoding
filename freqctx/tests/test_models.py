@@ -47,6 +47,12 @@ def main():
     assert np.allclose(tf.reduce_sum(a, axis=2).numpy(), 1.0, atol=1e-5)
     print(f"[ok] window=5, attention en frequence : equivariance (ecart {err:.1e}), poids somme 1, "
           f"{m.count_params()} params, {m.macs_per_sc(K)} MAC/SC")
+    m = PerSCPrecoder(M, d=16, layers=2, attn="linear", window=5, freq="attention", power_head=True)
+    w = m(hw, snr)
+    err = float(tf.reduce_max(tf.abs(m(tf.gather(hw, perm, axis=2), snr) - tf.gather(w, perm, axis=2))))
+    assert err < 1e-5 and np.allclose(tf.reduce_sum(tf.abs(w) ** 2, [1, 2]).numpy(), 1.0, atol=1e-4)
+    print(f"[ok] tete de puissance : equivariance (ecart {err:.1e}), puissance 1, "
+          f"{m.count_params()} params, {m.macs_per_sc(K)} MAC/SC")
     test_windowed_pool()
     print("TOUS LES TESTS PASSENT")
 

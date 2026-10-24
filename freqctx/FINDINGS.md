@@ -392,6 +392,49 @@ Largeur effective de l'attention (1/Σa², nombre de voisines réellement utilis
 - *Observation à creuser* : le profil d'attention a des pics à ±1, ±5, ±9 SC… (période 4 = le peigne des pilotes des 4 utilisateurs) et un creux en 0 (la SC centrale est déjà dans l'embedding). Le modèle semble avoir appris la structure des pilotes.
 - *Limite* : une seule graine (la dispersion mesurée pour la concaténation était d'environ 0,01 bps/Hz, mais elle n'est pas encore mesurée pour l'attention).
 
+---
+
+## Phase 4 — améliorer le modèle candidat (2026-10-24)
+
+Candidat de départ, figé : attention en fréquence (softmax, fenêtre 49), D=64, un bloc d'attention linéaire entre utilisateurs × 4, perte relative à RZF, entraîné sur le mélange UMi + UMa + RMa, pilote 10 dB (`results/phase3/mixed_p10_fattn_D64`). Chaque essai = un seul changement. Même évaluation (192 tirages par scénario).
+
+### Estimateur classique dans le domaine des retards — RETENU comme baseline, NÉGATIF comme piste (`results/phase4/delay_baseline_p10.json`)
+- **Question** : un estimateur « DFT-based » (LS sur le peigne → IDFT → troncature à L retards ou seuil sur le bruit → DFT) montre-t-il une grande marge dans l'estimation, au-delà de LMMSE ?
+- **Plancher de fuite** : même **sans bruit**, la reconstruction plafonne à −20 à −21 dB d'erreur. Les retards réels ne tombent pas sur la grille de 54 ns et la bande est coupée net, donc l'énergie fuit sur tous les retards. C'est du même ordre que le bruit à pilote 10 dB : erreur d'estimation à peine meilleure que le LS (−17 à −18 dB, contre −19,5 pour LMMSE).
+- **En débit, à 20 dB** (meilleure variante par scénario, ce qui est déjà favorable au classique) :
+
+| | UMi | UMa | RMa |
+|---|---|---|---|
+| RZF (LS) | 21,81 | 21,37 | 21,68 |
+| RZF, domaine des retards (meilleure variante) | 23,15 (seuil k=8) | 22,74 (seuil k=8) | 23,94 (L=16) |
+| WMMSE, domaine des retards | 23,56 | 23,19 | 24,54 |
+| WMMSE, LMMSE réaliste | 24,07 | 23,62 | 24,20 |
+| **notre modèle (candidat)** | **24,08** | **23,52** | **24,84** |
+
+**Conclusions :**
+- **Notre modèle bat l'estimateur dans le domaine des retards partout.** Celui-ci ne bat LMMSE réaliste que sur RMa, et encore avec une troncature choisie pour RMa (L=16 ; la meilleure est L=48 en ville), donc avec une connaissance du scénario.
+- **La version classique simple ne montre pas de grande marge cachée**, à cause de la fuite. Ce n'est pas la preuve qu'il n'y en a pas : un estimateur parfait par lien (covariance exacte de chaque lien) serait la vraie borne, mais il n'a pas été calculé. **Décision : ne pas pousser plus loin le domaine des retards pour l'instant** (il faudrait gérer la fuite, ce qui est de l'ingénierie).
+- Utile pour le paper comme baseline supplémentaire, que notre modèle bat.
+
+### Borne « génie » de l'estimation : LMMSE par lien — RETENU (`results/phase4/genie_bound_p10.json`)
+- **Question** : reste-t-il une vraie marge dans l'estimation, au-delà de notre modèle ? On donne à un LMMSE la covariance fréquentielle **exacte de chaque lien**, construite à partir des retards et des puissances de ses trajets (réponse impulsionnelle Sionna). C'est irréalisable tel quel, mais c'est le plafond d'une estimation linéaire adaptée à chaque lien.
+- **Réglages** : mêmes tirages et même bruit pilote que le mélange (vérifié : RZF(LS) identique au centième), pilote 10 dB, sans entraînement.
+
+| 20 dB | UMi | UMa | RMa |
+|---|---|---|---|
+| Erreur d'estimation : LS / **génie** | −17,1 / **−27,6 dB** | −16,8 / **−27,5 dB** | −17,6 / **−30,4 dB** |
+| WMMSE (CSI parfait) | 26,74 | 26,46 | 26,56 |
+| **WMMSE (génie par lien)** | **26,09** | **25,77** | **26,19** |
+| RZF (génie par lien) | 25,66 | 25,30 | 25,59 |
+| WMMSE (LMMSE oracle par scénario) | 24,02 | 23,45 | 25,24 |
+| notre modèle (candidat) | 24,08 | 23,52 | 24,84 |
+
+**Conclusions :**
+- **La marge dans l'estimation est grande : environ 2 bps/Hz (8 %) entre notre modèle et la borne génie, dans les trois scénarios.** La borne génie est à 0,4-0,7 bps/Hz du CSI parfait.
+- **Pourquoi le génie est si bon** : le canal d'un lien n'est qu'une somme d'une vingtaine de trajets. Connaissant leurs retards, il ne reste à estimer que leurs gains, environ 20 inconnues pour 153 mesures par antenne, ce qui retire énormément de bruit. C'est la **parcimonie dans le domaine des retards**, exploitée parfaitement.
+- **Ce n'est pas qu'une borne théorique** : les retards et puissances des trajets varient lentement (grande échelle), contrairement aux gains rapides. Une BS peut donc les apprendre au fil des slots. Et un modèle qui voit **toute la bande** (et pas une fenêtre de 49 SC) pourrait en exploiter une partie directement.
+- **Notre fenêtre de 49 SC n'utilise qu'environ 8 % de la bande** : c'est probablement ce qui limite. **C'est la piste qui peut faire battre WMMSE franchement.**
+
 ## Prochaine étape
 (1) 3 graines pour l'attention en fréquence D64. (2) Réduire le coût. (3) Bootstrap sur les tirages. (4) Faire le point avant d'aller plus loin (pilote 20 dB, vieillissement, M64).
 Cible principale ensuite (phases 2–3) : le régime pilote 10 dB, où il reste 2,7 à 5,9 bps/Hz après LMMSE.

@@ -29,7 +29,12 @@ Le meme modele (memes poids) est applique a chaque SC independamment.
                 empiler ces couches = polynomes des interactions entre
                 utilisateurs, la forme d'une inversion approchee (Neumann)
 
-Options (phase 1b/1c), chacune testable separement :
+Options (phase 1b/1c, 4), chacune testable separement :
+    power_head=True : la sortie separe direction et puissance : chaque w_k est
+                      ramene a une norme 1, puis multiplie par sqrt(p_k), avec
+                      p = softmax des K scores de puissance (somme 1). Le modele
+                      choisit explicitement la repartition de puissance entre
+                      utilisateurs (ce que WMMSE fait au faible SNR), sans inversion.
     tied=True       : UN seul bloc applique L fois (iterations), parametres /L
     phase_norm=True : chaque h_k est tourne pour que sa composante la plus
                       forte soit reelle positive. Exact : le SINR ne depend que
@@ -85,9 +90,9 @@ class Block(keras.layers.Layer):
 class PerSCPrecoder(keras.Model):
     def __init__(self, num_bs_ant, d=32, layers=2, heads=2, mixer="attention",
                  attn="softmax", gram=False, tied=False, phase_norm=False, window=1,
-                 freq="concat", **kw):
+                 freq="concat", power_head=False, **kw):
         super().__init__(**kw)
-        self.window, self.freq = window, freq
+        self.window, self.freq, self.power_head = window, freq, power_head
         if window > 1 and freq == "attention":
             self.f_q = keras.layers.Dense(d)
             self.f_kv = keras.layers.Dense(2 * d)
@@ -98,7 +103,7 @@ class PerSCPrecoder(keras.Model):
         self.embed = keras.layers.Dense(d)
         n_blocks = 1 if tied else layers
         self.blocks = [Block(d, heads, mixer, attn=attn, gram=gram) for _ in range(n_blocks)]
-        self.head = keras.layers.Dense(2 * num_bs_ant)
+        self.head = keras.layers.Dense(2 * num_bs_ant + (1 if power_head else 0))
 
     def call(self, h, snr_db):
         """h [N, K, M] (ou [N, W, K, M] avec window) complex64, snr_db [N]
@@ -132,7 +137,11 @@ class PerSCPrecoder(keras.Model):
         for i in range(self.L):
             x = self.blocks[0 if self.tied else i](x, edge)
         o = self.head(x)
-        w = tf.complex(o[..., :self.M], o[..., self.M:])   # [N, K, M]
+        w = tf.complex(o[..., :self.M], o[..., self.M:2 * self.M])   # [N, K, M]
+        if self.power_head:
+            w = w / tf.cast(tf.norm(w, axis=-1, keepdims=True), w.dtype)   # directions, norme 1
+            p = tf.nn.softmax(o[..., 2 * self.M], axis=-1)                   # [N, K], somme 1
+            w = w * tf.cast(tf.sqrt(p), w.dtype)[..., None]
         return normalize_power(tf.transpose(w, [0, 2, 1]))
 
     def _freq_attention(self, h_win, center_feats):
@@ -168,6 +177,8 @@ class PerSCPrecoder(keras.Model):
         extra = 4 * K * self.M if self.phase_norm else 0
         if self.gram:                                        # G (K^2 M complexes) + biais
             extra += 4 * K * K * self.M + self.L * K * K * 3 * self.heads
+        if self.power_head:
+            extra += K * (d + 4 * M + 2)                       # score + normalisation + racine
         return K * per_token + extra
 
 

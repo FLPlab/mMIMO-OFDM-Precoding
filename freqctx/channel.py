@@ -44,6 +44,7 @@ class ChannelGenerator:
             max_ut_velocity=cfg.max_speed_kmh / 3.6)
         self.model.set_topology(*topology)
         a, tau = self.model(batch_size, cfg.num_slots, 1.0 / cfg.slot_duration)
+        self.last_cir = (a, tau)          # trajets du dernier tirage (bornes "genie")
         # [B, 1, M, K, 1, S, F] -> [B, S, F, K, M]
         h = cir_to_ofdm_channel(self.frequencies, a, tau, normalize=True)
         return tf.transpose(h[:, 0, :, :, 0], [0, 3, 4, 2, 1])
