@@ -500,6 +500,26 @@ Débit à 20 dB (25 dB), bps/Hz :
 - **Toujours sous WMMSE au faible SNR** (−0,1 à −0,2 bps/Hz de 0 à 10 dB) : limite du précodeur, inchangée.
 - *Limite* : une seule graine.
 
+### Masque retard × angle (variante b) — NÉGATIF (`results/phase4/delay_model_angle_D64.*`)
+- **Question** : apprendre le gain par couple (retard, angle), avec une DFT unitaire sur les 4 antennes de chaque polarisation, exploite-t-il la structure spatiale et réduit-il l'écart au génie ?
+- **Résultat** : identique au masque par retard (±0,01 bps/Hz partout ; 20 dB : 24,79 / 24,41 / 25,06). Le modèle garde en moyenne 187 / 196 / 114 couples (retard, angle) sur 1 224.
+- **Interprétation** : avec 4 antennes par polarisation, la résolution angulaire est très grossière (4 directions) ; il n'y a presque pas de parcimonie angulaire à exploiter. Le précodeur traite déjà les 8 antennes ensemble.
+- **Décision** : écarté en M=8. **À retester en massif** (64 antennes : 32 directions par polarisation), où la parcimonie angulaire devrait compter. Option `angle_mask` gardée dans le code.
+
+### Diagnostic du faible SNR — RETENU (`results/phase4/lowsnr.*`)
+- **Question** : en CSI parfait, nos précodeurs plafonnent à environ 102,5 % de RZF à 0 dB (WMMSE : 105,4 %), quelle que soit leur taille. Est-ce le compromis d'un seul modèle pour 0 à 25 dB ?
+- **Réglages** : précodeur du candidat (D64, 1 bloc linéaire × 4, perte relative), CSI parfait, UMi (données et références de la phase 1), entraîné sur 0-25 dB puis sur 0-10 dB seulement.
+
+| % de WMMSE | 0 dB | 5 dB | 10 dB | 15 dB | 20 dB | 25 dB |
+|---|---|---|---|---|---|---|
+| entraîné 0-25 dB | 97,1 | 98,1 | 99,1 | 99,7 | **100,0** | 99,7 |
+| entraîné 0-10 dB | **99,1** | **99,3** | 99,2 | 96,5 | 82,0 | 37,1 |
+
+**Conclusions :**
+- **L'essentiel du trou au faible SNR vient du compromis entre SNR** : spécialisé sur 0-10 dB, le même précodeur passe de 97,1 à 99,1 % de WMMSE à 0 dB. Il reste environ 1 % structurel.
+- En CSI parfait, le précodeur généraliste est **au niveau de WMMSE à 15-25 dB** (99,7 à 100 %).
+- **Piste de correction** (un seul changement) : mieux conditionner le modèle sur le SNR (le SNR n'entre aujourd'hui qu'une fois, à l'embedding), ou démarrer la boucle depuis RZF et n'apprendre que la correction.
+
 ## Prochaine étape
 (1) 3 graines pour l'attention en fréquence D64. (2) Réduire le coût. (3) Bootstrap sur les tirages. (4) Faire le point avant d'aller plus loin (pilote 20 dB, vieillissement, M64).
 Cible principale ensuite (phases 2–3) : le régime pilote 10 dB, où il reste 2,7 à 5,9 bps/Hz après LMMSE.
