@@ -691,6 +691,24 @@ Débit somme (bps/Hz), UMi (UMa et RMa identiques à ±1) :
 - **Hypothèse principale (à tester)** : le précodeur D=64 doit produire, pour chaque utilisateur, un vecteur de 64 antennes complexes (128 nombres réels) à partir d'un état de 64 nombres, tout en gérant l'interférence entre 8 utilisateurs. C'est un goulot de largeur, comme celui vu en M8K4 avec la fenêtre.
 - **Prochain** : diagnostic en CSI parfait, précodeur seul : (a) D plus large, (b) sortie structurée W = Ĥᴴ C (le modèle ne produit que les K×K coefficients ; le précodeur optimal est toujours de cette forme, et ça supprime la dépendance en M de la sortie, sans inversion).
 
+### Diagnostic : le précodeur seul en massif, CSI parfait — RETENU (`results/phase5/precoder_parfait_*.json`)
+- **Question** : le plafond du modèle en massif vient-il du précodeur ? Précodeur seul, CSI parfait, M=64, K=8, mélange, 352 tirages/scénario, 40 000 pas, évalué sur le vrai canal des données d'évaluation du massif. RZF ≈ WMMSE ≈ 75,3 bps/Hz à 20 dB en CSI parfait.
+
+| Précodeur (1 bloc linéaire × 4) | 0 dB | 10 dB | 20 dB | 25 dB | params | MAC/SC |
+|---|---|---|---|---|---|---|
+| base : D64, sortie directe | 66 % | 65 % | **50 %** | 43 % | 50 k | 1,2 M |
+| D128, sortie directe | 87 % | 88 % | **77 %** | 68 % | 166 k | 4,5 M |
+| D64, sortie W = Ĥᴴ C | 83 % | 60 % | **42 %** | 36 % | 44 k | 1,2 M |
+
+(% de RZF en CSI parfait, UMi ; UMa et RMa identiques à ±1.)
+
+**Conclusions :**
+- **Le goulot est bien le précodeur** : même en CSI parfait, le précodeur actuel n'atteint que 50 % de RZF à 20 dB, et 66 % à 0 dB, alors qu'à faible SNR le simple MRT est déjà proche de l'optimum.
+- **Doubler la largeur aide (77 %) mais reste loin, et coûte 4,5 M MAC/SC.**
+- **La sortie structurée aide au faible SNR (83 %, elle rend MRT trivial) mais pas au fort SNR (42 %)** : il reste à calculer C ≈ (G + αI)⁻¹, une inversion 8×8, à partir des valeurs brutes du canal.
+- **En massif, il y a deux difficultés distinctes** : (a) conserver l'information spatiale de 64 antennes (résolue par la sortie structurée) ; (b) inverser une matrice d'interaction 8×8 entre utilisateurs (non résolue).
+- **Fait important** : en massif, RZF en CSI parfait vaut déjà WMMSE (75,26 contre 75,29). Il n'y a rien à gagner en précodage pur ; toute la marge est dans l'estimation (RZF(LS) 66 → génie 74).
+
 ## Prochaine étape
 (1) 3 graines pour l'attention en fréquence D64. (2) Réduire le coût. (3) Bootstrap sur les tirages. (4) Faire le point avant d'aller plus loin (pilote 20 dB, vieillissement, M64).
 Cible principale ensuite (phases 2–3) : le régime pilote 10 dB, où il reste 2,7 à 5,9 bps/Hz après LMMSE.
