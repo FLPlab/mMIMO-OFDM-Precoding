@@ -45,6 +45,11 @@ Options (phase 1b/1c, 4), chacune testable separement :
     rzf_init=True   : W = RZF(h normalise) + correction apprise (tete initialisee
                       a zero : le modele demarre exactement sur RZF). Reintroduit
                       une inversion K x K par SC, comme RZF.
+    out_mode="span" : le modele ne produit que des coefficients C [K, K] et
+                      W = h^H C (le precodeur optimal est toujours de cette forme,
+                      Bjornson et al. 2014) ; C[j,k] = <a_j, b_k> (rang r) calcule
+                      par paire de tokens -> equivariant, sans inversion, et la
+                      sortie ne depend plus du nombre d'antennes M (massif).
     mrt_init=True   : W = MRT(h normalise) + correction apprise (MRT = canal
                       conjugue, aucune inversion) ; tete initialisee a zero.
     gram=True   : le score de la paire (k, j) recoit un biais appris
@@ -98,10 +103,11 @@ class PerSCPrecoder(keras.Model):
     def __init__(self, num_bs_ant, d=32, layers=2, heads=2, mixer="attention",
                  attn="softmax", gram=False, tied=False, phase_norm=False, window=1,
                  freq="concat", power_head=False, snr_every=False, rzf_init=False, mrt_init=False,
-                 **kw):
+                 out_mode="direct", rank=8, **kw):
         super().__init__(**kw)
         self.window, self.freq, self.power_head = window, freq, power_head
         self.snr_every, self.rzf_init, self.mrt_init = snr_every, rzf_init, mrt_init
+        self.out_mode, self.rank = out_mode, rank
         if snr_every:
             self.snr_emb = keras.layers.Dense(d)
         if window > 1 and freq == "attention":
@@ -114,7 +120,8 @@ class PerSCPrecoder(keras.Model):
         self.embed = keras.layers.Dense(d)
         n_blocks = 1 if tied else layers
         self.blocks = [Block(d, heads, mixer, attn=attn, gram=gram) for _ in range(n_blocks)]
-        self.head = keras.layers.Dense(2 * num_bs_ant + (1 if power_head else 0),
+        n_out = 4 * rank if out_mode == "span" else 2 * num_bs_ant + (1 if power_head else 0)
+        self.head = keras.layers.Dense(n_out,
                                        kernel_initializer="zeros" if (rzf_init or mrt_init)
                                        else "glorot_uniform")
 
@@ -151,6 +158,12 @@ class PerSCPrecoder(keras.Model):
         for i in range(self.L):
             x = self.blocks[0 if self.tied else i](x + se, edge)
         o = self.head(x)
+        if self.out_mode == "span":                                # W = h^H C, C[j,k] = <a_j, b_k>
+            r = self.rank
+            a = tf.complex(o[..., :r], o[..., r:2 * r])
+            b = tf.complex(o[..., 2 * r:3 * r], o[..., 3 * r:])
+            c = tf.matmul(a, b, adjoint_b=True)                    # [N, K, K]
+            return normalize_power(tf.matmul(h, c, adjoint_a=True))
         w = tf.complex(o[..., :self.M], o[..., self.M:2 * self.M])   # [N, K, M]
         if self.rzf_init or self.mrt_init:                         # depart classique + correction apprise
             e = tf.reduce_mean(tf.abs(h) ** 2, axis=[1, 2], keepdims=True)
@@ -205,6 +218,8 @@ class PerSCPrecoder(keras.Model):
             extra += self.L * K * d
         if self.rzf_init:
             extra += 4 * (K * K * M + K ** 3 + M * K * K + M * K)   # RZF
+        if self.out_mode == "span":                          # tete 4r au lieu de 2M, puis C et h^H C
+            extra += K * d * (4 * self.rank - 2 * M) + 4 * (K * K * self.rank + M * K * K)
         return K * per_token + extra
 
 
