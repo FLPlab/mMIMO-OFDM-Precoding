@@ -15,6 +15,10 @@ Un seul modele, appris de bout en bout sur le debit, en deux parties :
    log de sa puissance moyenne sur les sondages PRECEDENTS (profil des trajets,
    qui varie lentement) -- l'information que la borne genie connait d'avance.
    Le modele recoit alors call(h_ls, snr_db, aux=pdp), pdp [B, K, N].
+   Option banded=True (dernier effort d'estimation) : au lieu d'un gain reel
+   par retard, un filtre COMPLEXE sur les retards t-1, t, t+1 (commun aux
+   antennes), pour recoller l'energie d'un trajet hors grille qui fuit sur ses
+   voisins. Initialise comme le masque : centre 0,95, voisins 0.
    Option angle_mask=True (variante b) : les antennes passent d'abord dans le
    domaine ANGULAIRE (DFT unitaire sur les M/2 antennes de chaque polarisation ;
    ordre Sionna : antennes 0..M/2-1 = polarisation 1, M/2..M-1 = polarisation 2),
@@ -34,10 +38,10 @@ from models.per_sc import Block, PerSCPrecoder
 
 class DelayEstimator(keras.layers.Layer):
     def __init__(self, num_sc, num_users, num_bs_ant, d=32, layers=2, heads=2, guard=4,
-                 gain_bias_init=3.0, angle_mask=False, history=False, **kw):
+                 gain_bias_init=3.0, angle_mask=False, history=False, banded=False, **kw):
         super().__init__(**kw)
         F, K, self.M = num_sc, num_users, num_bs_ant
-        self.angle_mask, self.history = angle_mask, history
+        self.angle_mask, self.history, self.banded = angle_mask, history, banded
         half = num_bs_ant // 2
         u = np.exp(-2j * np.pi * np.outer(np.arange(half), np.arange(half)) / half) / np.sqrt(half)
         U = np.zeros((num_bs_ant, num_bs_ant), complex)
@@ -55,8 +59,13 @@ class DelayEstimator(keras.layers.Layer):
         self.embed = keras.layers.Dense(d)
         self.pos = keras.layers.Embedding(N, d)
         self.blocks = [Block(d, heads, "attention", attn="softmax") for _ in range(layers)]
-        self.gain = keras.layers.Dense(num_bs_ant if angle_mask else 1,
-                                       bias_initializer=keras.initializers.Constant(gain_bias_init))
+        if banded:                          # [centre (sigmoide), centre Im, t-1 Re, Im, t+1 Re, Im]
+            self.gain = keras.layers.Dense(6, kernel_initializer="zeros",
+                                           bias_initializer=keras.initializers.Constant(
+                                               [gain_bias_init, 0, 0, 0, 0, 0]))
+        else:
+            self.gain = keras.layers.Dense(num_bs_ant if angle_mask else 1,
+                                           bias_initializer=keras.initializers.Constant(gain_bias_init))
         # gain_bias_init=3 -> gains initiaux ~0.95 : le modele part de l'estimation LS
 
     def delays(self, h_ls):
@@ -82,10 +91,19 @@ class DelayEstimator(keras.layers.Layer):
         x = self.embed(tf.reshape(feats, [B * K, N, feats.shape[-1]])) + self.pos(tf.range(N))[None]
         for blk in self.blocks:
             x = blk(x)                                             # attention entre les N retards
-        gain = tf.sigmoid(self.gain(x))                            # [B*K, N, 1 ou M]
-        G = gain.shape[-1]
-        self.last_gain = tf.reshape(gain, [B, K, N, G])
-        g_hat = g * tf.cast(tf.reshape(gain, [B, K, N, G]), g.dtype)
+        if self.banded:
+            o = tf.reshape(self.gain(x), [B, K, N, 6])
+            c0 = tf.complex(tf.sigmoid(o[..., 0]), o[..., 1])
+            cm = tf.complex(o[..., 2], o[..., 3])                  # coefficient sur le retard t-1
+            cp = tf.complex(o[..., 4], o[..., 5])                  # coefficient sur le retard t+1
+            self.last_gain = tf.abs(c0)[..., None]
+            g_hat = (c0[..., None] * g + cm[..., None] * tf.roll(g, 1, axis=2)
+                     + cp[..., None] * tf.roll(g, -1, axis=2))
+        else:
+            gain = tf.sigmoid(self.gain(x))                        # [B*K, N, 1 ou M]
+            G = gain.shape[-1]
+            self.last_gain = tf.reshape(gain, [B, K, N, G])
+            g_hat = g * tf.cast(tf.reshape(gain, [B, K, N, G]), g.dtype)
         if self.angle_mask:
             g_hat = tf.matmul(g_hat, self.U, adjoint_b=True)       # angles -> antennes
         h_hat = tf.einsum("ft,bktm->bfkm", self.dft, g_hat)        # [B, F, K, M]
@@ -94,11 +112,11 @@ class DelayEstimator(keras.layers.Layer):
 
 class DelayDomainPrecoder(keras.Model):
     def __init__(self, num_sc, num_users, num_bs_ant, est_d=32, est_layers=2, angle_mask=False,
-                 history=False, **precoder_kw):
+                 history=False, banded=False, **precoder_kw):
         super().__init__()
         self.F, self.K, self.M = num_sc, num_users, num_bs_ant
         self.estimator = DelayEstimator(num_sc, num_users, num_bs_ant, d=est_d, layers=est_layers,
-                                        angle_mask=angle_mask, history=history)
+                                        angle_mask=angle_mask, history=history, banded=banded)
         self.precoder = PerSCPrecoder(num_bs_ant, **precoder_kw)
         self.est_d, self.est_layers = est_d, est_layers
 

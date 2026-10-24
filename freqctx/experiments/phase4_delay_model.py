@@ -36,6 +36,7 @@ def main():
     ap.add_argument("--d", type=int, default=64, help="largeur du precodeur par SC")
     ap.add_argument("--est_d", type=int, default=32)
     ap.add_argument("--angle", action="store_true", help="gain par (retard, angle) (variante b)")
+    ap.add_argument("--banded", action="store_true", help="filtre complexe sur 3 retards voisins")
     ap.add_argument("--quick", action="store_true")
     args = ap.parse_args()
     steps, train_drops, eval_drops = (2000, 64, 32) if args.quick else (40000, 352, 192)
@@ -60,8 +61,9 @@ def main():
 
     cfg = SystemConfig()
     model = DelayDomainPrecoder(cfg.num_sc, cfg.num_users, cfg.num_bs_ant, est_d=args.est_d,
-                                angle_mask=args.angle, d=args.d, layers=4, tied=True, attn="linear")
-    tag = "_angle" if args.angle else ""
+                                angle_mask=args.angle, banded=args.banded, d=args.d, layers=4,
+                                tied=True, attn="linear")
+    tag = ("_angle" if args.angle else "") + ("_bande" if args.banded else "")
     name = f"delay{tag}_est{args.est_d}_D{args.d}_T4_linear_melange_p10"
     run = run_variant(name, model, train_pool, DropPool(*ev["umi"]), SNRS_DB,
                       {"RZF": ref_file["references"]["umi"]["RZF (LS)"]}, steps, seed=0,
@@ -83,7 +85,8 @@ def main():
               f" | retards gardes {gains[scen]['kept_taps_mean']:.1f}")
 
     payload = {"scenarios": SCENARIOS, "pilot_snr_db": PILOT, "snrs_db": SNRS_DB,
-               "model": {"est_d": args.est_d, "d": args.d, "angle_mask": args.angle, "layers": 4, "tied": True,
+               "model": {"est_d": args.est_d, "d": args.d, "angle_mask": args.angle,
+                         "banded": args.banded, "layers": 4, "tied": True,
                          "attn": "linear", "params": run["params"],
                          "macs_per_sc": run["macs_per_sc"]},
                "steps": steps, "rates": rates, "delay_gains": gains,
