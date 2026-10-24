@@ -23,6 +23,9 @@ Un seul modele, appris de bout en bout sur le debit, en deux parties :
    (O*N retards espaces de 54/O ns) : un trajet hors grille tombe plus pres
    d'un point, son energie fuit moins. Paire IDFT/DFT sur-echantillonnee,
    exacte aux SC pilotes quand tous les gains valent 1.
+   Option max_taps=L : ne garder que les L premiers retards (en unites
+   naturelles de 54 ns, plus les retards "negatifs" de garde) ; les autres,
+   qui ne contiennent que du bruit, sont mis a zero d'office. Moins de tokens.
    Option angle_mask=True (variante b) : les antennes passent d'abord dans le
    domaine ANGULAIRE (DFT unitaire sur les M/2 antennes de chaque polarisation ;
    ordre Sionna : antennes 0..M/2-1 = polarisation 1, M/2..M-1 = polarisation 2),
@@ -43,7 +46,7 @@ from models.per_sc import Block, PerSCPrecoder
 class DelayEstimator(keras.layers.Layer):
     def __init__(self, num_sc, num_users, num_bs_ant, d=32, layers=2, heads=2, guard=4,
                  gain_bias_init=3.0, angle_mask=False, history=False, banded=False, oversample=1,
-                 **kw):
+                 max_taps=None, **kw):
         super().__init__(**kw)
         F, K, self.M = num_sc, num_users, num_bs_ant
         self.angle_mask, self.history, self.banded = angle_mask, history, banded
@@ -54,9 +57,11 @@ class DelayEstimator(keras.layers.Layer):
         self.U = tf.constant(U, tf.complex64)
         self.N = N = F // K
         O = self.oversample = oversample
-        self.T = T = O * N                                         # nombre de retards
-        n, t = np.arange(N), np.arange(T)
-        t_signed = np.where(t < T - O * guard, t, t - T)           # quelques retards "negatifs"
+        n, t = np.arange(N), np.arange(O * N)
+        t_signed = np.where(t < O * N - O * guard, t, t - O * N)   # quelques retards "negatifs"
+        if max_taps is not None:                                   # retards utiles seulement
+            t_signed = t_signed[t_signed < O * max_taps]
+        self.T = T = len(t_signed)                                 # nombre de retards
         self.pilot_idx = tf.constant(np.stack([k + K * n for k in range(K)]), tf.int32)  # [K, N]
         idft = np.stack([np.exp(2j * np.pi * np.outer(t_signed, k + K * n) / (O * F)) / N
                          for k in range(K)])                       # [K, T retards, N pilotes]
@@ -119,12 +124,12 @@ class DelayEstimator(keras.layers.Layer):
 
 class DelayDomainPrecoder(keras.Model):
     def __init__(self, num_sc, num_users, num_bs_ant, est_d=32, est_layers=2, angle_mask=False,
-                 history=False, banded=False, oversample=1, **precoder_kw):
+                 history=False, banded=False, oversample=1, max_taps=None, **precoder_kw):
         super().__init__()
         self.F, self.K, self.M = num_sc, num_users, num_bs_ant
         self.estimator = DelayEstimator(num_sc, num_users, num_bs_ant, d=est_d, layers=est_layers,
                                         angle_mask=angle_mask, history=history, banded=banded,
-                                        oversample=oversample)
+                                        oversample=oversample, max_taps=max_taps)
         self.precoder = PerSCPrecoder(num_bs_ant, **precoder_kw)
         self.est_d, self.est_layers = est_d, est_layers
 
