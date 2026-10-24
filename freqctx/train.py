@@ -92,13 +92,42 @@ class WindowedPool:
         return WindowedPool(self.h_in[::step], self.h_true[::step], self.W)
 
 
+class DropPool:
+    """Tirages entiers (h_in, h_true) [D, F, K, M] : pour les modeles qui
+    traitent toute la bande d'un coup (domaine des retards). Un lot = des
+    tirages complets ; le debit est calcule sur toutes leurs SC."""
+
+    def __init__(self, h_in, h_true):
+        self.h_in, self.h_true = h_in, h_true
+        self.F = h_in.shape[1]
+
+    def sample(self, batch_drops):
+        d = tf.random.uniform([batch_drops], 0, self.h_in.shape[0], dtype=tf.int32)
+        return tf.gather(self.h_in, d), tf.gather(self.h_true, d)
+
+    def chunks(self, drops_per_chunk=16):
+        for d0 in range(0, self.h_in.shape[0], drops_per_chunk):
+            yield self.h_in[d0:d0 + drops_per_chunk], self.h_true[d0:d0 + drops_per_chunk]
+
+    def subset(self, step):
+        return DropPool(self.h_in[::step], self.h_true[::step])
+
+
+def _flat_rate(h_true, w, snr_db):
+    """Debit par SC pour des sorties par tirage : h_true [B, F, K, M], w [B, F, M, K]."""
+    K, M = h_true.shape[-2], h_true.shape[-1]
+    F = h_true.shape[1]
+    nv = tf.repeat(10.0 ** (-snr_db / 10.0), F)
+    return rate_per_sample(tf.reshape(h_true, [-1, K, M]), tf.reshape(w, [-1, M, K]), nv)
+
+
 def pair(data):
     """(h_in, h_true) depuis un tenseur (CSI parfait) ou une paire."""
     return data if isinstance(data, tuple) else (data, data)
 
 
 def subsample(data, step):
-    if isinstance(data, WindowedPool):
+    if isinstance(data, (WindowedPool, DropPool)):
         return data.subset(step)
     h_in, h_true = pair(data)
     return (h_in[::step], h_true[::step])
@@ -117,6 +146,13 @@ def rate_per_sample(h, w, nv):
 
 def evaluate(precoder, data, snrs_db, chunk=65536):
     """precoder(h_in, snr_db [N]) -> W, debit sur h_true. Debit moyen par SNR."""
+    if isinstance(data, DropPool):
+        out = []
+        for snr in snrs_db:
+            r = [_flat_rate(ht, precoder(hc, tf.fill([hc.shape[0]], float(snr))),
+                            tf.fill([hc.shape[0]], float(snr))) for hc, ht in data.chunks()]
+            out.append(float(tf.reduce_mean(tf.concat(r, 0))))
+        return out
     if isinstance(data, WindowedPool):
         parts = list(data.chunks())
     else:
@@ -143,9 +179,28 @@ def train(model, pool, steps=20000, batch=2048, lr=3e-3, snr_range=(0.0, 25.0), 
     sched = tf.keras.optimizers.schedules.CosineDecay(lr, steps)
     opt = tf.keras.optimizers.Adam(sched)
     windowed = isinstance(pool, WindowedPool)
-    if not windowed:
+    by_drop = isinstance(pool, DropPool)
+    drops_per_batch = max(1, -(-batch // pool.F)) if by_drop else None
+    if not windowed and not by_drop:
         pool_in, pool_true = pair(pool)
         n = pool_in.shape[0]
+
+    @tf.function
+    def step_drop():
+        h_in, h = pool.sample(drops_per_batch)                    # [Bd, F, K, M]
+        snr = tf.random.uniform([drops_per_batch], *snr_range)
+        with tf.GradientTape() as tape:
+            r = _flat_rate(h, model(h_in, snr), snr)
+            if loss == "rel_rzf":
+                K, M = h.shape[-2], h.shape[-1]
+                nv = tf.repeat(10.0 ** (-snr / 10.0), pool.F)
+                r_ref = rate_per_sample(tf.reshape(h, [-1, K, M]),
+                                        rzf(tf.reshape(h_in, [-1, K, M]), tf.reshape(nv, [-1, 1, 1])), nv)
+                r = r / tf.stop_gradient(r_ref)
+            loss_v = -tf.reduce_mean(r)
+        opt.apply_gradients(zip(tape.gradient(loss_v, model.trainable_variables),
+                                model.trainable_variables))
+        return loss_v
 
     @tf.function
     def step():
@@ -168,7 +223,7 @@ def train(model, pool, steps=20000, batch=2048, lr=3e-3, snr_range=(0.0, 25.0), 
 
     hist, t0 = [], time.time()
     for s in range(1, steps + 1):
-        loss_v = step()
+        loss_v = step_drop() if by_drop else step()
         if s % log_every == 0 or s == steps:
             entry = {"step": s, "train_objective": -float(loss_v),
                      "time_s": round(time.time() - t0, 1)}
@@ -192,11 +247,16 @@ def run_variant(name, model, pool, h_eval, snrs_db, ref, steps, weights_dir=None
                 seed=0, loss="rate"):
     """Entraine, evalue et resume un modele ; sauve les poids si weights_dir.
     La graine fixe l'initialisation des poids ET le tirage des donnees."""
-    sample_in = (next(pool.chunks(1))[0] if isinstance(pool, WindowedPool) else pair(pool)[0])
+    if isinstance(pool, DropPool):
+        sample_in = next(pool.chunks(1))[0]
+    elif isinstance(pool, WindowedPool):
+        sample_in = next(pool.chunks(1))[0][:2]
+    else:
+        sample_in = pair(pool)[0][:2]
     K = sample_in.shape[-2]
     print(f"== {name}")
     keras.utils.set_random_seed(seed)
-    model(sample_in[:2], tf.zeros([2]))                # construit les poids (init graine)
+    model(sample_in, tf.zeros([sample_in.shape[0]]))  # construit les poids (init graine)
     val = (subsample(h_eval, 20), [0, 10, 20])
     hist = train(model, pool, steps=steps, lr=lr, seed=seed, log_every=max(steps // 4, 1),
                  val=val, loss=loss)

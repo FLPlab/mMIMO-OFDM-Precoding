@@ -15,7 +15,9 @@ Réglages par défaut : M=8, K=4, 612 SC (20 MHz), pilotes Sionna en peigne + LS
 | A5 | **Sans contexte fréquentiel, apprendre sur du CSI estimé n'apporte rien** (= RZF(LS)) | `phase2/estimated_csi_p10`, `_p20` |
 | A6 | **Avec les SC voisines, le modèle bat le lissage classique** ; il faut une largeur D=64 | `phase3/window_p10`, `phase3/diagnostic_p10` |
 | A7 | **Quand la covariance est mal connue (mélange UMi/UMa/RMa), LMMSE perd 1 bps/Hz sur RMa (canal plat)** | `phase3/mixed_p10` |
-| A8 | **L'attention en fréquence (adaptative) bat WMMSE(LMMSE réaliste) sur RMa** (+0,64 à 20 dB, +1,32 à 25 dB), égalité en ville, sans covariance ni inversion ; fenêtre effective plus large sur RMa (10,9 contre 8,5 SC) | `phase3/mixed_p10_fattn_D64` |
+| A8 | **L'attention en fréquence (adaptative) bat WMMSE(LMMSE réaliste) sur RMa** (+0,64 à 20 dB, +1,32 à 25 dB), égalité en ville ; fenêtre effective plus large sur RMa (10,9 contre 8,5 SC) | `phase3/mixed_p10_fattn_D64` |
+| A9 | **La marge restante est dans l'estimation** : borne génie par lien ≈ 2 bps/Hz au-dessus ; élargir la fenêtre (153 SC) n'y change rien (lissage à poids positifs) | `phase4/genie_bound_p10`, `mixed_p10_fattn_D64_W153` |
+| A10 | **Estimer dans le domaine des retards (toute la bande) bat WMMSE(LMMSE réaliste) dans les TROIS scénarios** : +3 à 3,5 % à 20 dB, +6 à 7 % à 25 dB ; garde 14 retards sur RMa contre 23-24 en ville (adaptatif, interprétable) ; 40 % de l'écart au génie comblé | `phase4/delay_model_D64` |
 
 ### B. Résultats d'appui (retenu, utile pour justifier des choix)
 
@@ -37,7 +39,7 @@ Sortie structurée W = Hᴴ C ; biais Gram ; normalisation de phase ; attention 
 - Coût : 595 k MAC/SC. À comparer à la **chaîne complète** LMMSE + WMMSE (estimée à 150-200 k MAC/SC avec inversions en double précision, à calculer précisément), pas à RZF seul.
 
 ### E. Plan (simple, sans s'éparpiller)
-0. **(nouveau, 2026-10-24) La marge est dans l'estimation** : borne génie par lien = environ 2 bps/Hz au-dessus de notre modèle, partout (`phase4/genie_bound_p10`). Priorité : donner toute la bande au modèle (fenêtre plus large, puis domaine des retards).
+0. **(2026-10-24) Nouveau candidat : estimation dans le domaine des retards + précodeur D64 par SC** (`phase4/delay_model_D64`). Reste : 1,1-1,4 bps/Hz jusqu'au génie, faible SNR, coût, une seule graine.
 1. **Massif M=64, K=8** (après le point 0) : même modèle, mêmes références, coût de la chaîne classique complète.
 2. **Carte de fonctionnement** (sans réentraîner) : étalement des retards en continu, SNR pilote.
 3. **À la fin** : graines, robustesse, coûts précis.
@@ -446,6 +448,32 @@ Candidat de départ, figé : attention en fréquence (softmax, fenêtre 49), D=6
 - **Résultat** (20 dB) : UMi 24,11 / UMa 23,54 / RMa 24,89, soit +0,03 à +0,06 bps/Hz par rapport à 49 SC (+0,12 sur RMa à 25 dB). Largeur effective presque inchangée (9,4 / 8,6 / 12,3 SC). **L'écart à la borne génie reste de 2,0 / 2,2 / 1,3 bps/Hz à 20 dB** (2,8 à 4,1 à 25 dB).
 - **Interprétation** (cohérente avec l'hypothèse faite avant le test) : l'attention en fréquence calcule une **moyenne à poids positifs**, c'est-à-dire un lissage passe-bas. Le filtre génie d'un canal à ~20 trajets combine les voisines avec des **coefficients complexes qui tournent en phase** selon les retards ; une moyenne positive ne peut pas le représenter, quelle que soit la fenêtre. Le modèle n'utilise donc qu'une dizaine de SC, même avec 153 disponibles.
 - **Décision** : élargir ne suffit pas. Prochain essai : estimer dans le **domaine des retards** (IFFT de la bande → transformer sur les retards → un gain entre 0 et 1 par retard → FFT), où chaque trajet devient un pic et où le bon traitement redevient une sélection.
+
+### Estimation dans le domaine des retards + précodeur par SC — RETENU, résultat principal (`results/phase4/delay_model_D64.*`, `_D32.*`)
+- **Question** : remplacer l'attention en fréquence (fenêtre 49) par un module sur **toute la bande** dans le domaine des retards (variante a : IFFT des 153 mesures LS du peigne de chaque utilisateur → 2 couches d'attention softmax entre les 153 retards (D=32) → un gain entre 0 et 1 par retard, commun aux 8 antennes → FFT vers 612 SC), puis le précodeur par SC **sans fenêtre** (1 bloc linéaire × 4). Un seul modèle, entraîné sur le débit (perte relative à RZF), lots de 4 tirages complets.
+- **Réglages** : mélange UMi + UMa + RMa, pilote 10 dB, mêmes tirages que les références (vérifié : RZF(LS) identique), graine 0, 40 000 pas (environ 10 min sur L40S, contre 30 à 40 pour le candidat).
+
+Débit à 20 dB (25 dB), bps/Hz :
+
+| | UMi | UMa | RMa |
+|---|---|---|---|
+| WMMSE (LMMSE réaliste) | 24,07 (27,33) | 23,62 (26,79) | 24,20 (27,54) |
+| WMMSE (LMMSE oracle) | 24,02 (27,23) | 23,45 (26,47) | 25,24 (29,61) |
+| candidat (attention en fréquence, W=49) | 24,08 (27,51) | 23,52 (26,79) | 24,84 (28,86) |
+| **retards + précodeur D64** | **24,80 (28,92)** | **24,40 (28,40)** | **25,05 (29,58)** |
+| retards + précodeur D32 | 23,97 (27,38) | 23,56 (26,86) | 23,98 (27,58) |
+| WMMSE (génie par lien) | 26,09 | 25,77 | 26,19 |
+
+Écart du modèle D64 à WMMSE(LMMSE réaliste) : **+0,73 / +0,79 / +0,85 bps/Hz à 20 dB (+3,0 / +3,3 / +3,5 %)** et **+1,6 / +1,6 / +2,0 à 25 dB (+5,8 / +6,0 / +7,4 %)** ; +0,11 à +0,21 à 15 dB ; −0,07 à −0,24 de 0 à 10 dB.
+
+**Conclusions :**
+- **Pour la première fois, le modèle bat la meilleure méthode classique réaliste dans les TROIS scénarios** à moyen et fort SNR, et pas seulement sur RMa. Il bat même WMMSE avec la covariance oracle sur UMi et UMa (et l'égale presque sur RMa, 25,05 contre 25,24).
+- **Il comble environ 40 % de l'écart à la borne génie** (il reste 1,1 à 1,4 bps/Hz à 20 dB, contre 1,3 à 2,2 pour le candidat).
+- **L'adaptation est visible et interprétable** (figure de droite) : le modèle garde en moyenne **14 retards sur RMa** (canal compact) contre **23-24 en ville** (canal plus étalé), sans connaître le scénario. Les gains décroissent avec le retard, comme un filtre de Wiener.
+- **Le précodeur a besoin de D=64** : avec D=32, on retombe au niveau du candidat. Ce n'est donc pas la compression d'une fenêtre qui exigeait D=64 : c'est la précision du précodage à fort SNR.
+- **Coût** : 58 k paramètres, environ 602 k MAC/SC (le précodeur D64 en représente l'essentiel ; l'estimation, faite une fois par bande, est faible une fois répartie).
+- **Toujours sous WMMSE au faible SNR** (−0,1 à −0,2 bps/Hz de 0 à 10 dB) : limite du précodeur, inchangée.
+- *Limite* : une seule graine.
 
 ## Prochaine étape
 (1) 3 graines pour l'attention en fréquence D64. (2) Réduire le coût. (3) Bootstrap sur les tirages. (4) Faire le point avant d'aller plus loin (pilote 20 dB, vieillissement, M64).

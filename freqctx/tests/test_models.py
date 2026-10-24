@@ -5,7 +5,8 @@ import numpy as np
 import tensorflow as tf
 
 from models.per_sc import PerSCPrecoder
-from train import WindowedPool
+from train import DropPool, WindowedPool, evaluate
+from models.delay_domain import DelayDomainPrecoder
 
 
 def main():
@@ -54,6 +55,7 @@ def main():
     print(f"[ok] tete de puissance : equivariance (ecart {err:.1e}), puissance 1, "
           f"{m.count_params()} params, {m.macs_per_sc(K)} MAC/SC")
     test_windowed_pool()
+    test_delay_domain()
     print("TOUS LES TESTS PASSENT")
 
 
@@ -70,6 +72,28 @@ def test_windowed_pool():
     xi, yi = p.sample(6)
     assert xi.shape == (6, 5, 4, 8) and yi.shape == (6, 4, 8)
     print("[ok] WindowedPool : centre, bords bornes, paquets, tirage")
+
+
+
+def test_delay_domain():
+    F, K, M, B = 48, 4, 8, 3
+    h = tf.complex(tf.random.normal([B, F, K, M]), tf.random.normal([B, F, K, M]))
+    m = DelayDomainPrecoder(F, K, M, d=16, layers=2, tied=True, attn="linear")
+    w = m(h, tf.fill([B], 10.0))
+    assert w.shape == (B, F, M, K)
+    assert np.allclose(tf.reduce_sum(tf.abs(w) ** 2, axis=[2, 3]).numpy(), 1.0, atol=1e-4)
+    est = m.estimator
+    est.gain.bias.assign([30.0])                      # gains = 1 partout
+    est.gain.kernel.assign(tf.zeros_like(est.gain.kernel))
+    h_hat = est(h)
+    for k in range(K):                                # aux SC pilotes : exactement le LS
+        idx = k + K * np.arange(F // K)
+        err = float(tf.reduce_max(tf.abs(tf.gather(h_hat[:, :, k], idx, axis=1)
+                                          - tf.gather(h[:, :, k], idx, axis=1))))
+        assert err < 1e-4, (k, err)
+    r = evaluate(m, DropPool(h, h), [10])
+    print(f"[ok] domaine des retards : forme, puissance, gain=1 -> LS exact aux pilotes, "
+          f"evaluation par tirage ({r[0]:.2f}), {m.count_params()} params")
 
 
 if __name__ == "__main__":
