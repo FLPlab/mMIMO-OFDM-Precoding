@@ -45,6 +45,31 @@ Sortie structurée W = Hᴴ C ; biais Gram ; normalisation de phase ; attention 
 3. **À la fin** : graines, robustesse, coûts précis.
 **Mis de côté** : vieillissement du CSI, ray-tracing, BLER LDPC, contrôle du débit, PRG, quantification.
 
+### F. Positionnement (revue de littérature du 2026-10-24, papiers vérifiés)
+- **Concurrent le plus proche** : Park, Sohrabi, Ghosh, Andrews, TWC 2025 (arXiv:2402.01033). Bout en bout TDD, battent LMMSE + WMMSE, mais en **apprenant les pilotes** et **par RB** (sans exploiter la fréquence). Nous : pilotes standard (peigne), toute la bande dans le domaine des retards.
+- **Autres proches** : Jha, Guo, Lau 2025 (arXiv:2504.20777 : parcimonie en retard, mais objectif EVM et précodeur déroulé) ; Jang et al. TCOM 2022 ; Attiah/Sohrabi/Yu TWC 2022 ; Guo et al. 2024-2025 (FDD).
+- **À citer comme ancêtre de notre masque** : Neumann, Wiese, Utschick, « Learning the MMSE Channel Estimator », TSP 2018 (arXiv:1707.05674) ; et Ha et al. 2025 (arXiv:2506.00452 : un transformer produit un filtre MMSE linéaire). Les deux sont entraînés sur l'erreur d'estimation, pas sur le débit.
+- **Théorie à l'appui du précodeur** : attention linéaire = itérations de gradient préconditionné (Ahn et al. NeurIPS 2023 ; Gatmiry et al. ICML 2024 ; Lutz et al. NeurIPS 2025) ; transformers en boucle (Yang et al. ICLR 2024 ; Giannou et al. ICML 2023).
+- **Notre groupe** (travaux compagnons, pas concurrents) : Emery 2025, Kasalaee/Sala Mangituka et al. SiPS 2026, Hasanzadeh Karkan et al. 2026 (PaPP). Aucun ne fait l'estimation.
+- **Nouveauté** : estimation sur toute la bande dans le domaine des retards (masque appris) + précodeur à attention linéaire en boucle, **appris ensemble sur le débit**, évalués dans Sionna contre LMMSE + WMMSE et une borne génie. Aucun papier de précodage appris trouvé n'utilise Sionna.
+
+**Objections qu'un relecteur fera (à traiter) :**
+1. **Référence robuste** : un WMMSE qui tient compte de l'erreur d'estimation (covariance d'erreur de LMMSE ; WMMSE stochastique / SAA, Razaviyayn 2016, Joudeh & Clerckx 2016 ; GPIP, Choi et al. 2020). Elle réduira probablement une partie de notre gain au fort SNR.
+2. **Attribution** : notre estimateur + WMMSE classique, et LMMSE + notre précodeur, pour séparer le gain d'estimation du gain de précodage.
+3. **Équité** : dire exactement ce que chaque référence connaît ; tester sur un scénario non vu à l'entraînement.
+4. **Faible SNR**, **coût** (montrer la croissance avec M), **réalisme** (BLER LDPC, vieillissement, plusieurs SNR pilote).
+
+**Idées simples proposées par la littérature** : (a) grille de retards sur-échantillonnée ou masque à bande étroite contre la fuite (DDA-Net, arXiv:2604.05389) ; (b) donner au précodeur une estimation de l'erreur résiduelle ; (c) initialiser la boucle du précodeur avec RZF et n'apprendre que la correction (SALLO-M, arXiv:2510.13077), pour le faible SNR ; (d) plus d'itérations à l'inférence.
+
+### G. Coût (MAC réelles par SC, estimation + précodage)
+| | M8K4 | M64K8 |
+|---|---|---|
+| LMMSE + RZF | 21 k | 193 k |
+| LMMSE + WMMSE (30 it., double précision) | 122 k | 19 100 k |
+| notre modèle (retards + précodeur D64) | 602 k (dont 541 k de précodeur) | 1 418 k |
+
+En M8K4, le modèle coûte environ 5 fois LMMSE + WMMSE ; en M64K8, environ **13 fois moins** (WMMSE croît en M³, le modèle quasi linéairement). WMMSE exige aussi des inversions en double précision ; le modèle n'a que des multiplications et additions, quantifiables.
+
 ---
 
 ## Journal détaillé

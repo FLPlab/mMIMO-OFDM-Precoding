@@ -244,7 +244,7 @@ def references(data, snrs_db):
 
 
 def run_variant(name, model, pool, h_eval, snrs_db, ref, steps, weights_dir=None, lr=1e-3,
-                seed=0, loss="rate"):
+                seed=0, loss="rate", snr_range=(0.0, 25.0)):
     """Entraine, evalue et resume un modele ; sauve les poids si weights_dir.
     La graine fixe l'initialisation des poids ET le tirage des donnees."""
     if isinstance(pool, DropPool):
@@ -259,7 +259,7 @@ def run_variant(name, model, pool, h_eval, snrs_db, ref, steps, weights_dir=None
     model(sample_in, tf.zeros([sample_in.shape[0]]))  # construit les poids (init graine)
     val = (subsample(h_eval, 20), [0, 10, 20])
     hist = train(model, pool, steps=steps, lr=lr, seed=seed, log_every=max(steps // 4, 1),
-                 val=val, loss=loss)
+                 val=val, loss=loss, snr_range=snr_range)
     rate = evaluate(model, h_eval, snrs_db)
     if weights_dir:
         os.makedirs(weights_dir, exist_ok=True)

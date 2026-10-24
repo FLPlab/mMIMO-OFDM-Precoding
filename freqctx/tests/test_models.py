@@ -91,9 +91,19 @@ def test_delay_domain():
         err = float(tf.reduce_max(tf.abs(tf.gather(h_hat[:, :, k], idx, axis=1)
                                           - tf.gather(h[:, :, k], idx, axis=1))))
         assert err < 1e-4, (k, err)
+    ma = DelayDomainPrecoder(F, K, M, angle_mask=True, d=16, layers=2, tied=True, attn="linear")
+    ma(h, tf.fill([B], 10.0))
+    ea = ma.estimator
+    ea.gain.bias.assign(tf.fill([M], 30.0))
+    ea.gain.kernel.assign(tf.zeros_like(ea.gain.kernel))
+    ha = ea(h)                                         # gains = 1 : la DFT angulaire est unitaire
+    for k in range(K):
+        idx = k + K * np.arange(F // K)
+        assert float(tf.reduce_max(tf.abs(tf.gather(ha[:, :, k], idx, axis=1)
+                                          - tf.gather(h[:, :, k], idx, axis=1)))) < 1e-4
     r = evaluate(m, DropPool(h, h), [10])
     print(f"[ok] domaine des retards : forme, puissance, gain=1 -> LS exact aux pilotes, "
-          f"evaluation par tirage ({r[0]:.2f}), {m.count_params()} params")
+          f"masque retard x angle idem, evaluation par tirage ({r[0]:.2f}), {m.count_params()} params")
 
 
 if __name__ == "__main__":

@@ -35,6 +35,7 @@ def main():
     ap = argparse.ArgumentParser()
     ap.add_argument("--d", type=int, default=64, help="largeur du precodeur par SC")
     ap.add_argument("--est_d", type=int, default=32)
+    ap.add_argument("--angle", action="store_true", help="gain par (retard, angle) (variante b)")
     ap.add_argument("--quick", action="store_true")
     args = ap.parse_args()
     steps, train_drops, eval_drops = (2000, 64, 32) if args.quick else (40000, 352, 192)
@@ -59,8 +60,9 @@ def main():
 
     cfg = SystemConfig()
     model = DelayDomainPrecoder(cfg.num_sc, cfg.num_users, cfg.num_bs_ant, est_d=args.est_d,
-                                d=args.d, layers=4, tied=True, attn="linear")
-    name = f"delay_est{args.est_d}_D{args.d}_T4_linear_melange_p10"
+                                angle_mask=args.angle, d=args.d, layers=4, tied=True, attn="linear")
+    tag = "_angle" if args.angle else ""
+    name = f"delay{tag}_est{args.est_d}_D{args.d}_T4_linear_melange_p10"
     run = run_variant(name, model, train_pool, DropPool(*ev["umi"]), SNRS_DB,
                       {"RZF": ref_file["references"]["umi"]["RZF (LS)"]}, steps, seed=0,
                       loss="rel_rzf", weights_dir=None if args.quick else W4)
@@ -70,9 +72,10 @@ def main():
         rates[scen] = evaluate(model, pool, SNRS_DB)
         hc, _ = next(pool.chunks(16))
         model(hc, tf.fill([hc.shape[0]], 20.0))
-        g = model.estimator.last_gain.numpy()                  # [B, K, N]
-        gains[scen] = {"profile": g.mean(axis=(0, 1)).tolist(),
-                       "kept_taps_mean": float(g.sum(axis=-1).mean())}
+        g = model.estimator.last_gain.numpy()                  # [B, K, N, 1 ou M]
+        gains[scen] = {"profile": g.mean(axis=(0, 1, 3)).tolist(),
+                       "kept_taps_mean": float(g.sum(axis=2).mean()),
+                       "kept_bins_mean": float(g.sum(axis=(2, 3)).mean())}
         refs = ref_file["references"][scen]
         print(f"{scen} @20dB : modele {rates[scen][4]:.2f} | candidat (freq. 49) "
               f"{list(cand['models'].values())[0][scen][4]:.2f} | WMMSE(LMMSE melange) "
@@ -80,7 +83,7 @@ def main():
               f" | retards gardes {gains[scen]['kept_taps_mean']:.1f}")
 
     payload = {"scenarios": SCENARIOS, "pilot_snr_db": PILOT, "snrs_db": SNRS_DB,
-               "model": {"est_d": args.est_d, "d": args.d, "layers": 4, "tied": True,
+               "model": {"est_d": args.est_d, "d": args.d, "angle_mask": args.angle, "layers": 4, "tied": True,
                          "attn": "linear", "params": run["params"],
                          "macs_per_sc": run["macs_per_sc"]},
                "steps": steps, "rates": rates, "delay_gains": gains,
@@ -90,7 +93,8 @@ def main():
                                "WMMSE (genie par lien)": genie[s]["WMMSE (genie par lien)"],
                                "candidat freq. W49": list(cand["models"].values())[0][s]}
                            for s in SCENARIOS}}
-    save("phase4", f"delay_model_D{args.d}" + ("_quick" if args.quick else ""), payload, plot(payload))
+    save("phase4", f"delay_model{tag}_D{args.d}" + ("_quick" if args.quick else ""), payload,
+         plot(payload))
 
 
 def plot(p):
