@@ -709,6 +709,24 @@ Débit somme (bps/Hz), UMi (UMa et RMa identiques à ±1) :
 - **En massif, il y a deux difficultés distinctes** : (a) conserver l'information spatiale de 64 antennes (résolue par la sortie structurée) ; (b) inverser une matrice d'interaction 8×8 entre utilisateurs (non résolue).
 - **Fait important** : en massif, RZF en CSI parfait vaut déjà WMMSE (75,26 contre 75,29). Il n'y a rien à gagner en précodage pur ; toute la marge est dans l'estimation (RZF(LS) 66 → génie 74).
 
+### Options 2 et 3 en massif : attention de Gram contre force brute — RETENU (`results/phase5/precoder_parfait_gram.json`, `_d256.json`)
+Même diagnostic (précodeur seul, CSI parfait, M=64, K=8). % de RZF (UMi ; UMa et RMa identiques à ±0,3) :
+
+| Précodeur | 0 dB | 10 dB | 20 dB | 25 dB | params | MAC/SC |
+|---|---|---|---|---|---|---|
+| base (tokens d'utilisateur, D64) | 66,0 | 64,5 | 50,0 | 43,2 | 50 k | 1,21 M |
+| D128 | 86,7 | 87,9 | 76,5 | 68,1 | 166 k | 4,52 M |
+| **D256 (option 3, force brute)** | 99,9 | 100,1 | 99,8 | 99,4 | 593 k | **17,4 M** |
+| **attention de Gram (option 2)** | **100,4** | **100,3** | **100,1** | **99,9** | **6,6 k** | **1,75 M** |
+| *WMMSE (CSI parfait)* | *100,1* | *100,1* | *100,0* | *100,0* | | *≈ 19 M (+ LMMSE)* |
+
+**Conclusions :**
+- **Le précodeur à attention de Gram atteint WMMSE à tous les SNR**, y compris au faible SNR, avec **6 600 paramètres** (90 fois moins que D256) et 1,75 M MAC/SC (10 fois moins que D256 et que WMMSE), **sans aucune inversion de matrice**. Il converge dès 10 000 pas.
+- **La force brute marche aussi (D256 : environ 100 %)**, mais elle coûte autant que WMMSE : l'argument du coût disparaît.
+- **Pourquoi ça marche** : (a) la sortie W = Ĥᴴ C garde l'information des 64 antennes sans la faire passer par un état étroit ; (b) l'état par paire d'utilisateurs, mis à jour 4 fois avec la matrice de Gram (une « attention » dont les poids sont les produits scalaires entre canaux), représente une inversion itérative de la matrice 8×8 ; (c) le coût ne dépend de M que par G et W.
+- **C'est la confirmation directe de l'intuition de la phase 1** : l'attention linéaire en boucle réalise une inversion itérative. Il suffisait de lui donner les bons objets (paires d'utilisateurs, poids = Gram).
+- **Prochain** : (1) en massif, de bout en bout : module des retards + précodeur de Gram, sur le CSI estimé ; (2) en M8K4 : remplacer le précodeur actuel par celui de Gram (devrait combler le trou au faible SNR, sans inversion, et réduire le coût).
+
 ## Prochaine étape
 (1) 3 graines pour l'attention en fréquence D64. (2) Réduire le coût. (3) Bootstrap sur les tirages. (4) Faire le point avant d'aller plus loin (pilote 20 dB, vieillissement, M64).
 Cible principale ensuite (phases 2–3) : le régime pilote 10 dB, où il reste 2,7 à 5,9 bps/Hz après LMMSE.
