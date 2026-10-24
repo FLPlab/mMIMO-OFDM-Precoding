@@ -7,6 +7,7 @@ import tensorflow as tf
 from models.per_sc import PerSCPrecoder
 from train import DropPool, WindowedPool, evaluate
 from models.delay_domain import DelayDomainPrecoder
+from models.gram_precoder import GramPrecoder
 
 
 def main():
@@ -64,6 +65,13 @@ def main():
     err = float(tf.reduce_max(tf.abs(m(h, snr) - rzf_ref(hn, tf.reshape(10.0 ** (-snr / 10.0), [-1, 1, 1])))))
     assert err < 1e-5, err
     print(f"[ok] rzf_init : demarre exactement sur RZF (ecart {err:.1e})")
+    mg = GramPrecoder(M, d=8, hidden=16)
+    w = mg(h, snr)
+    err = float(tf.reduce_max(tf.abs(mg(tf.gather(h, perm, axis=1), snr) - tf.gather(w, perm, axis=2))))
+    assert w.shape == (N, M, K) and err < 1e-5, err
+    assert np.allclose(tf.reduce_sum(tf.abs(w) ** 2, [1, 2]).numpy(), 1.0, atol=1e-4)
+    print(f"[ok] precodeur a attention de Gram : forme, puissance, equivariance (ecart {err:.1e}), "
+          f"{mg.count_params()} params")
     test_windowed_pool()
     test_delay_domain()
     print("TOUS LES TESTS PASSENT")
