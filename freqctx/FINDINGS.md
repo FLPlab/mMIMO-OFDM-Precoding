@@ -441,6 +441,12 @@ Candidat de départ, figé : attention en fréquence (softmax, fenêtre 49), D=6
 - **Résultat** : +0,02 à +0,05 bps/Hz partout par rapport au candidat (0 dB : 5,24 / 5,18 / 5,30 contre 5,20 / 5,13 / 5,25). L'écart au faible SNR face à WMMSE(LMMSE réaliste) reste de −0,12 à −0,19 bps/Hz.
 - **Décision** : écarté (une option de plus pour presque rien). Le trou au faible SNR (environ 0,15 bps/Hz) pèse peu face à la marge d'estimation (environ 2 bps/Hz, borne génie). L'option `power_head` reste dans le code, désactivée par défaut.
 
+### Fenêtre élargie à 153 SC (attention en fréquence) — NÉGATIF (`results/phase4/mixed_p10_fattn_D64_W153.*`)
+- **Question** : élargir simplement la fenêtre (49 → 153 SC, un quart de la bande) rapproche-t-il de la borne génie ?
+- **Résultat** (20 dB) : UMi 24,11 / UMa 23,54 / RMa 24,89, soit +0,03 à +0,06 bps/Hz par rapport à 49 SC (+0,12 sur RMa à 25 dB). Largeur effective presque inchangée (9,4 / 8,6 / 12,3 SC). **L'écart à la borne génie reste de 2,0 / 2,2 / 1,3 bps/Hz à 20 dB** (2,8 à 4,1 à 25 dB).
+- **Interprétation** (cohérente avec l'hypothèse faite avant le test) : l'attention en fréquence calcule une **moyenne à poids positifs**, c'est-à-dire un lissage passe-bas. Le filtre génie d'un canal à ~20 trajets combine les voisines avec des **coefficients complexes qui tournent en phase** selon les retards ; une moyenne positive ne peut pas le représenter, quelle que soit la fenêtre. Le modèle n'utilise donc qu'une dizaine de SC, même avec 153 disponibles.
+- **Décision** : élargir ne suffit pas. Prochain essai : estimer dans le **domaine des retards** (IFFT de la bande → transformer sur les retards → un gain entre 0 et 1 par retard → FFT), où chaque trajet devient un pic et où le bon traitement redevient une sélection.
+
 ## Prochaine étape
 (1) 3 graines pour l'attention en fréquence D64. (2) Réduire le coût. (3) Bootstrap sur les tirages. (4) Faire le point avant d'aller plus loin (pilote 20 dB, vieillissement, M64).
 Cible principale ensuite (phases 2–3) : le régime pilote 10 dB, où il reste 2,7 à 5,9 bps/Hz après LMMSE.
