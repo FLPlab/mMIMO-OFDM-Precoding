@@ -37,6 +37,7 @@ def main():
     ap.add_argument("--est_d", type=int, default=32)
     ap.add_argument("--angle", action="store_true", help="gain par (retard, angle) (variante b)")
     ap.add_argument("--banded", action="store_true", help="filtre complexe sur 3 retards voisins")
+    ap.add_argument("--oversample", type=int, default=1, help="grille de retards O fois plus fine")
     ap.add_argument("--quick", action="store_true")
     ap.add_argument("--load", action="store_true", help="recharger les poids deja entraines (pas d'entrainement)")
     ap.add_argument("--train_drops", type=int, default=352, help="tirages d'entrainement par scenario")
@@ -65,9 +66,11 @@ def main():
 
     cfg = SystemConfig()
     model = DelayDomainPrecoder(cfg.num_sc, cfg.num_users, cfg.num_bs_ant, est_d=args.est_d,
-                                angle_mask=args.angle, banded=args.banded, d=args.d, layers=4,
+                                angle_mask=args.angle, banded=args.banded,
+                                oversample=args.oversample, d=args.d, layers=4,
                                 tied=True, attn="linear")
-    tag = ("_angle" if args.angle else "") + ("_bande" if args.banded else "")
+    tag = (("_angle" if args.angle else "") + ("_bande" if args.banded else "")
+           + (f"_os{args.oversample}" if args.oversample > 1 else ""))
     if not args.quick and (train_drops != 352 or steps != 40000):
         tag += f"_n{train_drops}_s{steps // 1000}k"                # donnees / entrainement non standard
     name = f"delay{tag}_est{args.est_d}_D{args.d}_T4_linear_melange_p10"
@@ -98,7 +101,7 @@ def main():
 
     payload = {"scenarios": SCENARIOS, "pilot_snr_db": PILOT, "snrs_db": SNRS_DB,
                "model": {"est_d": args.est_d, "d": args.d, "angle_mask": args.angle,
-                         "banded": args.banded, "layers": 4, "tied": True,
+                         "banded": args.banded, "oversample": args.oversample, "layers": 4, "tied": True,
                          "attn": "linear", "params": run["params"],
                          "macs_per_sc": run["macs_per_sc"]},
                "steps": steps, "train_drops_per_scenario": train_drops, "rates": rates, "delay_gains": gains,

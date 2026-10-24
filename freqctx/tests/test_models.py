@@ -110,9 +110,19 @@ def test_delay_domain():
         idx = k + K * np.arange(F // K)
         assert float(tf.reduce_max(tf.abs(tf.gather(hb[:, :, k], idx, axis=1)
                                           - tf.gather(h[:, :, k], idx, axis=1)))) < 1e-4
+    mo = DelayDomainPrecoder(F, K, M, banded=True, oversample=2, d=16, layers=2, tied=True,
+                             attn="linear")
+    mo(h, tf.fill([B], 10.0))
+    eo = mo.estimator
+    eo.gain.bias.assign([30.0, 0, 0, 0, 0, 0])         # grille fine, gains = 1 : LS exact
+    ho = eo(h)
+    for k in range(K):
+        idx = k + K * np.arange(F // K)
+        assert float(tf.reduce_max(tf.abs(tf.gather(ho[:, :, k], idx, axis=1)
+                                          - tf.gather(h[:, :, k], idx, axis=1)))) < 1e-3
     r = evaluate(m, DropPool(h, h), [10])
     print(f"[ok] domaine des retards : forme, puissance, gain=1 -> LS exact aux pilotes, "
-          f"masque retard x angle et filtre a bande idem, evaluation par tirage ({r[0]:.2f}), {m.count_params()} params")
+          f"masque retard x angle, filtre a bande et grille fine idem, evaluation par tirage ({r[0]:.2f}), {m.count_params()} params")
 
 
 if __name__ == "__main__":
