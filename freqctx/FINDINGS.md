@@ -28,7 +28,7 @@ Réglages par défaut : M=8, K=4, 612 SC (20 MHz), pilotes Sionna en peigne + LS
 | B5 | La fenêtre large et la spécialisation par scénario comptent autant l'une que l'autre | `phase3/mixed_p10_specialiste_rma` |
 
 ### C. Négatifs (à citer brièvement, ne pas refaire)
-Sortie structurée W = Hᴴ C ; biais Gram ; normalisation de phase ; attention signée avec fenêtre ; attention en fréquence à D=32 ; RZF robuste ; interpolation au plus proche voisin.
+Sortie structurée W = Hᴴ C ; biais Gram ; normalisation de phase ; attention signée avec fenêtre ; attention en fréquence à D=32 ; RZF robuste ; interpolation au plus proche voisin ; tête de puissance (+0,03 bps/Hz) ; estimateur classique dans le domaine des retards (limité par la fuite, battu par notre modèle).
 
 ### D. Limites connues du résultat actuel
 - Le gain ne tient que là où la covariance est mal adaptée (RMa) et à SNR moyen/fort ; au faible SNR, environ −0,2 bps/Hz partout (limite du précodeur).
@@ -37,7 +37,8 @@ Sortie structurée W = Hᴴ C ; biais Gram ; normalisation de phase ; attention 
 - Coût : 595 k MAC/SC. À comparer à la **chaîne complète** LMMSE + WMMSE (estimée à 150-200 k MAC/SC avec inversions en double précision, à calculer précisément), pas à RZF seul.
 
 ### E. Plan (simple, sans s'éparpiller)
-1. **Massif M=64, K=8** : même modèle, mêmes références, coût de la chaîne classique complète.
+0. **(nouveau, 2026-10-24) La marge est dans l'estimation** : borne génie par lien = environ 2 bps/Hz au-dessus de notre modèle, partout (`phase4/genie_bound_p10`). Priorité : donner toute la bande au modèle (fenêtre plus large, puis domaine des retards).
+1. **Massif M=64, K=8** (après le point 0) : même modèle, mêmes références, coût de la chaîne classique complète.
 2. **Carte de fonctionnement** (sans réentraîner) : étalement des retards en continu, SNR pilote.
 3. **À la fin** : graines, robustesse, coûts précis.
 **Mis de côté** : vieillissement du CSI, ray-tracing, BLER LDPC, contrôle du débit, PRG, quantification.
@@ -434,6 +435,11 @@ Candidat de départ, figé : attention en fréquence (softmax, fenêtre 49), D=6
 - **Pourquoi le génie est si bon** : le canal d'un lien n'est qu'une somme d'une vingtaine de trajets. Connaissant leurs retards, il ne reste à estimer que leurs gains, environ 20 inconnues pour 153 mesures par antenne, ce qui retire énormément de bruit. C'est la **parcimonie dans le domaine des retards**, exploitée parfaitement.
 - **Ce n'est pas qu'une borne théorique** : les retards et puissances des trajets varient lentement (grande échelle), contrairement aux gains rapides. Une BS peut donc les apprendre au fil des slots. Et un modèle qui voit **toute la bande** (et pas une fenêtre de 49 SC) pourrait en exploiter une partie directement.
 - **Notre fenêtre de 49 SC n'utilise qu'environ 8 % de la bande** : c'est probablement ce qui limite. **C'est la piste qui peut faire battre WMMSE franchement.**
+
+### Tête de puissance — ÉCARTÉ (gain négligeable) (`results/phase4/mixed_p10_fattn_D64_powerhead.*`)
+- **Question** : séparer direction et puissance par utilisateur (softmax sur les puissances, sans inversion) comble-t-il le trou au faible SNR face à WMMSE ?
+- **Résultat** : +0,02 à +0,05 bps/Hz partout par rapport au candidat (0 dB : 5,24 / 5,18 / 5,30 contre 5,20 / 5,13 / 5,25). L'écart au faible SNR face à WMMSE(LMMSE réaliste) reste de −0,12 à −0,19 bps/Hz.
+- **Décision** : écarté (une option de plus pour presque rien). Le trou au faible SNR (environ 0,15 bps/Hz) pèse peu face à la marge d'estimation (environ 2 bps/Hz, borne génie). L'option `power_head` reste dans le code, désactivée par défaut.
 
 ## Prochaine étape
 (1) 3 graines pour l'attention en fréquence D64. (2) Réduire le coût. (3) Bootstrap sur les tirages. (4) Faire le point avant d'aller plus loin (pilote 20 dB, vieillissement, M64).
