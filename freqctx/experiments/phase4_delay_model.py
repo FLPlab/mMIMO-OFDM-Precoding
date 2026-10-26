@@ -45,6 +45,7 @@ def main():
     ap.add_argument("--precoder", default="persc", choices=["persc", "gram", "trig"],
                     help="precodeur par SC : tokens d'utilisateur (persc) ou etat par paire (phase 6)")
     ap.add_argument("--p_layers", type=int, default=8, help="couches du precodeur par paire")
+    ap.add_argument("--p_untied", action="store_true", help="couches distinctes (transformer standard)")
     ap.add_argument("--quick", action="store_true")
     ap.add_argument("--load", action="store_true", help="recharger les poids deja entraines (pas d'entrainement)")
     ap.add_argument("--train_drops", type=int, default=352, help="tirages d'entrainement par scenario")
@@ -77,7 +78,7 @@ def main():
                    layers=4, tied=True, attn="linear")
     else:                                                      # precodeur par paire (phase 6)
         pkw = dict(precoder_arch="pair", d=16, hidden=64, layers=args.p_layers,
-                   mix={"gram": "gram", "trig": "triangular_g"}[args.precoder])
+                   mix={"gram": "gram", "trig": "triangular_g"}[args.precoder], tied=not args.p_untied)
     model = DelayDomainPrecoder(cfg.num_sc, cfg.num_users, cfg.num_bs_ant, est_d=args.est_d,
                                 angle_mask=args.angle, banded=args.banded,
                                 oversample=args.oversample, max_taps=args.max_taps, **pkw)
@@ -86,7 +87,8 @@ def main():
            + (f"_L{args.max_taps}" if args.max_taps else "")
            + ("_snrall" if args.snr_every else "") + ("_rzf0" if args.rzf_init else "")
            + ("_mrt0" if args.mrt_init else "")
-           + ("" if args.precoder == "persc" else f"_{args.precoder}L{args.p_layers}"))
+           + ("" if args.precoder == "persc" else f"_{args.precoder}L{args.p_layers}")
+           + ("_untied" if args.p_untied else ""))
     if not args.quick and (train_drops != 352 or steps != 40000):
         tag += f"_n{train_drops}_s{steps // 1000}k"                # donnees / entrainement non standard
     name = f"delay{tag}_est{args.est_d}_D{args.d}_T4_linear_melange_p10"
@@ -116,7 +118,7 @@ def main():
               f" | retards gardes {gains[scen]['kept_taps_mean']:.1f}")
 
     payload = {"scenarios": SCENARIOS, "pilot_snr_db": PILOT, "snrs_db": SNRS_DB,
-               "model": {"precoder": args.precoder, "p_layers": args.p_layers,
+               "model": {"precoder": args.precoder, "p_layers": args.p_layers, "p_untied": args.p_untied,
                          "est_d": args.est_d, "d": args.d, "angle_mask": args.angle,
                          "banded": args.banded, "oversample": args.oversample,
                          "max_taps": args.max_taps, "snr_every": args.snr_every,
