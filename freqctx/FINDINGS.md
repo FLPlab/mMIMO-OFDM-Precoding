@@ -864,6 +864,28 @@ Sans réentraîner : 12 passages (au lieu de 8) améliorent les cas difficiles (
 - **En massif, +3,7 / +3,7 / +4,5 bps/Hz sur le meilleur classique réaliste à 20 dB** (+5,4 à +6,5 %), +7 à +9 à 25 dB ; ≥ classique à tous les SNR ; à 0,1–1,8 du génie.
 - **Les deux précodeurs donnent le même débit en massif standard** : le précodeur n'y est plus le facteur limitant, c'est l'estimation (écart au génie 1,0 / 1,8 / 0,1). Le transformer par paires ne se distingue que sur les cas difficiles (M8K4, corrélés, haut SNR).
 
+### Phase 6, compléments : coût, entraînement plus long, graine, données en massif
+**Frontière coût / performance** (transformer par paires, couches distinctes ; % de RZF ; `results/phase6/trig_*_untied*.json`) :
+
+| variante | params | MAC/SC M64K8 / M8K4 | vues 20 dB | vues 30 dB | non vues 30 dB | pire config 30 dB |
+|---|---|---|---|---|---|---|
+| L8, FFN 64, **80 000 pas** | 70 k | 4,60 M / 1,11 M | 101,4 | **100,0** | **100,4** | ρ0,95 97,7 |
+| L8, FFN 64 | 70 k | 4,60 M / 1,11 M | 101,1 | 98,9 | 99,7 | ρ0,95 94,4 |
+| L8, FFN 32 | 45 k | 3,03 M / 0,72 M | 100,8 | 97,9 | 98,2 | — |
+| L6, FFN 64 | 53 k | 3,46 M / 0,83 M | 100,7 | 98,0 | 97,8 | — |
+| **L8, FFN 16** | 32 k | **2,24 M / 0,52 M** | 100,1 | 96,2 | 97,3 | — |
+| L6, FFN 32 | 33 k | 2,28 M / 0,54 M | 100,2 | 95,8 | 97,8 | — |
+| L4, FFN 64 | 35 k | 2,32 M / 0,56 M | 99,5 | 94,1 | 96,1 | — |
+| *Gram L8 partagé (réf.)* | 6,6 k | 3,45 M / 0,82 M | 97,9 | 91,5 | 97,7 | ρ0,95 73,9 |
+
+- **Entraîner 2× plus longtemps ferme presque tout l'écart** : 100,0 % de RZF en moyenne à 30 dB sur les configurations vues, 97,7 % au pire (ρ = 0,95).
+- **À coût égal, la profondeur bat la largeur** (≈ 2,3 M MAC : L8/FFN16 96,2 > L6/FFN32 95,8 > L4/FFN64 94,1). Avec 8 couches étroites (2,2 M MAC en massif, 0,52 M en M8K4), le transformer par paires bat Gram L8 qui coûte 1,5× plus.
+- Seule configuration encore loin de WMMSE : M8K8 jamais vu à 30 dB (74 % de WMMSE ; WMMSE y dépasse RZF de 33 %).
+
+**De bout en bout M8K4, graine 1** (`results/phase4/..._trigL8_untied_s1_...`) : 25,87 / 25,48 / 26,28 à 20 dB, identique à ±0,01 à la graine 0.
+
+**Massif de bout en bout, 3× plus de données (1 056 tirages/scénario, 80 000 pas, Gram L8)** (`results/phase5/massive_model_gramL8_n1056_s80k.json`) : 72,91 / 72,00 / 74,08 à 20 dB (+0,21 / +0,27 / +0,10 sur 352 tirages) ; écart au génie 0,8 / 1,5 / 0. L'écart restant en massif est l'estimation (UMa surtout), pas le précodeur.
+
 ## Prochaine étape
 (1) 3 graines pour l'attention en fréquence D64. (2) Réduire le coût. (3) Bootstrap sur les tirages. (4) Faire le point avant d'aller plus loin (pilote 20 dB, vieillissement, M64).
 Cible principale ensuite (phases 2–3) : le régime pilote 10 dB, où il reste 2,7 à 5,9 bps/Hz après LMMSE.
