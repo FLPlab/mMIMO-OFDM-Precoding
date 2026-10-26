@@ -90,7 +90,7 @@ def refs(eval_drops):
                                     "references": res})
 
 
-def model(train_drops, steps, quick):
+def model(train_drops, steps, quick, precoder="persc", p_layers=8, p_untied=False):
     c0 = cfg_of()
     tr_in, tr_true = [], []
     for i, scen in enumerate(SCENARIOS):
@@ -98,9 +98,15 @@ def model(train_drops, steps, quick):
                         batch=BATCH, flat=False)
         tr_in.append(a), tr_true.append(b)
     pool = DropPool(tf.concat(tr_in, 0), tf.concat(tr_true, 0))
-    net = DelayDomainPrecoder(c0.num_sc, c0.num_users, c0.num_bs_ant, banded=True, oversample=2,
-                              d=64, layers=4, tied=True, attn="linear")
-    name = f"massive_delay_bande_os2_D64_n{train_drops}_s{steps // 1000}k"
+    if precoder == "persc":                                   # precodeur M8K4 transpose (phase 5a)
+        pkw = dict(d=64, layers=4, tied=True, attn="linear")
+        ptag = "_D64"
+    else:                                                     # precodeur par paire (phase 6)
+        pkw = dict(precoder_arch="pair", d=16, hidden=64, layers=p_layers, tied=not p_untied,
+                   mix={"gram": "gram", "trig": "triangular_g"}[precoder])
+        ptag = f"_{precoder}L{p_layers}" + ("_untied" if p_untied else "")
+    net = DelayDomainPrecoder(c0.num_sc, c0.num_users, c0.num_bs_ant, banded=True, oversample=2, **pkw)
+    name = f"massive_delay_bande_os2{ptag}_n{train_drops}_s{steps // 1000}k"
     val = DropPool(tr_in[0][:16], tr_true[0][:16])            # suivi pendant l'entrainement
     run = run_variant(name, net, pool, val, SNRS_DB, {"RZF": [1.0] * len(SNRS_DB)}, steps, seed=0,
                       loss="rel_rzf", weights_dir=None if quick else W5)
@@ -113,7 +119,7 @@ def model(train_drops, steps, quick):
         ev = DropPool(tf.constant(z["ls"]), tf.constant(z["true"]))
         out[scen] = evaluate(net, ev, SNRS_DB)
         print(scen, "@20dB modele", round(out[scen][4], 2), flush=True)
-    save("phase5", "massive_model" + ("_quick" if quick else ""),
+    save("phase5", "massive_model" + ("" if precoder == "persc" else ptag) + ("_quick" if quick else ""),
          {"snrs_db": SNRS_DB, "model": name, "params": run["params"], "macs_per_sc": run["macs_per_sc"],
           "train_drops_per_scenario": train_drops, "steps": steps, "rates": out,
           "training_history": run["history"]})
@@ -126,11 +132,15 @@ def main():
     ap.add_argument("--train_drops", type=int, default=352)
     ap.add_argument("--steps", type=int, default=40000)
     ap.add_argument("--quick", action="store_true")
+    ap.add_argument("--precoder", default="persc", choices=["persc", "gram", "trig"])
+    ap.add_argument("--p_layers", type=int, default=8)
+    ap.add_argument("--p_untied", action="store_true")
     args = ap.parse_args()
     if args.role == "refs":
         refs(16 if args.quick else args.eval_drops)
     else:
-        model(32 if args.quick else args.train_drops, 300 if args.quick else args.steps, args.quick)
+        model(32 if args.quick else args.train_drops, 300 if args.quick else args.steps, args.quick,
+              args.precoder, args.p_layers, args.p_untied)
 
 
 if __name__ == "__main__":

@@ -46,6 +46,7 @@ def main():
                     help="precodeur par SC : tokens d'utilisateur (persc) ou etat par paire (phase 6)")
     ap.add_argument("--p_layers", type=int, default=8, help="couches du precodeur par paire")
     ap.add_argument("--p_untied", action="store_true", help="couches distinctes (transformer standard)")
+    ap.add_argument("--seed", type=int, default=0, help="graine d'initialisation (donnees inchangees)")
     ap.add_argument("--quick", action="store_true")
     ap.add_argument("--load", action="store_true", help="recharger les poids deja entraines (pas d'entrainement)")
     ap.add_argument("--train_drops", type=int, default=352, help="tirages d'entrainement par scenario")
@@ -88,7 +89,7 @@ def main():
            + ("_snrall" if args.snr_every else "") + ("_rzf0" if args.rzf_init else "")
            + ("_mrt0" if args.mrt_init else "")
            + ("" if args.precoder == "persc" else f"_{args.precoder}L{args.p_layers}")
-           + ("_untied" if args.p_untied else ""))
+           + ("_untied" if args.p_untied else "") + (f"_s{args.seed}" if args.seed else ""))
     if not args.quick and (train_drops != 352 or steps != 40000):
         tag += f"_n{train_drops}_s{steps // 1000}k"                # donnees / entrainement non standard
     name = f"delay{tag}_est{args.est_d}_D{args.d}_T4_linear_melange_p10"
@@ -99,7 +100,7 @@ def main():
                "history": [], "reloaded": True}
     else:
         run = run_variant(name, model, train_pool, DropPool(*ev["umi"]), SNRS_DB,
-                          {"RZF": ref_file["references"]["umi"]["RZF (LS)"]}, steps, seed=0,
+                          {"RZF": ref_file["references"]["umi"]["RZF (LS)"]}, steps, seed=args.seed,
                           loss="rel_rzf", weights_dir=None if args.quick else W4)
     rates, gains = {}, {}
     for scen in SCENARIOS:
