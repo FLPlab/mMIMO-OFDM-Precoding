@@ -124,13 +124,18 @@ class DelayEstimator(keras.layers.Layer):
 
 class DelayDomainPrecoder(keras.Model):
     def __init__(self, num_sc, num_users, num_bs_ant, est_d=32, est_layers=2, angle_mask=False,
-                 history=False, banded=False, oversample=1, max_taps=None, **precoder_kw):
+                 history=False, banded=False, oversample=1, max_taps=None, precoder_arch="persc",
+                 **precoder_kw):
         super().__init__()
         self.F, self.K, self.M = num_sc, num_users, num_bs_ant
         self.estimator = DelayEstimator(num_sc, num_users, num_bs_ant, d=est_d, layers=est_layers,
                                         angle_mask=angle_mask, history=history, banded=banded,
                                         oversample=oversample, max_taps=max_taps)
-        self.precoder = PerSCPrecoder(num_bs_ant, **precoder_kw)
+        if precoder_arch == "persc":                                # tokens par utilisateur (phases 1-4)
+            self.precoder = PerSCPrecoder(num_bs_ant, **precoder_kw)
+        else:                                                      # etat par paire (phases 5-6)
+            from models.gram_precoder import GramPrecoder
+            self.precoder = GramPrecoder(num_bs_ant, **precoder_kw)
         self.est_d, self.est_layers = est_d, est_layers
 
     def call(self, h_ls, snr_db, aux=None):

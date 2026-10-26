@@ -69,32 +69,47 @@ class TriangularBlock(keras.layers.Layer):
 
 
 class GramPrecoder(keras.Model):
-    def __init__(self, num_bs_ant, d=16, hidden=64, layers=4, mix="gram", **kw):
+    """mix : "gram" (bloc G.E), "triangular", "triangular_g" (G reinjecte).
+    tied : un seul bloc repete L fois (True) ou L blocs distincts.
+    gnorm : G divise par sa diagonale moyenne (invariance a l'echelle du canal) ;
+            le SNR effectif (snr + 10 log10 echelle) est donne en entree."""
+
+    def __init__(self, num_bs_ant, d=16, hidden=64, layers=4, mix="gram", tied=True, gnorm=False, **kw):
         super().__init__(**kw)
         self.M, self.d, self.hidden, self.L, self.mix = num_bs_ant, d, hidden, layers, mix
+        self.tied, self.gnorm = tied, gnorm
         self.init = keras.layers.Dense(2 * d)
-        if mix == "gram":
-            self.block = GramBlock(d, hidden)               # UN seul bloc, repete L fois
-        else:                                               # "triangular" ou "triangular_g"
-            self.block = TriangularBlock(d, hidden, edge_g=(mix == "triangular_g"))
+
+        def make():
+            if mix == "gram":
+                return GramBlock(d, hidden)
+            return TriangularBlock(d, hidden, edge_g=(mix == "triangular_g"))
+        self.blocks = [make()] if tied else [make() for _ in range(layers)]
         self.read = keras.layers.Dense(2)
 
     def call(self, h, snr_db):
         """h [N, K, M] complex64, snr_db [N] -> W [N, M, K]."""
         K = tf.shape(h)[1]
-        g = tf.matmul(h, h, adjoint_b=True) / self.M         # [N, K, K]
+        M = tf.cast(tf.shape(h)[2], h.dtype)                 # M lu sur l'entree : un modele pour tout M
+        g = tf.matmul(h, h, adjoint_b=True) / M             # [N, K, K]
+        snr_db = tf.cast(snr_db, tf.float32)
+        if self.gnorm:
+            scale = tf.reduce_mean(tf.math.real(tf.linalg.diag_part(g)), axis=-1)   # [N]
+            g = g / tf.cast(scale, g.dtype)[:, None, None]
+            snr_db = snr_db + 10.0 * tf.math.log(scale) / tf.math.log(10.0)
         eye = tf.broadcast_to(tf.eye(K)[None], tf.shape(tf.math.real(g)))
         snr = tf.broadcast_to(tf.reshape(snr_db / 10.0, [-1, 1, 1]), tf.shape(eye))
         f = tf.stack([tf.math.real(g), tf.math.imag(g), tf.abs(g), eye, snr], axis=-1)
         e = _cplx(self.init(f))                             # [N, K, K, d]
-        for _ in range(self.L):
-            e = self.block(e, g)
+        for i in range(self.L):
+            e = self.blocks[0 if self.tied else i](e, g)
         c = _cplx(self.read(_real(e)))[..., 0]               # [N, K, K]
         return normalize_power(tf.matmul(h, c, adjoint_a=True))   # W = h^H C
 
-    def macs_per_sc(self, K):
+    def macs_per_sc(self, K, M=None):
         """MAC reelles par SC : G, initialisation, L x (G.E + FFN), lecture, W = h^H C."""
-        M, d, hd, L = self.M, self.d, self.hidden, self.L
+        M = self.M if M is None else M
+        d, hd, L = self.d, self.hidden, self.L
         per_edge = 5 * 2 * d + L * (4 * d * hd + hd * 2 * d) + 2 * d * 2
         if self.mix.startswith("triangular"):                        # projections a, b ; FFN sur [x, m]
             per_edge += L * 2 * (2 * d + 3 * (self.mix == "triangular_g")) * (2 * d)
