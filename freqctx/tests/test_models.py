@@ -72,6 +72,13 @@ def main():
     assert np.allclose(tf.reduce_sum(tf.abs(w) ** 2, [1, 2]).numpy(), 1.0, atol=1e-4)
     print(f"[ok] precodeur a attention de Gram : forme, puissance, equivariance (ecart {err:.1e}), "
           f"{mg.count_params()} params")
+    mt = GramPrecoder(M, d=8, hidden=16, mix="triangular")
+    w = mt(h, snr)
+    err = float(tf.reduce_max(tf.abs(mt(tf.gather(h, perm, axis=1), snr) - tf.gather(w, perm, axis=2))))
+    assert w.shape == (N, M, K) and err < 1e-5, err
+    assert np.allclose(tf.reduce_sum(tf.abs(w) ** 2, [1, 2]).numpy(), 1.0, atol=1e-4)
+    print(f"[ok] precodeur a attention triangulaire : forme, puissance, equivariance (ecart {err:.1e}), "
+          f"{mt.count_params()} params")
     test_windowed_pool()
     test_delay_domain()
     print("TOUS LES TESTS PASSENT")

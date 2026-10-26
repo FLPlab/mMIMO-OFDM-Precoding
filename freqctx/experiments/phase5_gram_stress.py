@@ -51,9 +51,13 @@ def per_sample(fn, h, snr):
 
 def cond(h, snr):
     K = h.shape[-2]
-    g = tf.matmul(h, h, adjoint_b=True) + K * 10.0 ** (-snr / 10.0) * tf.eye(K, dtype=h.dtype)
-    s = np.real(tf.linalg.eigvalsh(g).numpy())
-    return s[:, -1] / s[:, 0]
+    out = []
+    for i in range(0, h.shape[0], CHUNK):                 # par paquets (memoire GPU 16 Go)
+        g = tf.matmul(h[i:i + CHUNK], h[i:i + CHUNK], adjoint_b=True) \
+            + K * 10.0 ** (-snr / 10.0) * tf.eye(K, dtype=h.dtype)
+        s = np.real(tf.linalg.eigvalsh(g).numpy())
+        out.append(s[:, -1] / s[:, 0])
+    return np.concatenate(out)
 
 
 def correlate(h, rho):

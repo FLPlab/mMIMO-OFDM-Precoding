@@ -758,6 +758,28 @@ Même diagnostic (précodeur seul, CSI parfait, M=64, K=8). % de RZF (UMi ; UMa 
 - **Conséquence pour M8K4** (M/K=2, conditionnement typique plus élevé) : le précodeur de Gram à 4 étapes n'y est pas garanti ; c'est à mesurer directement.
 - Note : à M ≤ 16, WMMSE dépasse nettement RZF (M=8 : 34,7 contre 25,5) ; en massif standard, RZF ≈ WMMSE.
 
+### Forme ou généralisation ? Réentraînement avec cas difficiles, 4 contre 8 étapes, et attention triangulaire (`results/phase5/gram_dur_{L4,L8,tri_L4,tri_L8}.json`, `experiments/phase5_gram_hard.py`)
+Même banc que le stress. Entraînement : moitié standard, moitié utilisateurs corrélés par paires (ρ ~ U(0, 0,95)), SNR 0–30 dB ; 16 et 8 antennes jamais vues. Variante « triangulaire » : le bloc G·E est remplacé par une attention triangulaire linéaire apprise entre paires, Σ_l a(e_jl)·b(e_lk) (Edge Transformer, AlphaFold), qui permet E·E (Newton–Schulz). Débit à 20 dB (% de RZF) :
+
+| Cas | Gram L4 (std) | Gram L4 | Gram L8 | Tri L4 | Tri L8 | RZF |
+|---|---|---|---|---|---|---|
+| standard | 75,2 | 75,1 | **75,3** | 75,3 | 75,3 | 75,1 |
+| ρ=0,8 | 50,4 (79 %) | 56,7 (89 %) | 62,8 (99 %) | 62,7 (99 %) | **63,2 (99,7 %)** | 63,5 |
+| ρ=0,95 | 26,7 (55 %) | 38,3 (79 %) | 45,3 (93 %) | 43,7 (90 %) | **46,7 (96 %)** | 48,7 |
+| ρ=0,95, 30 dB | — | 43,6 (58 %) | 59,9 (80 %) | 53,1 (71 %) | **62,3 (83 %)** | 74,9 |
+| M=16 (jamais vu) | 43,3 (89 %) | 44,9 (93 %) | **49,1 (101 %)** | 47,7 (98 %) | 48,0 (99 %) | 48,5 |
+| M=8 (jamais vu) | 18,3 (72 %) | 22,9 (90 %) | **26,1 (102 %)** | 22,5 (88 %) | 20,0 (78 %) | 25,5 |
+| M=8, 30 dB | 19,2 (49 %) | 25,5 (65 %) | **31,8 (81 %)** | 26,9 (69 %) | 23,2 (59 %) | 39,2 |
+| params / MAC par SC | 6,6 k / 1,75 M | 6,6 k / 1,75 M | 6,6 k / 3,45 M | 8,6 k / 2,28 M | 8,6 k / 4,50 M | |
+
+**Conclusions :**
+- **Les deux causes jouent.** Voir des cas difficiles à l'entraînement aide (ρ=0,95 : 55 → 79 %), mais à 4 étapes l'écart reste et grossit avec le SNR : c'est aussi la forme.
+- **8 étapes de Gram ferment l'essentiel de l'écart jusqu'à 20 dB**, y compris à M=16 et M=8 jamais vus (≥ RZF). Bien mieux que la prédiction « Richardson » (≈ 5κ étapes) : la règle apprise se comporte comme une méthode à pas adaptés. Reste un écart au haut SNR avec G très mal conditionné (ρ=0,95 à 30 dB : 80 %).
+- **L'attention triangulaire est meilleure à profondeur égale sur les cas vus** (à 4 couches : ρ=0,8 99 % contre 89 %, comme attendu du doublement de degré E·E), et un peu meilleure à 8 couches (ρ=0,95 : 96 % contre 93 %).
+- **Mais elle généralise moins bien à un nombre d'antennes jamais vu** (M=8 : 78 % à 8 couches contre 102 % pour Gram ; elle se dégrade même de 4 à 8 couches). Interprétation : Gram remultiplie à chaque étape par la vraie G de l'échantillon et reste ancré dessus ; la forme triangulaire ne voit G qu'à l'entrée et apprend des règles propres à la distribution d'entraînement.
+- **Retenu pour l'instant : Gram L8 entraîné avec cas difficiles** (robuste partout, 6,6 k params, 3,45 M MAC/SC). Piste non testée : un bloc qui combine G·E et E·E.
+- Note technique : l'évaluation par conditionnement saturait la mémoire d'une P100 (16 Go) ; calcul désormais par paquets, et option `--load` pour réévaluer des poids sauvés (l'historique d'entraînement des deux runs triangulaires n'est pas conservé).
+
 ## Prochaine étape
 (1) 3 graines pour l'attention en fréquence D64. (2) Réduire le coût. (3) Bootstrap sur les tirages. (4) Faire le point avant d'aller plus loin (pilote 20 dB, vieillissement, M64).
 Cible principale ensuite (phases 2–3) : le régime pilote 10 dB, où il reste 2,7 à 5,9 bps/Hz après LMMSE.
