@@ -727,6 +727,37 @@ Même diagnostic (précodeur seul, CSI parfait, M=64, K=8). % de RZF (UMi ; UMa 
 - **C'est la confirmation directe de l'intuition de la phase 1** : l'attention linéaire en boucle réalise une inversion itérative. Il suffisait de lui donner les bons objets (paires d'utilisateurs, poids = Gram).
 - **Prochain** : (1) en massif, de bout en bout : module des retards + précodeur de Gram, sur le CSI estimé ; (2) en M8K4 : remplacer le précodeur actuel par celui de Gram (devrait combler le trou au faible SNR, sans inversion, et réduire le coût).
 
+### La forme déroulée (4 étapes) est-elle toujours au niveau de RZF ? — NON hors du cas facile (`results/phase5/gram_stress.json`, `experiments/phase5_gram_stress.py`)
+Évaluation seule des poids de Gram (entraînés sur le massif standard), CSI parfait, 57 600 SC (UMi+UMa+RMa). Argument testé : l'inverse exact (G+αI)⁻¹ est un polynôme de degré K−1 = 7 en G (Cayley–Hamilton) ; 4 produits par G n'atteignent que le degré 4. Ça doit suffire si G est bien conditionné, et casser sinon.
+
+**1. Par échantillon (distribution d'entraînement)** — rapport modèle/RZF :
+
+| SNR | moyenne | 1er centile | < 95 % de RZF | quartiles de conditionnement (0–50, 50–90, 90–99, 99–100 %) |
+|---|---|---|---|---|
+| 0 dB | 1,005 | 1,000 | 0 % | 1,003 / 1,005 / 1,009 / 1,014 |
+| 20 dB | 1,001 | 0,974 | 0,5 % | 1,002 / 1,002 / 0,998 / 0,953 |
+| 25 dB | 0,998 | 0,935 | 1,4 % | 1,001 / 0,999 / 0,985 / 0,905 |
+| 30 dB (hors plage) | 0,991 | 0,878 | 3,4 % | 0,998 / 0,992 / 0,961 / 0,845 |
+
+**2. Stress** (débit à 20 dB, modèle / RZF ; WMMSE ≈ RZF sauf M ≤ 16) :
+
+| Cas | cond. médian | modèle | RZF | WMMSE |
+|---|---|---|---|---|
+| standard | 3,6 | 75,2 | 75,1 | 75,2 |
+| utilisateurs corrélés par paires ρ=0,5 | 7,2 | 69,7 | 71,8 | 71,9 |
+| ρ=0,8 | 20,5 | 50,4 | 63,5 | 63,5 |
+| ρ=0,95 | 84,6 | 26,7 | 48,7 | 48,8 |
+| M=32 antennes (K=8) | 7,9 | 62,8 | 63,4 | 64,2 |
+| M=16 | 25,4 | 43,3 | 48,5 | 50,8 |
+| M=8 | 239 | 18,3 | 25,5 | 34,7 |
+
+**Conclusions :**
+- **Sur la distribution d'entraînement, c'est vrai par échantillon, pas seulement en moyenne** (0,5 % des SC sous 95 % de RZF à 20 dB). Mais **le rapport baisse avec le conditionnement de G** : le 1 % des SC les plus mal conditionnées tombe à 95 % (20 dB), 90 % (25 dB), 85 % (30 dB).
+- **Dès que G est mal conditionné, le modèle décroche nettement** (ρ=0,8 : 79 % de RZF ; ρ=0,95 : 55 % ; M=8 : 72 %), d'autant plus que le SNR est haut. C'est le comportement attendu d'une inversion polynomiale de bas degré.
+- **Réserve importante** : ces cas sont hors de la distribution d'entraînement (conditionnement médian 3,6). On ne sait pas encore si c'est la **forme** (4 produits par G) ou la **généralisation** qui limite. Test qui sépare les deux : réentraîner sur un mélange incluant des cas mal conditionnés, avec 4 puis 8 étapes (et, si besoin, un bloc E·E de type Newton–Schulz qui double le degré à chaque étape).
+- **Conséquence pour M8K4** (M/K=2, conditionnement typique plus élevé) : le précodeur de Gram à 4 étapes n'y est pas garanti ; c'est à mesurer directement.
+- Note : à M ≤ 16, WMMSE dépasse nettement RZF (M=8 : 34,7 contre 25,5) ; en massif standard, RZF ≈ WMMSE.
+
 ## Prochaine étape
 (1) 3 graines pour l'attention en fréquence D64. (2) Réduire le coût. (3) Bootstrap sur les tirages. (4) Faire le point avant d'aller plus loin (pilote 20 dB, vieillissement, M64).
 Cible principale ensuite (phases 2–3) : le régime pilote 10 dB, où il reste 2,7 à 5,9 bps/Hz après LMMSE.
