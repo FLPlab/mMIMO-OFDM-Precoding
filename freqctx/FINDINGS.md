@@ -800,6 +800,70 @@ Hypothèse testée : la forme triangulaire généralise mal parce qu'elle ne voi
 - Comme pour la forme sans G, le passage de 4 à 8 couches dégrade M=8 (89 → 84 %) : plus de liberté = plus de spécialisation à la distribution d'entraînement.
 - **Conséquence pratique** : pour la forme libre, il faut entraîner sur les configurations visées (mélange de nombres d'antennes / d'utilisateurs ; les paramètres n'en dépendent pas) plutôt que compter sur la généralisation.
 
+## Phase 6 — architecture de précodeur la plus générale (2026-10-26, autonome)
+
+**Question** : quelle architecture de base marche dans les deux configurations visées (M8K4 et massif M64K8), y compris les cas difficiles (utilisateurs corrélés, haut SNR) et des tailles jamais vues, de préférence sans forme « déroulée » imposée ?
+
+**Banc commun** (`experiments/phase6_bench.py`, données `/export/tmp/sala/freqctx/data/phase6`) : CSI parfait, précodeur seul. Entraînement d'UN modèle sur le mélange M64K8 (600 SC) + M8K4 (612 SC), UMi+UMa+RMa, la moitié des échantillons avec utilisateurs corrélés par paires (ρ ~ U(0, 0,95)), SNR 0–30 dB, 40 000 pas, perte relative à RZF, coupure du gradient à 1. Évaluation sur 11 configurations : vues (M64K8, M8K4, et versions corrélées) et non vues (M32K8, M16K8, M8K8, M64K4, M32K4, M16K4). Script d'entraînement `experiments/phase6_train.py`, synthèse `experiments/phase6_summary.py` → `results/phase6/summary.md`.
+
+**Candidats** (tous : sortie W = Ĥᴴ C sauf « axial », aucune inversion, équivariants aux permutations d'utilisateurs) :
+- `gram` : état par paire, bloc G·E (forme « déroulée »), partagé ou non ;
+- `tri` / `trig` : état par paire, **attention triangulaire apprise** (Edge Transformer), sans / avec G réinjecté à chaque couche, partagée (`tied`) ou **couches distinctes** (`untied` = transformer standard) ;
+- `axial` : un token par (antenne, utilisateur), Gram appris à chaque couche, sortie directe (proche des « 2D-Gformer » de Guo et Yang 2025).
+
+### Résultats (% de RZF ; « vues » / « non vues » = moyennes ; `results/phase6/*.json`)
+
+| run | params | MAC/SC M64K8 / M8K4 | vues 20 dB | vues 30 dB | non vues 20 dB | non vues 30 dB | pire config 20 dB | M8K4 % WMMSE 0 / 20 dB |
+|---|---|---|---|---|---|---|---|---|
+| **trig L8 untied** | 70 k | 4,60 M / 1,11 M | **101,1** | **98,9** | **104,4** | **99,7** | ρ0,95 99,1 | 99,8 / 100,5 |
+| trig L8 untied, graine 1 | 70 k | 4,60 M / 1,11 M | 101,1 | 98,9 | 104,1 | 99,3 | ρ0,95 99,3 | 99,8 / 100,4 |
+| tri L8 untied (sans G) | 67 k | 4,50 M / 1,09 M | 100,7 | 97,6 | 103,0 | 97,5 | ρ0,95 98,1 | 99,6 / 100,2 |
+| gram L8 untied | 51 k | 3,45 M / 0,82 M | 99,1 | 94,2 | 103,0 | 97,9 | ρ0,95 92,5 | 98,9 / 100,2 |
+| trig L4 untied | 35 k | 2,32 M / 0,56 M | 99,5 | 94,1 | 102,0 | 96,1 | ρ0,95 95,1 | 99,3 / 100,1 |
+| trig L8 (partagé) | 9,0 k | 4,60 M / 1,11 M | 99,4 | 94,5 | 102,2 | 96,6 | ρ0,95 94,3 | 98,6 / 100,1 |
+| trig L8 + G normalisé | 9,0 k | 4,60 M / 1,11 M | 99,6 | 94,9 | 101,8 | 96,5 | ρ0,95 94,7 | 99,0 / 100,1 |
+| gram L8 (partagé) | 6,6 k | 3,45 M / 0,82 M | 97,9 | 91,5 | 103,2 | 97,7 | ρ0,95 89,0 | 98,1 / 100,0 |
+| axial L4 | 8,7 k | **19,0 M** / 1,12 M | 95,6 | 85,9 | 101,1 | 93,5 | ρ0,95 78,9 | 97,2 / 99,2 |
+
+**Conclusions :**
+- **Meilleure architecture : transformer standard sur les paires d'utilisateurs** (attention triangulaire apprise, G réinjecté comme caractéristique d'arête, 8 couches distinctes, sortie W = Ĥᴴ C). Au moins 99 % de RZF dans toutes les configurations à 20 dB (y compris ρ = 0,95), 94 % au pire à 30 dB ; ≥ WMMSE en M8K4 dès 10 dB ; reproductible (graine 1 identique à ±0,4).
+- **Entraîner sur les deux configurations règle la généralisation** de la forme libre (la phase 5 la voyait échouer à M=8 jamais vu ; ici M8K8 jamais vu : 117,5 % de RZF à 20 dB, 98 % à 30 dB).
+- **Ce qui compte, par ordre** : couches distinctes (trig partagé → untied : 94,5 → 98,9 vues à 30 dB) ; profondeur 8 (L4 : 94,1) ; forme triangulaire plutôt que G·E à couches distinctes (gram untied : 94,2) ; G réinjecté (sans : 97,6). La normalisation de G ne change rien.
+- **Le modèle axial** (tokens antenne × utilisateur, type Gformer) marche sur les cas faciles mais décroche sur les cas mal conditionnés (ρ = 0,95 à 30 dB : 46 %) et coûte 4 à 5× plus en massif : la représentation par paires d'utilisateurs est la bonne.
+- **Coût** : la meilleure version a 70 k paramètres (couches distinctes) mais le même calcul que la version partagée (4,6 M MAC/SC en massif, 1,1 M en M8K4).
+- Réserve : le pourcentage de WMMSE sur ρ = 0,95 dépasse parfois 100 % (jusqu'à 113 % à 10 dB) : WMMSE démarré de RZF reste dans un optimum local quand deux utilisateurs sont presque colinéaires ; ce n'est pas une borne.
+
+### Gram partagé avec plus de passages à l'inférence (`results/phase6/loops_gram_L8_d16_h64.json`)
+Sans réentraîner : 12 passages (au lieu de 8) améliorent les cas difficiles (ρ = 0,95 : 89 → 93 % de RZF à 20 dB, 74 → 79 % à 30 dB ; M8K8 à 30 dB : 89 → 99 %), 16 passages dégradent. La règle apprise converge en partie seulement ; 4 passages s'effondrent (le modèle n'est pas « anytime »).
+
+### De bout en bout, des pilotes au précodeur (estimateur des retards inchangé + nouveau précodeur)
+**M8K4, pilote 10 dB, mélange** (`results/phase4/delay_model_bande_os2_{gramL8,trigL8_untied}_n1056_s80k_D64.json`), débit en bps/Hz :
+
+| | 0 dB (UMi/UMa/RMa) | 20 dB (UMi/UMa/RMa) | params | MAC/SC |
+|---|---|---|---|---|
+| précodeur phase 4 (tokens d'utilisateur) | 5,25 / 5,19 / 5,28 | 25,76 / 25,36 / 26,03 | 63 k | 0,70 M |
+| **+ Gram L8** | 5,36 / 5,32 / 5,43 | 25,81 / 25,40 / 26,11 | 34 k | 0,99 M |
+| **+ transformer par paires (trig L8 untied)** | **5,39 / 5,36 / 5,47** | **25,87 / 25,47 / 26,28** | 98 k | 1,27 M |
+| WMMSE robuste (LMMSE mélange) | 5,37 / 5,32 / 5,45 | 24,18 / 23,73 / 24,35 | | |
+| génie par lien | 5,40 / 5,37 / 5,47 | 26,09 / 25,77 / 26,19 | | |
+
+- **Le trou au faible SNR est comblé sans inversion** : à 0 dB, le modèle égale le WMMSE robuste et le génie (à 0,01 près), alors que le précodeur de la phase 4 y perdait 0,1–0,2.
+- À 20 dB : +1,69 / +1,74 / +1,93 bps/Hz sur le meilleur classique réaliste ; en RMa le modèle dépasse la « borne » génie (26,28 contre 26,19 : le génie est WMMSE sur une très bonne estimation, pas un optimum sous CSI imparfait).
+
+**Massif M64K8, pilote 10 dB, mélange** (`results/phase5/massive_model_{gramL8,trigL8_untied}.json`), 352 tirages/scénario, 40 000 pas :
+
+| | 0 dB | 20 dB (UMi/UMa/RMa) | 25 dB (UMi/UMa/RMa) | params | MAC/SC |
+|---|---|---|---|---|---|
+| modèle M8K4 transposé (phase 5a) | — | 34,3 / 34,0 / 34,3 | — | 76 k | 1,6 M |
+| **+ Gram L8** | 23,96 / 23,79 / 23,88 | **72,70 / 71,73 / 73,98** | 82,2 / 80,8 / 85,2 | 33 k | 3,9 M |
+| **+ trig L8 untied** | 23,96 / 23,80 / 23,88 | 72,67 / 71,72 / 73,96 | 82,1 / 80,7 / 85,1 | 96 k | 5,0 M |
+| RZF (LS) | 23,54 / 23,26 / 23,56 | 66,33 / 64,86 / 68,43 | 71,6 / 69,7 / 74,5 | | |
+| WMMSE robuste (LMMSE mélange) | 23,86 / 23,67 / 23,78 | 68,97 / 68,00 / 69,51 | 75,2 / 74,0 / 76,1 | | |
+| génie par lien | 24,01 / 23,94 / 23,90 | 73,74 / 73,49 / 74,10 | 84,4 / 83,9 / 85,7 | | |
+
+- **En massif, +3,7 / +3,7 / +4,5 bps/Hz sur le meilleur classique réaliste à 20 dB** (+5,4 à +6,5 %), +7 à +9 à 25 dB ; ≥ classique à tous les SNR ; à 0,1–1,8 du génie.
+- **Les deux précodeurs donnent le même débit en massif standard** : le précodeur n'y est plus le facteur limitant, c'est l'estimation (écart au génie 1,0 / 1,8 / 0,1). Le transformer par paires ne se distingue que sur les cas difficiles (M8K4, corrélés, haut SNR).
+
 ## Prochaine étape
 (1) 3 graines pour l'attention en fréquence D64. (2) Réduire le coût. (3) Bootstrap sur les tirages. (4) Faire le point avant d'aller plus loin (pilote 20 dB, vieillissement, M64).
 Cible principale ensuite (phases 2–3) : le régime pilote 10 dB, où il reste 2,7 à 5,9 bps/Hz après LMMSE.
