@@ -119,7 +119,8 @@ def model(train_drops, steps, quick, precoder="persc", p_layers=8, p_untied=Fals
         ev = DropPool(tf.constant(z["ls"]), tf.constant(z["true"]))
         out[scen] = evaluate(net, ev, SNRS_DB)
         print(scen, "@20dB modele", round(out[scen][4], 2), flush=True)
-    save("phase5", "massive_model" + ("" if precoder == "persc" else ptag) + ("_quick" if quick else ""),
+    extra = "" if (train_drops, steps) == (352, 40000) or quick else f"_n{train_drops}_s{steps // 1000}k"
+    save("phase5", "massive_model" + ("" if precoder == "persc" else ptag) + extra + ("_quick" if quick else ""),
          {"snrs_db": SNRS_DB, "model": name, "params": run["params"], "macs_per_sc": run["macs_per_sc"],
           "train_drops_per_scenario": train_drops, "steps": steps, "rates": out,
           "training_history": run["history"]})
