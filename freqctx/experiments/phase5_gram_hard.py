@@ -3,7 +3,8 @@
 GENERALISATION (jamais vu de cas difficiles) ? Reentrainement sur un melange
 avec cas difficiles, 4 contre 8 etapes, tout le reste identique.
 --mix triangular : bloc G.E remplace par une attention triangulaire apprise
-entre paires (models/gram_precoder.py, TriangularBlock).
+entre paires (models/gram_precoder.py, TriangularBlock) ; --mix triangular_g :
+idem avec G[j,k] reinjecte a chaque couche comme caracteristique d'arete.
 
 Melange d'entrainement (CSI parfait, massif M=64 K=8, UMi+UMa+RMa) : la
 moitie des echantillons inchanges, l'autre moitie avec utilisateurs correles
@@ -12,7 +13,7 @@ SNR d'entrainement 0-30 dB (au lieu de 0-25) pour couvrir le haut SNR teste.
 Evaluation : standard, rho = 0.5/0.8/0.95, et M = 32/16/8 antennes (jamais
 vu a l'entrainement : test de generalisation).
 
-    python -m experiments.phase5_gram_hard --layers 4|8 [--mix triangular]
+    python -m experiments.phase5_gram_hard --layers 4|8 [--mix triangular|triangular_g]
 """
 import argparse
 import os
@@ -45,7 +46,7 @@ def correlate_random(h, seed):
 def main():
     ap = argparse.ArgumentParser()
     ap.add_argument("--layers", type=int, required=True)
-    ap.add_argument("--mix", choices=["gram", "triangular"], default="gram")
+    ap.add_argument("--mix", choices=["gram", "triangular", "triangular_g"], default="gram")
     ap.add_argument("--train_drops", type=int, default=352)
     ap.add_argument("--steps", type=int, default=40000)
     ap.add_argument("--load", action="store_true", help="evaluation seule des poids sauves")
@@ -56,7 +57,7 @@ def main():
         pool = correlate_random(pool, seed=7)
     h = tf.concat([tf.reshape(tf.constant(np.load(os.path.join(DATA, f"massive_eval_{s}.npz"))["true"]),
                               [-1, 8, 64]) for s in SCENARIOS], 0)[::3]
-    tag = "" if args.mix == "gram" else "_tri"
+    tag = {"gram": "", "triangular": "_tri", "triangular_g": "_trig"}[args.mix]
     name = f"massive_gram_dur{tag}_L{args.layers}"
     net = GramPrecoder(64, layers=args.layers, mix=args.mix, **VARIANTS["gram"])
     from precoders.classical import rzf

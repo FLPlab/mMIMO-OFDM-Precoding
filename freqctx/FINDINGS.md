@@ -780,6 +780,26 @@ Même banc que le stress. Entraînement : moitié standard, moitié utilisateurs
 - **Retenu pour l'instant : Gram L8 entraîné avec cas difficiles** (robuste partout, 6,6 k params, 3,45 M MAC/SC). Piste non testée : un bloc qui combine G·E et E·E.
 - Note technique : l'évaluation par conditionnement saturait la mémoire d'une P100 (16 Go) ; calcul désormais par paquets, et option `--load` pour réévaluer des poids sauvés (l'historique d'entraînement des deux runs triangulaires n'est pas conservé).
 
+### Attention triangulaire avec G réinjecté à chaque couche (`results/phase5/gram_dur_trig_L{4,8}.json`)
+Hypothèse testée : la forme triangulaire généralise mal parce qu'elle ne voit G qu'à l'entrée. Seul changement : G[j,k] (Re, Im, |·|) concaténé à l'entrée de chaque couche, comme caractéristique d'arête (aucun calcul imposé). Même banc. % de RZF :
+
+| Cas | Gram L8 | Tri L8 | **Tri+G L8** | Tri+G L4 |
+|---|---|---|---|---|
+| standard, 20 dB | 100,3 | 100,2 | 100,2 | 100,2 |
+| ρ=0,8, 20 dB | 99,0 | 99,7 | **99,8** | 98,9 |
+| ρ=0,95, 20 dB | 93,1 | 96,0 | **97,0** | 90,7 |
+| ρ=0,95, 30 dB | 80,0 | 83,1 | **86,9** | 72,6 |
+| M=16 (jamais vu), 20 dB | **101,1** | 98,8 | 100,0 | 99,1 |
+| M=8 (jamais vu), 20 dB | **102,2** | 78,2 | 84,0 | 89,5 |
+| M=8 (jamais vu), 30 dB | **81,1** | 59,1 | 64,1 | 71,0 |
+| params / MAC par SC | 6,6 k / 3,45 M | 8,6 k / 4,50 M | 9,0 k / 4,60 M | 9,0 k / 2,32 M |
+
+**Conclusions :**
+- **Réinjecter G aide, mais ne règle pas tout.** Sur les cas vus, Tri+G L8 est le meilleur de tous (ρ=0,95 à 30 dB : 87 % contre 80 % pour Gram L8). Sur M=8 jamais vu, il remonte un peu (78 → 84 %) mais reste loin de Gram L8 (102 %).
+- **L'hypothèse de l'ancrage n'explique donc qu'une partie de l'écart de généralisation.** La forme imposée G·E généralise intrinsèquement mieux à une configuration jamais vue (M=8, K=8 : conditionnement médian 239, loin de l'entraînement).
+- Comme pour la forme sans G, le passage de 4 à 8 couches dégrade M=8 (89 → 84 %) : plus de liberté = plus de spécialisation à la distribution d'entraînement.
+- **Conséquence pratique** : pour la forme libre, il faut entraîner sur les configurations visées (mélange de nombres d'antennes / d'utilisateurs ; les paramètres n'en dépendent pas) plutôt que compter sur la généralisation.
+
 ## Prochaine étape
 (1) 3 graines pour l'attention en fréquence D64. (2) Réduire le coût. (3) Bootstrap sur les tirages. (4) Faire le point avant d'aller plus loin (pilote 20 dB, vieillissement, M64).
 Cible principale ensuite (phases 2–3) : le régime pilote 10 dB, où il reste 2,7 à 5,9 bps/Hz après LMMSE.

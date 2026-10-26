@@ -50,16 +50,19 @@ class TriangularBlock(keras.layers.Layer):
     Lineaire (sans softmax) : la phase 1 a montre que softmax ne sait pas
     soustraire. Pre-normalisation pour que les produits ne divergent pas."""
 
-    def __init__(self, d, hidden, **kw):
+    def __init__(self, d, hidden, edge_g=False, **kw):
         super().__init__(**kw)
+        self.edge_g = edge_g                                # G reinjecte a chaque couche (arete)
         self.norm = keras.layers.LayerNormalization(epsilon=1e-6)
         self.a = keras.layers.Dense(2 * d, use_bias=False)
         self.b = keras.layers.Dense(2 * d, use_bias=False)
         self.f1 = keras.layers.Dense(hidden, activation="gelu")
         self.f2 = keras.layers.Dense(2 * d)
 
-    def call(self, e, g):                                   # g inutilise (deja dans e)
+    def call(self, e, g):                                   # g utilise seulement si edge_g
         x = self.norm(_real(e))
+        if self.edge_g:                                     # caracteristique d'arete, pas un calcul impose
+            x = tf.concat([x, tf.stack([tf.math.real(g), tf.math.imag(g), tf.abs(g)], -1)], -1)
         K = tf.cast(tf.shape(e)[1], tf.complex64)
         m = tf.einsum("njlc,nlkc->njkc", _cplx(self.a(x)), _cplx(self.b(x))) / K
         return e + _cplx(self.f2(self.f1(tf.concat([x, _real(m)], axis=-1))))
@@ -70,8 +73,10 @@ class GramPrecoder(keras.Model):
         super().__init__(**kw)
         self.M, self.d, self.hidden, self.L, self.mix = num_bs_ant, d, hidden, layers, mix
         self.init = keras.layers.Dense(2 * d)
-        block = GramBlock if mix == "gram" else TriangularBlock
-        self.block = block(d, hidden)                       # UN seul bloc, repete L fois
+        if mix == "gram":
+            self.block = GramBlock(d, hidden)               # UN seul bloc, repete L fois
+        else:                                               # "triangular" ou "triangular_g"
+            self.block = TriangularBlock(d, hidden, edge_g=(mix == "triangular_g"))
         self.read = keras.layers.Dense(2)
 
     def call(self, h, snr_db):
@@ -91,6 +96,6 @@ class GramPrecoder(keras.Model):
         """MAC reelles par SC : G, initialisation, L x (G.E + FFN), lecture, W = h^H C."""
         M, d, hd, L = self.M, self.d, self.hidden, self.L
         per_edge = 5 * 2 * d + L * (4 * d * hd + hd * 2 * d) + 2 * d * 2
-        if self.mix == "triangular":                        # projections a, b ; FFN sur [x, m]
-            per_edge += L * 2 * (2 * d) * (2 * d)
+        if self.mix.startswith("triangular"):                        # projections a, b ; FFN sur [x, m]
+            per_edge += L * 2 * (2 * d + 3 * (self.mix == "triangular_g")) * (2 * d)
         return 4 * K * K * M + K * K * per_edge + L * 4 * K ** 3 * d + 4 * M * K * K
