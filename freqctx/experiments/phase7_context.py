@@ -22,6 +22,10 @@ Variantes (--variant) :
                 4 couches distinctes, meme calcul que notre precodeur en M8K4.
     tarb      : reference apprise (phase 8) -- TA-RB du memoire reecrit
                 (models/tarb.py), sur le LS des pilotes, memes donnees et perte.
+    pilot_rand: modele complet, mais entraine avec un SNR pilote ALEATOIRE
+                U(0, 20) dB par lot de 8 tirages (sans le donner en entree :
+                l'encodeur peut mesurer le bruit sur les retards sans trajet) ;
+                evaluation standard a 10 dB (robustesse : phase8_robust).
     interp    : toute la bande ; le precodeur n'est calcule qu'a 1 SC sur
                 --step (+ la derniere), W est interpole lineairement sur les
                 autres SC, et le debit est appris sur TOUTES les SC.
@@ -77,6 +81,21 @@ def data(estimator, cov=None):
     return (tf.concat(tr_in, 0), tf.concat(tr_true, 0)), ev
 
 
+def data_random_pilot(lo=0.0, hi=20.0, batch=8, seed=11):
+    """Donnees d'entrainement LS avec un SNR pilote tire par lot de `batch` tirages."""
+    from csi import UplinkSounder
+    rng = np.random.default_rng(seed)
+    tr_in, tr_true = [], []
+    for i, scen in enumerate(SCENARIOS):
+        cfg = SystemConfig(scenario=scen, num_slots=1)
+        sionna_config.seed = 1 + i
+        gen, lin = ChannelGenerator(cfg), UplinkSounder(cfg, "lin")
+        for _ in range(TRAIN_DROPS // batch):
+            h = gen(batch)[:, 0]
+            tr_in.append(lin(h, float(rng.uniform(lo, hi)))), tr_true.append(h)
+    return tf.concat(tr_in, 0), tf.concat(tr_true, 0)
+
+
 def train_encoder_mse(model, pool, steps, lr=1e-3):
     """Etape 1 de --variant separate : l'encodeur seul, erreur quadratique normalisee."""
     enc = model.estimator
@@ -102,7 +121,7 @@ def train_encoder_mse(model, pool, steps, lr=1e-3):
 
 def main():
     ap = argparse.ArgumentParser()
-    ap.add_argument("--variant", required=True, choices=["none", "lmmse", "sub", "separate", "simple", "interp", "lmmse_axial", "tarb"])
+    ap.add_argument("--variant", required=True, choices=["none", "lmmse", "sub", "separate", "simple", "interp", "lmmse_axial", "tarb", "pilot_rand"])
     ap.add_argument("--rb", type=int, default=None)
     ap.add_argument("--step", type=int, default=None, help="interp : precodeur a 1 SC sur step, W interpole")
     ap.add_argument("--steps", type=int, default=STEPS)
@@ -137,6 +156,8 @@ def main():
         rates = {s: evaluate(net, (flat(ev[s][0]), flat(ev[s][1])), SNRS_DB) for s in SCENARIOS}
     else:
         (ti, tt), ev = data("ls_lin")
+        if a.variant == "pilot_rand":
+            ti, tt = data_random_pilot()
         pool = DropPool(ti, tt)
         cfg = SystemConfig()
         if a.variant == "tarb":
