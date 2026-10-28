@@ -9,7 +9,7 @@ pilote et au meme instant : WMMSE et WMMSE robuste sur LMMSE (covariance du
 melange, variance d'erreur annoncee par Sionna, qui ignore le vieillissement,
 comme une BS reelle).
 
-    python -u -m experiments.phase8_robust
+    python -u -m experiments.phase8_robust [--models "modele (pilote aleatoire)" --out robustness_pilot_rand]
 """
 import json
 import os
@@ -30,7 +30,8 @@ from utils import RESULTS, git_commit
 
 MODELS = {"modele (par SC)": ("/export/tmp/sala/freqctx/weights/phase4",
                               "delay_bande_os2_trigL8_untied_n1056_s80k_est32_D64_T4_linear_melange_p10", None),
-          "modele (1 SC sur 3)": ("/export/tmp/sala/freqctx/weights/phase7", "interp_s3", 3)}
+          "modele (1 SC sur 3)": ("/export/tmp/sala/freqctx/weights/phase7", "interp_s3", 3),
+          "modele (pilote aleatoire)": ("/export/tmp/sala/freqctx/weights/phase7", "pilot_rand", None)}
 PILOTS, DELAYS_MS, SNRS = [0, 5, 10, 15, 20], [0.0, 2.5, 5.0], [0, 10, 20, 25]
 EVAL_DROPS, BATCH, CHUNK = 192, 16, 16384
 
@@ -76,7 +77,12 @@ def evaluate(nets, ls, lm, err, h):
 
 
 def main():
-    nets = {k: load(*v) for k, v in MODELS.items()}
+    import argparse
+    ap = argparse.ArgumentParser()
+    ap.add_argument("--models", default="modele (par SC),modele (1 SC sur 3)")
+    ap.add_argument("--out", default="robustness")
+    a = ap.parse_args()
+    nets = {k: load(*MODELS[k]) for k in a.models.split(",")}
     cov = cov_mixture()
     out = {"meta": {"git_commit": git_commit(), "created": time.strftime("%Y-%m-%d %H:%M")},
            "snrs_db": SNRS, "pilot_sweep": {}, "aging": {}}
@@ -109,7 +115,7 @@ def main():
             print(f"{scen} retard {dms} ms @20dB : " + " | ".join(f"{k} {v[2]:.2f}" for k, v in r.items()),
                   flush=True)
     os.makedirs(os.path.join(RESULTS, "phase8"), exist_ok=True)
-    path = os.path.join(RESULTS, "phase8", "robustness.json")
+    path = os.path.join(RESULTS, "phase8", f"{a.out}.json")
     json.dump(out, open(path, "w"), indent=1)
     print("->", path)
 
