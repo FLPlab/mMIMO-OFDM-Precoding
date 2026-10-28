@@ -76,9 +76,9 @@ svg text{font-family:"JetBrains Mono",ui-monospace,monospace}
 <div class="wrap">
 
 <header style="display:flex;flex-direction:column;gap:12px">
-  <div class="eyebrow">freqctx · branche git freqctx · état au 24 octobre 2026</div>
+  <div class="eyebrow">freqctx · branche git freqctx · état au 28 octobre 2026</div>
   <h1>Précodage MU-MIMO OFDM à partir des pilotes : l'architecture actuelle</h1>
-  <p class="lead">Un seul modèle, entraîné sur le débit : un petit module estime le canal sur toute la bande dans le domaine des retards, puis un petit précodeur est appliqué à chaque sous-porteuse. Cette page détaille chaque étape avec ses dimensions, puis retrace pourquoi chaque choix a été fait.</p>
+  <p class="lead">Un seul modèle, entraîné sur le débit. Un encodeur fréquentiel regarde toute la bande dans le domaine des retards et donne, pour chaque sous-porteuse, la direction du canal de chaque utilisateur. Un petit transformer sur les paires d'utilisateurs, le même pour toutes les sous-porteuses, en déduit le précodeur sans aucune inversion de matrice. Cette page détaille chaque étape avec ses dimensions (cas M8K4), donne les résultats, puis retrace pourquoi chaque choix a été fait.</p>
   <div class="facts">
     <span class="fact"><b>M=8</b>antennes BS (4 colonnes × 2 polarisations)</span>
     <span class="fact"><b>K=4</b>utilisateurs, 1 antenne</span>
@@ -87,6 +87,8 @@ svg text{font-family:"JetBrains Mono",ui-monospace,monospace}
     <span class="fact"><b>306</b>retards (grille 2× plus fine, 27 ns)</span>
     <span class="fact"><b>10 dB</b>SNR pilote</span>
     <span class="fact"><b>0–25 dB</b>SNR de données</span>
+    <span class="fact"><b>98 k</b>paramètres</span>
+    <span class="fact"><b>0</b>inversion de matrice</span>
     <span class="fact"><b>UMi+UMa+RMa</b>Sionna TR 38.901, mélangés</span>
   </div>
 </header>
@@ -94,18 +96,18 @@ svg text{font-family:"JetBrains Mono",ui-monospace,monospace}
 <section>
   <div class="eyebrow">Vue d'ensemble</div>
   <h2>Deux parties, un seul entraînement</h2>
-  <p>L'estimation tourne une fois par bande et par utilisateur. Le précodeur tourne une fois par sous-porteuse, avec les mêmes poids sur les 612. Les transformées de Fourier n'ont aucun paramètre.</p>
-  <div class="figure" role="img" aria-label="Schéma : LS du sondage, extraction du peigne, IFFT, transformer sur les 153 retards, gain par retard, FFT, puis précodeur par sous-porteuse avec un bloc d'attention linéaire répété 4 fois.">
+  <p>L'encodeur tourne une fois par bande et par utilisateur. Le précodeur tourne une fois par sous-porteuse, avec les mêmes poids sur les 612. Les transformées de Fourier n'ont aucun paramètre. Les deux parties sont entraînées ensemble, sur le seul débit.</p>
+  <div class="figure" role="img" aria-label="Schéma : LS du sondage, extraction du peigne, IFFT, transformer sur les 306 retards, filtre sur trois retards voisins, FFT, puis, pour chaque sous-porteuse, matrice de Gram, un token par paire d'utilisateurs, 8 couches d'attention triangulaire, coefficients C et précodeur W égal à h hermitien fois C.">
     <svg viewBox="0 0 960 390" xmlns="http://www.w3.org/2000/svg">
       <defs>
         <marker id="ar" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" style="fill:var(--muted)"/></marker>
       </defs>
       <!-- bandeau estimation -->
       <rect x="8" y="12" width="944" height="160" rx="10" style="fill:var(--gain-soft);stroke:none"/>
-      <text x="22" y="34" style="fill:var(--gain);font-size:12px;font-weight:600">ESTIMATION · une fois par bande, par utilisateur (poids partagés entre utilisateurs)</text>
+      <text x="22" y="34" style="fill:var(--gain);font-size:12px;font-weight:600">ENCODEUR FRÉQUENTIEL · une fois par bande, par utilisateur (poids partagés entre utilisateurs)</text>
       <!-- bandeau précodage -->
       <rect x="8" y="200" width="944" height="178" rx="10" style="fill:var(--signal-soft);stroke:none"/>
-      <text x="22" y="222" style="fill:var(--signal);font-size:12px;font-weight:600">PRÉCODAGE · une fois par sous-porteuse (mêmes poids sur les 612 SC)</text>
+      <text x="22" y="222" style="fill:var(--signal);font-size:12px;font-weight:600">TRANSFORMER PAR PAIRES · une fois par sous-porteuse (mêmes poids sur les 612 SC)</text>
 
       <!-- boxes estimation -->
       <g style="font-size:12px">
@@ -153,56 +155,57 @@ svg text{font-family:"JetBrains Mono",ui-monospace,monospace}
       <!-- boxes précodage -->
       <g style="font-size:12px">
         <rect x="22" y="250" width="128" height="96" rx="6" style="fill:var(--surface);stroke:var(--line)"/>
-        <text x="86" y="274" text-anchor="middle" style="fill:var(--ink);font-weight:600">Tokens</text>
-        <text x="86" y="294" text-anchor="middle" style="fill:var(--muted)">1 par utilisateur</text>
-        <text x="86" y="312" text-anchor="middle" style="fill:var(--muted)">Re, Im ĥ_k, SNR</text>
-        <text x="86" y="334" text-anchor="middle" style="fill:var(--signal)">[4, 17]</text>
+        <text x="86" y="274" text-anchor="middle" style="fill:var(--ink);font-weight:600">Gram</text>
+        <text x="86" y="294" text-anchor="middle" style="fill:var(--muted)">G = ĥ ĥᴴ / 8</text>
+        <text x="86" y="312" text-anchor="middle" style="fill:var(--muted)">ressemblances</text>
+        <text x="86" y="334" text-anchor="middle" style="fill:var(--signal)">[4, 4]</text>
 
-        <rect x="172" y="250" width="118" height="96" rx="6" style="fill:var(--surface);stroke:var(--line)"/>
-        <text x="231" y="274" text-anchor="middle" style="fill:var(--ink);font-weight:600">Embedding</text>
-        <text x="231" y="294" text-anchor="middle" style="fill:var(--muted)">Dense 17→64</text>
-        <text x="231" y="334" text-anchor="middle" style="fill:var(--signal)">[4, 64]</text>
+        <rect x="172" y="250" width="128" height="96" rx="6" style="fill:var(--surface);stroke:var(--line)"/>
+        <text x="236" y="274" text-anchor="middle" style="fill:var(--ink);font-weight:600">Tokens paires</text>
+        <text x="236" y="294" text-anchor="middle" style="fill:var(--muted)">(j,k) : G_jk,</text>
+        <text x="236" y="312" text-anchor="middle" style="fill:var(--muted)">j = k ?, SNR</text>
+        <text x="236" y="334" text-anchor="middle" style="fill:var(--signal)">[4, 4, 16 cplx]</text>
 
-        <rect x="312" y="242" width="300" height="112" rx="6" style="fill:var(--surface);stroke:var(--signal);stroke-width:1.6"/>
-        <text x="462" y="266" text-anchor="middle" style="fill:var(--ink);font-weight:600">UN bloc, appliqué 4 fois</text>
-        <text x="462" y="288" text-anchor="middle" style="fill:var(--muted)">attention LINÉAIRE entre les 4 utilisateurs</text>
-        <text x="462" y="306" text-anchor="middle" style="fill:var(--muted)">poids = q·k / 4 (signe libre : peut soustraire)</text>
-        <text x="462" y="324" text-anchor="middle" style="fill:var(--muted)">+ FFN 64→128→64</text>
-        <text x="462" y="344" text-anchor="middle" style="fill:var(--signal)">[4, 64]</text>
+        <rect x="322" y="242" width="300" height="112" rx="6" style="fill:var(--surface);stroke:var(--signal);stroke-width:1.6"/>
+        <text x="472" y="266" text-anchor="middle" style="fill:var(--ink);font-weight:600">8 couches distinctes</text>
+        <text x="472" y="288" text-anchor="middle" style="fill:var(--muted)">attention triangulaire, sans softmax :</text>
+        <text x="472" y="306" text-anchor="middle" style="fill:var(--muted)">(j,k) reçoit Σ_l a(j,l) · b(l,k)</text>
+        <text x="472" y="324" text-anchor="middle" style="fill:var(--muted)">+ G redonné, FFN 67→64→32</text>
+        <text x="472" y="344" text-anchor="middle" style="fill:var(--signal)">[4, 4, 16 cplx]</text>
 
-        <rect x="634" y="250" width="132" height="96" rx="6" style="fill:var(--surface);stroke:var(--line)"/>
-        <text x="700" y="274" text-anchor="middle" style="fill:var(--ink);font-weight:600">Tête</text>
-        <text x="700" y="294" text-anchor="middle" style="fill:var(--muted)">Dense 64→16</text>
-        <text x="700" y="312" text-anchor="middle" style="fill:var(--muted)">w_k = Re + j·Im</text>
-        <text x="700" y="334" text-anchor="middle" style="fill:var(--signal)">[8, 4]</text>
+        <rect x="644" y="250" width="122" height="96" rx="6" style="fill:var(--surface);stroke:var(--line)"/>
+        <text x="705" y="274" text-anchor="middle" style="fill:var(--ink);font-weight:600">Lecture</text>
+        <text x="705" y="294" text-anchor="middle" style="fill:var(--muted)">Dense 32→2</text>
+        <text x="705" y="312" text-anchor="middle" style="fill:var(--muted)">coefficients</text>
+        <text x="705" y="334" text-anchor="middle" style="fill:var(--signal)">C [4, 4]</text>
 
-        <rect x="788" y="250" width="150" height="96" rx="6" style="fill:var(--surface);stroke:var(--line)"/>
-        <text x="863" y="274" text-anchor="middle" style="fill:var(--ink);font-weight:600">Puissance</text>
+        <rect x="788" y="250" width="150" height="96" rx="6" style="fill:var(--surface);stroke:var(--line);stroke-dasharray:4 3"/>
+        <text x="863" y="274" text-anchor="middle" style="fill:var(--ink);font-weight:600">W = ĥᴴ C</text>
         <text x="863" y="294" text-anchor="middle" style="fill:var(--muted)">‖W‖_F = 1 par SC</text>
+        <text x="863" y="312" text-anchor="middle" style="fill:var(--muted)">0 paramètre</text>
         <text x="863" y="334" text-anchor="middle" style="fill:var(--signal)">W [612, 8, 4]</text>
       </g>
       <g style="stroke:var(--muted);stroke-width:1.4;fill:none">
         <line x1="150" y1="298" x2="170" y2="298" marker-end="url(#ar)"/>
-        <line x1="290" y1="298" x2="310" y2="298" marker-end="url(#ar)"/>
-        <line x1="612" y1="298" x2="632" y2="298" marker-end="url(#ar)"/>
+        <line x1="300" y1="298" x2="320" y2="298" marker-end="url(#ar)"/>
+        <line x1="622" y1="298" x2="642" y2="298" marker-end="url(#ar)"/>
         <line x1="766" y1="298" x2="786" y2="298" marker-end="url(#ar)"/>
-        <path d="M590,356 C590,372 334,372 334,356" style="stroke:var(--signal)" marker-end="url(#ar)"/>
       </g>
-      <text x="462" y="384" text-anchor="middle" style="fill:var(--signal);font-size:11px">boucle × 4, mêmes poids</text>
+      <text x="472" y="378" text-anchor="middle" style="fill:var(--signal);font-size:11px">variante de coût : calculé sur 1 SC sur 3, W interpolé linéairement entre elles</text>
     </svg>
   </div>
-  <p class="caption">B = nombre de tirages traités ensemble. Les cadres en pointillé n'ont aucun paramètre. Les dimensions sont celles du modèle retenu (<code>experiments/phase4_delay_model.py</code>, <code>--d 64</code>).</p>
+  <p class="caption">B = nombre de tirages traités ensemble. Les cadres en pointillé n'ont aucun paramètre. Dimensions du modèle retenu (<code>experiments/phase4_delay_model.py --banded --oversample 2 --train_drops 1056 --steps 80000 --precoder trig --p_layers 8 --p_untied</code>). En massif (64 antennes, 8 utilisateurs), même architecture : seules les tailles de G et de W changent.</p>
 </section>
 
 <section>
   <div class="eyebrow">Étape par étape</div>
   <h2>Dimensions, paramètres et calcul</h2>
-  <p>MAC = multiplications-accumulations réelles. Pour l'estimation, le coût par bande est ramené à une sous-porteuse (divisé par 612), et les transformées de Fourier sont comptées comme des produits de matrices, donc c'est une borne haute.</p>
+  <p>MAC = multiplications-accumulations réelles. Pour l'encodeur, le coût par bande est ramené à une sous-porteuse (divisé par 612), et les transformées de Fourier sont comptées comme des produits de matrices, donc c'est une borne haute.</p>
   <div class="scroll">
     <table>
       <thead><tr><th>Opération</th><th>Sortie</th><th>Ce qui se passe</th><th class="num">Paramètres</th></tr></thead>
       <tbody>
-        <tr class="stage est"><td colspan="4">Estimation (code : <code>models/delay_domain.py</code>, <code>DelayEstimator</code>)</td></tr>
+        <tr class="stage est"><td colspan="4">Encodeur fréquentiel (code : <code>models/delay_domain.py</code>, <code>DelayEstimator</code>)</td></tr>
         <tr><td>Entrée</td><td class="shape">[B, 612, 4, 8]</td><td>LS + interpolation linéaire du sondage montant (pilotes « kronecker » de Sionna, SNR 10 dB).</td><td class="num">0</td></tr>
         <tr><td>Extraction du peigne</td><td class="shape">[B, 4, 153, 8]</td><td>Pour l'utilisateur k, les 153 SC où il a émis : k, k+4, k+8, …</td><td class="num">0</td></tr>
         <tr><td>IFFT sur grille fine</td><td class="shape">[B, 4, 306, 8]</td><td>306 retards espacés de 27 ns (grille deux fois plus fine que les 54 ns naturels, dont 8 retards « négatifs » pour la fuite du premier trajet). Avec tous les gains à 1, la paire IFFT/FFT redonne exactement le LS aux SC pilotes.</td><td class="num">0</td></tr>
@@ -210,45 +213,87 @@ svg text{font-family:"JetBrains Mono",ui-monospace,monospace}
         <tr><td>Embedding + position</td><td class="shape">[B·4, 306, 32]</td><td>Dense 17→32, plus un vecteur appris par position de retard (306 × 32).</td><td class="num">≈ 10 k</td></tr>
         <tr><td>2 couches transformer</td><td class="shape">[B·4, 306, 32]</td><td>Normalisation, attention softmax entre les 306 retards (2 têtes de 16), FFN 32→64→32. Ici le softmax convient : il s'agit de sélectionner.</td><td class="num">≈ 17 k</td></tr>
         <tr><td>Filtre par retard</td><td class="shape">[B, 4, 306, 3]</td><td>Dense 32→6 : un coefficient complexe pour le retard t (partie réelle passée par une sigmoïde) et un pour chacun des voisins t−1 et t+1. Départ : 0,95 au centre, 0 aux voisins, donc le modèle part du LS.</td><td class="num">198</td></tr>
-        <tr><td>Filtrage + FFT</td><td class="shape">[B, 612, 4, 8]</td><td>Chaque retard devient c₀·g(t) + c₋·g(t−1) + c₊·g(t+1), avec les mêmes coefficients sur les 8 antennes, puis retour sur les 612 SC.</td><td class="num">0</td></tr>
-        <tr class="stage"><td colspan="4">Précodage (code : <code>models/per_sc.py</code>, <code>PerSCPrecoder</code>, <code>tied=True</code>, <code>attn="linear"</code>)</td></tr>
-        <tr><td>Tokens d'utilisateur</td><td class="shape">[B·612, 4, 17]</td><td>Pour chaque SC : un token par utilisateur, Re et Im de ĥ_k (8 antennes), plus SNR/10.</td><td class="num">0</td></tr>
-        <tr><td>Embedding</td><td class="shape">[B·612, 4, 64]</td><td>Dense 17→64. Pas d'encodage de position : permuter les utilisateurs permute les sorties.</td><td class="num">≈ 1,2 k</td></tr>
-        <tr><td>Bloc × 4 (mêmes poids)</td><td class="shape">[B·612, 4, 64]</td><td>Normalisation ; q, k, v (Dense 64→192, 2 têtes de 32) ; poids = q·k/√32 divisé par 4, sans softmax ; sortie Dense 64→64 ; FFN 64→128→64 (GELU) ; connexions résiduelles.</td><td class="num">≈ 33 k</td></tr>
-        <tr><td>Tête</td><td class="shape">[B·612, 8, 4]</td><td>Dense 64→16 par utilisateur : 8 poids complexes w_k.</td><td class="num">≈ 1 k</td></tr>
-        <tr><td>Puissance</td><td class="shape">[B, 612, 8, 4]</td><td>W divisé par sa norme : puissance totale 1 sur chaque SC.</td><td class="num">0</td></tr>
+        <tr><td>Filtrage + FFT</td><td class="shape">[B, 612, 4, 8]</td><td>Chaque retard devient c₀·g(t) + c₋·g(t−1) + c₊·g(t+1), avec les mêmes coefficients sur les 8 antennes, puis retour sur les 612 SC. La sortie ĥ donne surtout la <b>direction</b> du canal de chaque utilisateur sur les antennes (voir les résultats) ; son amplitude reste libre.</td><td class="num">0</td></tr>
+        <tr class="stage"><td colspan="4">Transformer par paires d'utilisateurs (code : <code>models/gram_precoder.py</code>, <code>GramPrecoder(mix="triangular_g", tied=False, layers=8)</code>)</td></tr>
+        <tr><td>Matrice de Gram</td><td class="shape">[B·612, 4, 4]</td><td>Pour chaque SC : G = ĥ ĥᴴ / 8, les produits scalaires entre les canaux des utilisateurs.</td><td class="num">0</td></tr>
+        <tr><td>Tokens de paires</td><td class="shape">[B·612, 4, 4, 16]</td><td>Un token par paire (j, k) : Re, Im, |·| de G_jk, « j = k ? », SNR/10, puis Dense 5→32 (16 nombres complexes). Pas d'encodage de position : permuter les utilisateurs permute les lignes et les colonnes.</td><td class="num">192</td></tr>
+        <tr><td>8 couches distinctes</td><td class="shape">[B·612, 4, 4, 16]</td><td>Normalisation de l'état, concaténée à G_jk ; deux projections a et b (35→16 complexes) ; attention triangulaire sans softmax : la paire (j, k) reçoit Σ_l a(j, l) · b(l, k) / 4 ; FFN 67→64→32 (GELU) ; connexion résiduelle.</td><td class="num">8 × 8,7 k</td></tr>
+        <tr><td>Lecture</td><td class="shape">[B·612, 4, 4]</td><td>Dense 32→2 par paire : les coefficients complexes C.</td><td class="num">66</td></tr>
+        <tr><td>Précodeur</td><td class="shape">[B, 612, 8, 4]</td><td>W = ĥᴴ C : le précodeur est toujours une combinaison des canaux des utilisateurs (la forme du précodeur optimal). Puissance totale 1 sur chaque SC.</td><td class="num">0</td></tr>
       </tbody>
     </table>
   </div>
   <div class="cols">
-    <div class="panel"><h3>Taille totale</h3><div class="big">63 318 <span style="font-size:1rem;color:var(--muted)">paramètres</span></div><p class="caption">Estimation ≈ 27,7 k (dont 9,8 k d'embedding de position), précodeur 35,7 k.</p></div>
-    <div class="panel"><h3>Calcul par sous-porteuse</h3><div class="big">≈ 702 k <span style="font-size:1rem;color:var(--muted)">MAC</span></div><p class="caption">Précodeur 541 k (77 %), estimation ≈ 161 k au plus (transformées comptées en produits de matrices ; une vraie FFT coûterait moins).</p></div>
-    <div class="panel"><h3>Entraînement</h3><p class="caption" style="color:var(--ink)">Perte : −moyenne de débit(W) / débit(RZF sur le LS). SNR tiré entre 0 et 25 dB par tirage. Adam, pas 1e-3, décroissance cosinus, 80 000 pas, lots de 4 tirages (2 448 SC), 3 168 tirages (1 056 par scénario). Environ 25 min sur une L40S.</p></div>
+    <div class="panel"><h3>Taille totale</h3><div class="big">97 800 <span style="font-size:1rem;color:var(--muted)">paramètres</span></div><p class="caption">Encodeur ≈ 27,7 k (dont 9,8 k d'embedding de position), transformer par paires 70,1 k. Version étroite (FFN 16) : 32 k pour le précodeur.</p></div>
+    <div class="panel"><h3>Calcul par sous-porteuse</h3><div class="big">≈ 1,27 M <span style="font-size:1rem;color:var(--muted)">MAC</span></div><p class="caption">Transformer par paires ≈ 1,11 M, encodeur ≈ 0,16 M au plus. Calculé sur 1 SC sur 3 et interpolé : 0,53 M.</p></div>
+    <div class="panel"><h3>Entraînement</h3><p class="caption" style="color:var(--ink)">Perte : −moyenne de débit(W) / débit(RZF sur le LS). SNR tiré entre 0 et 25 dB par tirage. Adam, pas 1e-3, décroissance cosinus, 80 000 pas, lots de 4 tirages (2 448 SC), 3 168 tirages (1 056 par scénario). Environ 40 min sur une L40S.</p></div>
   </div>
 </section>
 
 <section>
   <div class="eyebrow">Où on en est</div>
   <h2>Résultats, pilote 10 dB</h2>
-  <p>Débit somme en bps/Hz, mêmes tirages et même bruit pilote pour toutes les méthodes. La référence classique réaliste est la meilleure des deux : WMMSE ou WMMSE robuste (qui tient compte de l'erreur d'estimation), sur un LMMSE avec la covariance moyenne du mélange.</p>
+  <p>Débit somme en bps/Hz, mêmes tirages et même bruit pilote pour toutes les méthodes. La référence classique réaliste est WMMSE robuste (qui tient compte de l'erreur d'estimation), sur un LMMSE avec la covariance moyenne du mélange de scénarios.</p>
+  <h3>M8K4 : 8 antennes, 4 utilisateurs</h3>
   <div class="scroll">
     <table>
       <thead><tr><th>SNR de données</th><th>Méthode</th><th class="num">UMi</th><th class="num">UMa</th><th class="num">RMa</th></tr></thead>
       <tbody>
-        <tr><td rowspan="5">20 dB</td><td>WMMSE, canal parfait (borne absolue)</td><td class="num">26,74</td><td class="num">26,46</td><td class="num">26,56</td></tr>
-        <tr><td>WMMSE, estimation génie par lien</td><td class="num">26,09</td><td class="num">25,77</td><td class="num">26,19</td></tr>
-        <tr><td><b>notre modèle</b></td><td class="num"><b>25,76</b></td><td class="num"><b>25,36</b></td><td class="num"><b>26,03</b></td></tr>
-        <tr><td>meilleure référence classique réaliste</td><td class="num">24,18</td><td class="num">23,74</td><td class="num">24,35</td></tr>
-        <tr><td>écart</td><td class="num pos">+1,58</td><td class="num pos">+1,63</td><td class="num pos">+1,68</td></tr>
-        <tr><td rowspan="3">25 dB</td><td><b>notre modèle</b></td><td class="num"><b>30,56</b></td><td class="num"><b>30,04</b></td><td class="num"><b>31,36</b></td></tr>
-        <tr><td>meilleure référence classique réaliste</td><td class="num">27,57</td><td class="num">27,05</td><td class="num">27,80</td></tr>
-        <tr><td>écart</td><td class="num pos">+3,00</td><td class="num pos">+2,99</td><td class="num pos">+3,53</td></tr>
-        <tr><td>10 dB</td><td>écart à la référence classique</td><td class="num pos">+0,12</td><td class="num pos">+0,12</td><td class="num">0,00</td></tr>
-        <tr><td>0 à 5 dB</td><td>écart à la référence classique</td><td class="num neg">−0,08 à −0,12</td><td class="num neg">−0,10 à −0,13</td><td class="num neg">−0,16</td></tr>
+        <tr><td rowspan="5">20 dB</td><td>WMMSE, estimation génie par lien</td><td class="num">26,09</td><td class="num">25,77</td><td class="num">26,19</td></tr>
+        <tr><td><b>notre modèle</b> (2 graines, ±0,01)</td><td class="num"><b>25,87</b></td><td class="num"><b>25,47</b></td><td class="num"><b>26,28</b></td></tr>
+        <tr><td>notre modèle, précodeur sur 1 SC sur 3</td><td class="num">25,80</td><td class="num">25,37</td><td class="num">26,27</td></tr>
+        <tr><td>WMMSE robuste (LMMSE)</td><td class="num">24,18</td><td class="num">23,73</td><td class="num">24,35</td></tr>
+        <tr><td>écart</td><td class="num pos">+1,69</td><td class="num pos">+1,74</td><td class="num pos">+1,93</td></tr>
+        <tr><td rowspan="2">25 dB</td><td><b>notre modèle</b></td><td class="num"><b>30,80</b></td><td class="num"><b>30,27</b></td><td class="num"><b>31,84</b></td></tr>
+        <tr><td>WMMSE robuste (LMMSE)</td><td class="num">27,57</td><td class="num">27,04</td><td class="num">27,84</td></tr>
+        <tr><td rowspan="2">0 dB</td><td><b>notre modèle</b></td><td class="num"><b>5,39</b></td><td class="num"><b>5,36</b></td><td class="num"><b>5,47</b></td></tr>
+        <tr><td>WMMSE robuste (LMMSE) / génie</td><td class="num">5,37 / 5,40</td><td class="num">5,32 / 5,37</td><td class="num">5,45 / 5,47</td></tr>
       </tbody>
     </table>
   </div>
-  <p class="caption">Avec le simple masque (avant le filtre à bande), retards gardés en moyenne : 23 (UMi), 24 (UMa), 14 (RMa, canal plus compact). Fichiers : <code>results/phase4/delay_model_bande_os2_n1056_s80k_D64.json</code>, <code>delay_model_bande_n1056_s80k_D64.json</code>, <code>delay_model_bande_D64.json</code>, <code>delay_model_D64.json</code>, <code>robust_ref_p10.json</code>, <code>genie_bound_p10.json</code>. Une seule graine pour ce modèle.</p>
+  <h3>Massif : 64 antennes, 8 utilisateurs, 600 SC (même architecture)</h3>
+  <div class="scroll">
+    <table>
+      <thead><tr><th>SNR de données</th><th>Méthode</th><th class="num">UMi</th><th class="num">UMa</th><th class="num">RMa</th></tr></thead>
+      <tbody>
+        <tr><td rowspan="4">20 dB</td><td>WMMSE, estimation génie par lien</td><td class="num">73,74</td><td class="num">73,49</td><td class="num">74,10</td></tr>
+        <tr><td><b>notre modèle</b> (Gram 8 étapes ; le transformer par paires donne la même chose)</td><td class="num"><b>72,91</b></td><td class="num"><b>72,00</b></td><td class="num"><b>74,08</b></td></tr>
+        <tr><td>WMMSE robuste (LMMSE)</td><td class="num">68,97</td><td class="num">68,00</td><td class="num">69,51</td></tr>
+        <tr><td>écart</td><td class="num pos">+3,94</td><td class="num pos">+4,00</td><td class="num pos">+4,57</td></tr>
+      </tbody>
+    </table>
+  </div>
+  <h3>D'où vient le gain (M8K4, 20 dB, UMi)</h3>
+  <div class="scroll">
+    <table>
+      <thead><tr><th>Variante (même précodeur par paires)</th><th class="num">débit</th><th>Ce que ça montre</th></tr></thead>
+      <tbody>
+        <tr><td>aucun contexte fréquentiel (LS, SC seule)</td><td class="num">22,43</td><td>le transformer seul ne débruite rien</td></tr>
+        <tr><td>encodeur sur 1 RB / 3 RB / 17 RB</td><td class="num">23,18 / 24,47 / 25,47</td><td>plus de bande, plus de gain, régulièrement</td></tr>
+        <tr><td>LMMSE classique sur toute la bande</td><td class="num">24,27</td><td>à précodeur égal, l'encodeur appris fait +1,6</td></tr>
+        <tr><td>encodeur entraîné seul (erreur quadratique), puis figé</td><td class="num">25,69</td><td>entraîner ensemble apporte 0,2</td></tr>
+        <tr><td>encodeur sans attention entre retards</td><td class="num">25,68</td><td>l'attention entre retards apporte 0,2</td></tr>
+        <tr><td><b>modèle complet</b></td><td class="num"><b>25,87</b></td><td></td></tr>
+      </tbody>
+    </table>
+  </div>
+  <p class="note">Ce que l'encodeur apprend : sur le canal entier, sa sortie n'est pas meilleure que le LS (−16,7 dB d'erreur, contre −20,1 pour LMMSE). Sur la <b>direction</b> du canal de chaque utilisateur à travers les antennes, elle est 5 à 7,5 dB meilleure que LMMSE (−25,8 / −25,3 / −29,5 dB contre −20,9 / −20,2 / −22,0). C'est ce dont le précodage a besoin.</p>
+  <h3>Références apprises et robustesse (M8K4, 20 dB, UMi / UMa / RMa)</h3>
+  <div class="scroll">
+    <table>
+      <thead><tr><th>Méthode ou condition</th><th class="num">notre modèle</th><th class="num">référence</th><th>Remarque</th></tr></thead>
+      <tbody>
+        <tr><td>TA-RB du mémoire, réécrit dans ce cadre</td><td class="num">25,87 / 25,47 / 26,28</td><td class="num">24,23 / 23,63 / 25,39</td><td>1,12 M paramètres, 11× plus</td></tr>
+        <tr><td>LMMSE + précodeur type 2D-Gformer</td><td class="num">25,87 / 25,47 / 26,28</td><td class="num">24,24 / 23,79 / 24,47</td><td>littérature (Guo et Yang 2025)</td></tr>
+        <tr><td>données 2,5 ms après le sondage</td><td class="num">21,76 / 21,65 / 24,18</td><td class="num">20,70 / 20,53 / 22,64</td><td>robuste au vieillissement</td></tr>
+        <tr><td>données 5 ms après le sondage</td><td class="num">18,15 / 17,98 / 22,00</td><td class="num">17,38 / 17,18 / 20,71</td><td></td></tr>
+        <tr><td>pilote 20 dB (entraîné à 10 dB)</td><td class="num">26,27 / 26,27 / 26,58</td><td class="num">25,93 / 25,93 / 25,98</td><td>robuste</td></tr>
+        <tr><td>pilote 5 dB</td><td class="num">22,64 / 22,58 / 23,64</td><td class="num">21,83 / 21,79 / 22,55</td><td></td></tr>
+        <tr><td>pilote 0 dB</td><td class="num neg">12,90 / 12,92 / 13,23</td><td class="num">19,03 / 18,91 / 20,30</td><td>fragile : réentraînement avec pilote aléatoire en cours</td></tr>
+      </tbody>
+    </table>
+  </div>
+  <p class="caption">Référence = WMMSE robuste (LMMSE) pour les lignes de robustesse. Détail et fichiers : <code>FINDINGS.md</code>, phases 6 à 8 ; <code>results/phase4/delay_model_bande_os2_trigL8_untied_*</code>, <code>results/phase5/massive_model_gramL8_n1056_s80k.json</code>, <code>results/phase7/</code>, <code>results/phase8/</code>.</p>
 </section>
 
 <section>
@@ -257,9 +302,9 @@ svg text{font-family:"JetBrains Mono",ui-monospace,monospace}
   <p>Chaque étape a changé une seule chose par rapport à la précédente. Les chiffres sont à 20 dB sauf mention. Le détail de chaque expérience est dans <code>FINDINGS.md</code>.</p>
   <div class="timeline">
     <div class="step kept"><span class="tag">phase 0 · références classiques</span><h3>Juger le précodeur avec un canal estimé<span class="verdict k">retenu</span></h3><p>En CSI parfait, WMMSE ne fait que 1,7 % de mieux que RZF : il n'y a presque rien à gagner en précodage pur. Avec des pilotes à 10 dB, RZF tombe de 26,2 à 21,7 (LS) ou 23,5 (LMMSE).</p><p class="why">La marge réelle est dans l'erreur sur le canal. Tout est évalué avec de vrais pilotes Sionna et le débit est mesuré sur le vrai canal.</p></div>
-    <div class="step kept"><span class="tag">phase 1 · taille</span><h3>Un token par utilisateur, pas d'encodage de position<span class="verdict k">retenu</span></h3><p>Le transformer simple (softmax) n'égale RZF qu'à D=128 et 4 couches, environ 1 500 fois le coût de RZF. Avec une seule couche, on plafonne vers 40 % de RZF quelle que soit la largeur. Remplacer l'attention par une moyenne fait perdre 18 points.</p><p class="why">La profondeur compte plus que la largeur, et l'interaction entre utilisateurs est indispensable.</p></div>
+    <div class="step dropped"><span class="tag">phase 1 · taille</span><h3>Un token par utilisateur, pas d'encodage de position<span class="verdict d">remplacé en phase 6</span></h3><p>Le transformer simple (softmax) n'égale RZF qu'à D=128 et 4 couches, environ 1 500 fois le coût de RZF. Avec une seule couche, on plafonne vers 40 % de RZF quelle que soit la largeur. Remplacer l'attention par une moyenne fait perdre 18 points.</p><p class="why">La profondeur compte plus que la largeur, et l'interaction entre utilisateurs est indispensable.</p></div>
     <div class="step kept"><span class="tag">phase 1 · attention entre utilisateurs</span><h3>Pas de softmax entre les utilisateurs<span class="verdict k">retenu</span></h3><p>À D=64, L=2 : softmax 74 % de RZF, poids signés (softmax × tanh) 93 %. L'attention linéaire (poids = q·k/K) fait autant que la signée.</p><p class="why">Annuler l'interférence demande de soustraire. Un softmax ne produit que des moyennes à poids positifs. Le linéaire n'a ni exponentielle, ni division, ni tanh, ce qui compte pour le matériel.</p></div>
-    <div class="step kept"><span class="tag">phase 1 · itérations</span><h3>Un seul bloc, répété 4 fois<span class="verdict k">retenu</span></h3><p>Un bloc appliqué 4 fois : 99,4 % de RZF ; 4 blocs distincts : 100,4 %, avec 3,7 fois plus de paramètres. 8 itérations n'apportent rien de plus.</p><p class="why">Ce sont les itérations qui comptent, comme dans une inversion itérative. Sur FPGA, un seul circuit réutilisé.</p></div>
+    <div class="step dropped"><span class="tag">phase 1 · itérations</span><h3>Un seul bloc, répété 4 fois<span class="verdict d">remplacé en phase 6</span></h3><p>Un bloc appliqué 4 fois : 99,4 % de RZF ; 4 blocs distincts : 100,4 %, avec 3,7 fois plus de paramètres. 8 itérations n'apportent rien de plus.</p><p class="why">Ce sont les itérations qui comptent, comme dans une inversion itérative. Sur FPGA, un seul circuit réutilisé.</p></div>
     <div class="step kept"><span class="tag">phase 1 · perte</span><h3>Perte relative à RZF<span class="verdict k">retenu</span></h3><p>À 0 dB : 92,7 % de RZF avec la perte « débit », 100,4 % avec la perte relative, sans perte ailleurs.</p><p class="why">Sinon, les forts SNR (débits plus grands) dominent la perte et le faible SNR est négligé.</p></div>
     <div class="step dropped"><span class="tag">phase 1 · essais</span><h3>Sortie W = Hᴴ C, biais Gram, normalisation de phase<span class="verdict d">écarté</span></h3><p>Aucun ne change le résultat de façon significative.</p><p class="why">Le modèle reconstruit seul ces informations. Ce qui lui manquait était l'opération (soustraire), pas l'information.</p></div>
     <div class="step kept"><span class="tag">phase 2 · CSI estimé</span><h3>Une sous-porteuse seule ne suffit pas<span class="verdict k">retenu (négatif)</span></h3><p>Entraîné sur le canal estimé, le précodeur par SC fait exactement comme RZF(LS) : 21,6 contre 21,7.</p><p class="why">Sur une seule SC, il n'y a qu'une mesure bruitée et rien pour débruiter. Le gain ne peut venir que des SC voisines.</p></div>
@@ -276,7 +321,16 @@ svg text{font-family:"JetBrains Mono",ui-monospace,monospace}
     <div class="step kept"><span class="tag">phase 4 · données</span><h3>Trois fois plus de données d'entraînement<span class="verdict k">retenu</span></h3><p>1 056 tirages par scénario au lieu de 352, et 80 000 pas au lieu de 40 000 : +0,26 / +0,25 / +0,21 bps/Hz à 20 dB, environ +0,5 à 25 dB. Un module d'estimation deux fois plus large (D=64) n'apporte que +0,01 à +0,05 (écarté).</p><p class="why">Le modèle manquait de données, pas de capacité. Le changement ne touche pas l'architecture.</p></div>
     <div class="step kept"><span class="tag">phase 4 · grille fine</span><h3>Grille de retards deux fois plus fine<span class="verdict k">retenu</span></h3><p>306 retards espacés de 27 ns au lieu de 153 espacés de 54 ns : +0,51 / +0,53 / +0,52 bps/Hz à 20 dB, environ +0,9 à 25 dB. L'écart au génie tombe à 0,33 / 0,41 / 0,17 bps/Hz. Doubler encore les données n'apporte que +0,04 (saturé, écarté).</p><p class="why">Un trajet hors grille tombe plus près d'un point de la grille et fuit moins sur ses voisins : la fuite était l'essentiel de l'écart restant. Fin du travail sur l'estimation.</p></div>
     <div class="step dropped"><span class="tag">phase 4 · grille et retards</span><h3>Grille 4× plus fine, ou moins de retards<span class="verdict d">écarté</span></h3><p>Grille 4× (612 retards) : −0,01 à −0,02 bps/Hz, pour 45 % de calcul en plus. Ne garder que les 64 premiers retards (3,5 µs) : −0,17 (UMi), −0,29 (UMa), −0,02 (RMa), pour seulement 16 % de calcul en moins.</p><p class="why">La finesse de la grille est saturée à 2×. Les canaux urbains ont des trajets tardifs au-delà de 3,5 µs, il faut garder toute la plage de retards. Traiter la bande entière d'un coup est nécessaire : la résolution en retard vaut 1 / largeur de bande (54 ns sur toute la bande, 2,8 µs sur un seul RB).</p></div>
-    <div class="step kept"><span class="tag">phase 4 · faible SNR</span><h3>Écart au faible SNR accepté, sans inversion<span class="verdict k">retenu</span></h3><p>Rappeler le SNR à chaque itération : aucun effet. Partir de MRT (sans inversion) : aucun effet. Partir de RZF : l'écart à 0 dB passe de −0,12 à −0,16 à −0,03 à −0,05 bps/Hz, mais au prix d'une inversion 4×4 par SC.</p><p class="why">Le modèle principal reste sans inversion de matrice, pour garder le propos « le transformer apprend à précoder » et la simplicité matérielle. L'écart au faible SNR (2 à 3 %) est accepté ; le départ depuis RZF est une variante documentée.</p></div>
+    <div class="step dropped"><span class="tag">phase 4 · faible SNR</span><h3>Écart au faible SNR accepté, sans inversion<span class="verdict d">résolu en phase 6</span></h3><p>Rappeler le SNR à chaque itération : aucun effet. Partir de MRT (sans inversion) : aucun effet. Partir de RZF : l'écart à 0 dB passe de −0,12 à −0,16 à −0,03 à −0,05 bps/Hz, mais au prix d'une inversion 4×4 par SC.</p><p class="why">Le modèle principal reste sans inversion de matrice, pour garder le propos « le transformer apprend à précoder » et la simplicité matérielle. L'écart au faible SNR (2 à 3 %) est accepté ; le départ depuis RZF est une variante documentée.</p></div>
+    <div class="step dropped"><span class="tag">phase 5 · massif</span><h3>Un token par utilisateur ne passe pas à 64 antennes<span class="verdict d">remplacé</span></h3><p>Le modèle M8K4 transposé tel quel fait 34 bps/Hz au lieu de 66 pour RZF sur LS. En CSI parfait, ce précodeur n'atteint que 50 % de RZF ; il faut une largeur de 256 (593 k paramètres, autant de calcul que WMMSE) pour égaler RZF.</p><p class="why">Un token par utilisateur doit à la fois garder 64 antennes et inverser l'interaction entre 8 utilisateurs.</p></div>
+    <div class="step dropped"><span class="tag">phase 5 · Gram</span><h3>Un état par paire d'utilisateurs, W = Hᴴ C<span class="verdict d">remplacé</span></h3><p>Un état par paire (j, k), mis à jour en multipliant par la matrice de Gram, et la sortie W = Hᴴ C : égale WMMSE en massif (CSI parfait) avec 6,6 k paramètres. Mais en 4 étapes, il décroche quand les utilisateurs sont corrélés ou au haut SNR (55 % de RZF à ρ = 0,95).</p><p class="why">C'est une inversion itérative déroulée : la bonne représentation (paires, sortie dans l'espace des canaux), mais une règle imposée qui manque de profondeur sur les cas mal conditionnés.</p></div>
+    <div class="step kept"><span class="tag">phase 6 · architecture</span><h3>Transformer standard sur les paires d'utilisateurs<span class="verdict k">retenu</span></h3><p>Attention triangulaire apprise entre paires, G redonné à chaque couche, 8 couches distinctes, entraîné sur le mélange M64K8 + M8K4 avec des utilisateurs corrélés. Au moins 99 % de RZF partout à 20 dB, 100 % à 30 dB avec un entraînement plus long ; généralise à des nombres d'antennes et d'utilisateurs jamais vus. Gram en 8 étapes : 91,5 % à 30 dB ; tokens antenne × utilisateur (type Gformer) : 85,9 %, 4 fois plus cher.</p><p class="why">Aucune forme d'algorithme imposée : seulement la représentation par paires et la sortie W = Hᴴ C. À coût égal, la profondeur bat la largeur. Gram reste la version structurée qui explique pourquoi ça marche.</p></div>
+    <div class="step kept"><span class="tag">phase 6 · de bout en bout</span><h3>Le trou au faible SNR disparaît, le massif fonctionne<span class="verdict k">retenu</span></h3><p>Avec le nouveau précodeur et le même encodeur : M8K4 25,87 / 25,47 / 26,28 à 20 dB et 5,39 / 5,36 / 5,47 à 0 dB (au niveau du génie). Massif : +3,9 à +4,6 bps/Hz sur WMMSE robuste.</p><p class="why">L'ancien précodeur était la cause du trou au faible SNR. En massif standard, le précodeur n'est plus limitant : la marge restante est dans l'encodeur.</p></div>
+    <div class="step kept"><span class="tag">phase 7 · contexte fréquentiel</span><h3>Tout le gain vient de la bande entière<span class="verdict k">retenu</span></h3><p>Même précodeur : sans contexte 22,4 ; 1 RB 23,2 ; LMMSE classique 24,3 ; 3 RB 24,5 ; 17 RB 25,5 ; toute la bande 25,9. Entraîner l'encodeur seul puis le figer perd 0,2.</p><p class="why">Le contexte d'un RB (l'idée de l'IB du mémoire) ne suffit pas. Toute la bande (l'idée de TA-RB), vue dans le domaine des retards, sépare les trajets du bruit. Un seul modèle, pas deux blocs indépendants.</p></div>
+    <div class="step kept"><span class="tag">phase 7 · encodeur</span><h3>Un encodeur de direction, pas un estimateur<span class="verdict k">retenu</span></h3><p>La sortie estime la direction du canal 5 à 7,5 dB mieux que LMMSE, mais pas son amplitude.</p><p class="why">D'où le nom « encodeur fréquentiel » : il apprend ce dont le précodage a besoin, pas une copie du canal.</p></div>
+    <div class="step kept"><span class="tag">phase 7 · granularité</span><h3>Précodeur sur 1 SC sur 3, W interpolé<span class="verdict k">variante de coût</span></h3><p>Tenir le précodeur sur un RB (type PRG 5G) perd 3,6 bps/Hz en UMi, même avec RZF et le canal parfait. Interpoler W entre des SC ancres, appris dans la boucle : −0,01 à −0,1 pour 1 SC sur 3, coût total divisé par 2,4.</p><p class="why">La bande de cohérence en ville (≈ 9 SC) est plus petite qu'un RB. Il faut échantillonner le précodeur plus finement que le canal ne varie, pas au rythme du RB.</p></div>
+    <div class="step kept"><span class="tag">phase 8 · références apprises</span><h3>Meilleur que TA-RB et qu'un précodeur de la littérature<span class="verdict k">retenu</span></h3><p>TA-RB réécrit dans ce cadre : 24,2 / 23,6 / 25,4 à 20 dB (1,1 M paramètres). LMMSE + précodeur type Gformer : au niveau de WMMSE robuste.</p><p class="why">Un précodeur appris sur une estimation classique n'apporte presque rien : le gain vient de l'encodeur fréquentiel appris avec le précodeur.</p></div>
+    <div class="step kept"><span class="tag">phase 8 · robustesse</span><h3>Robuste au vieillissement, fragile au pilote très faible<span class="verdict r">en cours</span></h3><p>L'avance tient avec des données 2,5 et 5 ms après le sondage, et avec un pilote plus fort que prévu. À pilote 0 dB (entraîné à 10 dB), le modèle s'effondre (12,9 contre 19,0).</p><p class="why">L'encodeur a appris un débruitage calé sur un niveau de bruit. Correction en cours : entraînement avec un SNR pilote aléatoire entre 0 et 20 dB.</p></div>
   </div>
 </section>
 
@@ -284,11 +338,11 @@ svg text{font-family:"JetBrains Mono",ui-monospace,monospace}
   <div class="eyebrow">Ensuite</div>
   <h2>Ce qui reste à faire</h2>
   <div class="cols">
-    <div class="panel"><h3>Précodeur</h3><ul><li>Réduire le coût du précodeur D=64 (77 % du calcul).</li><li>Variante documentée : départ depuis RZF pour supprimer l'écart au faible SNR.</li></ul></div>
-    <div class="panel"><h3>Massif (M=64, K=8)</h3><ul><li>LMMSE + WMMSE coûte ≈ 19,1 M MAC/SC, notre modèle ≈ 1,4 M (13 fois moins).</li><li>Retester le masque retard × angle (32 directions par polarisation).</li></ul></div>
-    <div class="panel"><h3>À la fin</h3><ul><li>Graines, SNR pilote variable, scénario non vu.</li><li>Attribution du gain, référence TA-RB.</li><li>Débit codé (BLER LDPC).</li></ul></div>
+    <div class="panel"><h3>Robustesse</h3><ul><li>Pilote aléatoire à l'entraînement : corriger le cas à 0 dB sans perdre ailleurs.</li><li>Scénario jamais vu à l'entraînement.</li></ul></div>
+    <div class="panel"><h3>Massif</h3><ul><li>La marge restante est dans l'encodeur (UMa : 1,5 bps/Hz du génie).</li><li>Masque retard × angle à retester avec 64 antennes ; deux graines.</li></ul></div>
+    <div class="panel"><h3>Matériel et article</h3><ul><li>Pas d'interpolation adaptatif (RMa tolère 1 RB, la ville 3 SC).</li><li>Quantification, coût sur FPGA.</li><li>Débit codé (BLER LDPC).</li></ul></div>
   </div>
-  <p class="note">Cadrage retenu : précodage à partir des pilotes. Tout est jugé sur le débit ; l'estimation est un petit module au service du précodeur.</p>
+  <p class="note">Cadrage retenu : précodage à partir des pilotes. Tout est jugé sur le débit. Le modèle principal est calculé sur chaque sous-porteuse ; le calcul sur 1 SC sur 3 est présenté comme une variante de coût.</p>
 </section>
 
 </div>
