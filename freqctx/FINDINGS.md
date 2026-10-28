@@ -941,6 +941,44 @@ Modèle complet, graine 0. Erreur quadratique normalisée par rapport au vrai ca
 - **1 SC sur 3 : perte ≤ 0,1, coût total divisé par 2,4.** L'entraînement récupère une partie de la perte de l'interpolation fixe. Au-delà, UMi et UMa perdent, RMa tient (bande de cohérence plus large) : un pas adaptatif à l'étalement des retards est une perspective.
 - Lien avec le mémoire : c'est la bonne version de l'idée de TA-RB (précodeur grossier puis interpolé), calée sur la bande de cohérence et non sur le RB.
 
+## Phase 8 — robustesse et références apprises (2026-10-28)
+
+### Robustesse sans réentraîner (`experiments/phase8_robust.py`, `results/phase8/robustness.json`)
+Modèle principal M8K4 (entraîné pilote 10 dB, données au slot du sondage) et version 1 SC sur 3. Nouveaux tirages (graines 2026+10i / 3026+10i). Débit à 20 dB, UMi / UMa / RMa :
+
+| SNR pilote | modèle (par SC) | modèle (1 SC sur 3) | WMMSE robuste (LMMSE) |
+|---|---|---|---|
+| 0 dB | **12,90 / 12,92 / 13,23** | 17,29 / 17,24 / 18,98 | 19,03 / 18,91 / 20,30 |
+| 5 dB | 22,64 / 22,58 / 23,64 | 23,76 / 23,68 / 24,76 | 21,83 / 21,79 / 22,55 |
+| 10 dB (entraînement) | 25,64 / 25,60 / 26,23 | 25,57 / 25,51 / 26,23 | 23,90 / 23,90 / 24,28 |
+| 15 dB | 26,12 / 26,11 / 26,49 | 26,02 / 25,99 / 26,48 | 25,22 / 25,22 / 25,38 |
+| 20 dB | 26,27 / 26,27 / 26,58 | 26,15 / 26,12 / 26,56 | 25,93 / 25,93 / 25,98 |
+
+| Retard données (pilote 10 dB) | modèle (par SC) | WMMSE robuste (LMMSE) | écart |
+|---|---|---|---|
+| 0 ms | 25,80 / 25,63 / 26,19 | 24,13 / 23,85 / 24,25 | +1,67 / +1,78 / +1,94 |
+| 2,5 ms | 21,76 / 21,65 / 24,18 | 20,70 / 20,53 / 22,64 | +1,06 / +1,12 / +1,54 |
+| 5 ms | 18,15 / 17,98 / 22,00 | 17,38 / 17,18 / 20,71 | +0,77 / +0,80 / +1,29 |
+
+- **Vieillissement : robuste.** Le modèle (entraîné sans vieillissement) garde son avance sur le classique à 2,5 et 5 ms ; les deux perdent autant en absolu (le vieillissement touche le canal, pas l'estimation).
+- **SNR pilote plus élevé : robuste** (toujours au-dessus du classique, avance qui se réduit naturellement quand l'estimation devient facile : +0,34 à pilote 20 dB).
+- **SNR pilote plus bas : fragile.** À 5 dB, encore +0,8 sur le classique ; **à 0 dB, effondrement** (12,9 contre 19,0), l'encodeur ayant appris un débruitage calé sur 10 dB. La version 1 SC sur 3 tient mieux (17,3). Correction en cours : entraînement avec SNR pilote aléatoire (phase 8, `--variant pilot_rand`).
+
+### Références apprises (même cadre, mêmes données, même perte ; `results/phase8/lmmse_axial.json`, `tarb.json`)
+Pilote 10 dB, débit UMi / UMa / RMa :
+
+| | 0 dB | 20 dB | 25 dB | params | MAC/SC |
+|---|---|---|---|---|---|
+| **notre modèle** | **5,39 / 5,36 / 5,47** | **25,87 / 25,47 / 26,28** | **30,80 / 30,27 / 31,84** | 98 k | 1,27 M |
+| TA-RB du mémoire (réécrit, `models/tarb.py`, sur LS) | 5,21 / 5,16 / 5,32 | 24,23 / 23,63 / 25,39 | 27,81 / 27,01 / 30,02 | 1 125 k | 1,79 M |
+| LMMSE + précodeur type 2D-Gformer (Guo & Yang 2025 ; `models/axial_precoder.py`) | 5,36 / 5,31 / 5,43 | 24,24 / 23,79 / 24,47 | 27,66 / 27,12 / 28,00 | 34 k | 1,12 M |
+| *WMMSE robuste (LMMSE)* | *5,37 / 5,32 / 5,45* | *24,18 / 23,73 / 24,35* | *27,57 / 27,04 / 27,84* | | |
+
+- **Notre modèle bat les deux références apprises** : +1,6 / +1,8 / +0,9 bps/Hz sur TA-RB à 20 dB (+3,0 / +3,3 / +1,8 à 25 dB), avec 11× moins de paramètres et 30 % de calcul en moins.
+- **TA-RB (mémoire)** : au niveau du classique en ville, mieux en RMa (+1,0 : son moyennage par groupe de 3 SC et son attention sur toute la bande aident quand la bande de cohérence est large) ; en dessous au faible SNR. Dans ce cadre réaliste (vrais pilotes, référence LMMSE), son avance du mémoire ne se retrouve pas en ville.
+- **Précodeur de la littérature sur LMMSE** : au niveau de WMMSE robuste (+0,06 à +0,12) — même conclusion que notre précodeur sur LMMSE (phase 7) : sans encodeur appris, un bon précodeur appris n'apporte presque rien.
+- Note : TA-RB ne tourne pas sur les P100 de srvgrm08 (convolutions cuDNN), entraîné sur srvgrm12.
+
 ## Prochaine étape
 (1) 3 graines pour l'attention en fréquence D64. (2) Réduire le coût. (3) Bootstrap sur les tirages. (4) Faire le point avant d'aller plus loin (pilote 20 dB, vieillissement, M64).
 Cible principale ensuite (phases 2–3) : le régime pilote 10 dB, où il reste 2,7 à 5,9 bps/Hz après LMMSE.
