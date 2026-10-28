@@ -979,6 +979,22 @@ Pilote 10 dB, débit UMi / UMa / RMa :
 - **Précodeur de la littérature sur LMMSE** : au niveau de WMMSE robuste (+0,06 à +0,12) — même conclusion que notre précodeur sur LMMSE (phase 7) : sans encodeur appris, un bon précodeur appris n'apporte presque rien.
 - Note : TA-RB ne tourne pas sur les P100 de srvgrm08 (convolutions cuDNN), entraîné sur srvgrm12.
 
+### Entraînement avec SNR pilote aléatoire — corrige la fragilité (`results/phase7/pilot_rand.json`, `results/phase8/robustness_pilot_rand.json`)
+Même modèle, mêmes données de canal ; seul changement : SNR pilote tiré uniformément entre 0 et 20 dB par lot de 8 tirages à l'entraînement (pas d'entrée supplémentaire). Débit à 20 dB, UMi / UMa / RMa :
+
+| SNR pilote | modèle d'origine (entraîné à 10 dB) | **modèle pilote aléatoire** | WMMSE robuste (LMMSE) |
+|---|---|---|---|
+| 0 dB | 12,90 / 12,92 / 13,23 | **22,41 / 22,22 / 24,22** | 19,03 / 18,91 / 20,30 |
+| 5 dB | 22,64 / 22,58 / 23,64 | **24,45 / 24,38 / 25,56** | 21,83 / 21,79 / 22,55 |
+| 10 dB | 25,64 / 25,60 / 26,23 | 25,61 / 25,57 / 26,21 | 23,90 / 23,90 / 24,28 |
+| 15 dB | 26,12 / 26,11 / 26,49 | 26,17 / 26,16 / 26,49 | 25,22 / 25,22 / 25,38 |
+| 20 dB | 26,27 / 26,27 / 26,58 | 26,40 / 26,41 / 26,60 | 25,93 / 25,93 / 25,98 |
+
+- **La fragilité disparaît** : à pilote 0 dB, +3,4 / +3,3 / +3,9 bps/Hz sur le classique (au lieu de −6) ; au-dessus du classique à tous les SNR pilote et tous les SNR de données testés (à 0 dB de données aussi).
+- **Aucune perte au pilote nominal** (−0,03 à 10 dB, mêmes tirages standard : 25,84 / 25,45 / 26,26 contre 25,87 / 25,47 / 26,28), léger gain à 15–20 dB. Vieillissement inchangé (21,76 / 21,66 / 24,17 à 2,5 ms).
+- L'encodeur estime donc lui-même le niveau de bruit (sur les retards sans trajet) : pas besoin de lui donner le SNR pilote.
+- **Proposition : ce modèle devient le modèle principal.**
+
 ## Prochaine étape
 (1) 3 graines pour l'attention en fréquence D64. (2) Réduire le coût. (3) Bootstrap sur les tirages. (4) Faire le point avant d'aller plus loin (pilote 20 dB, vieillissement, M64).
 Cible principale ensuite (phases 2–3) : le régime pilote 10 dB, où il reste 2,7 à 5,9 bps/Hz après LMMSE.
