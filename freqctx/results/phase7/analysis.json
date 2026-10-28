@@ -1,0 +1,439 @@
+{
+ "meta": {
+  "git_commit": "9efa024",
+  "created": "2026-10-27 20:39"
+ },
+ "weights": "delay_bande_os2_trigL8_untied_n1056_s80k_est32_D64_T4_linear_melange_p10.weights.h5",
+ "snrs_db": [
+  0,
+  10,
+  20,
+  25
+ ],
+ "nmse_db": {
+  "umi": {
+   "LS": -17.11858630180359,
+   "LMMSE (melange)": -20.081326961517334,
+   "encodeur brut": 6.376492381095886,
+   "encodeur, facteur global": -16.65227770805359,
+   "encodeur, facteur par utilisateur": -16.740715503692627,
+   "LMMSE, facteur par utilisateur": -20.229504108428955,
+   "encodeur, direction (facteur par utilisateur et SC)": -25.80698013305664,
+   "LMMSE, direction": -20.90174913406372,
+   "LS, direction": -17.848896980285645,
+   "echelle moyenne |encodeur| / |h|": 2.118882894515991
+  },
+  "uma": {
+   "LS": -16.782166957855225,
+   "LMMSE (melange)": -19.312222003936768,
+   "encodeur brut": 6.368288993835449,
+   "encodeur, facteur global": -16.692018508911133,
+   "encodeur, facteur par utilisateur": -16.780730485916138,
+   "LMMSE, facteur par utilisateur": -19.519296884536743,
+   "encodeur, direction (facteur par utilisateur et SC)": -25.257902145385742,
+   "LMMSE, direction": -20.17643928527832,
+   "LS, direction": -17.538992166519165,
+   "echelle moyenne |encodeur| / |h|": 2.1167290210723877
+  },
+  "rma": {
+   "LS": -17.570834159851074,
+   "LMMSE (melange)": -21.33159875869751,
+   "encodeur brut": 6.440258026123047,
+   "encodeur, facteur global": -16.219691038131714,
+   "encodeur, facteur par utilisateur": -16.377021074295044,
+   "LMMSE, facteur par utilisateur": -21.37068748474121,
+   "encodeur, direction (facteur par utilisateur et SC)": -29.484970569610596,
+   "LMMSE, direction": -21.981301307678223,
+   "LS, direction": -18.249188661575317,
+   "echelle moyenne |encodeur| / |h|": 2.1336326599121094
+  }
+ },
+ "gauge_rates": {
+  "umi": {
+   "0": {
+    "modele": 5.391756534576416,
+    "WMMSE sur encodeur realigne": 5.3909735679626465,
+    "WMMSE (LMMSE melange)": 5.365447044372559
+   },
+   "10": {
+    "modele": 14.488040924072266,
+    "WMMSE sur encodeur realigne": 14.44769287109375,
+    "WMMSE (LMMSE melange)": 14.211898803710938
+   },
+   "20": {
+    "modele": 25.870038986206055,
+    "WMMSE sur encodeur realigne": 25.701692581176758,
+    "WMMSE (LMMSE melange)": 24.071304321289062
+   },
+   "25": {
+    "modele": 30.800342559814453,
+    "WMMSE sur encodeur realigne": 30.462717056274414,
+    "WMMSE (LMMSE melange)": 27.331811904907227
+   }
+  },
+  "uma": {
+   "0": {
+    "modele": 5.35690975189209,
+    "WMMSE sur encodeur realigne": 5.3564019203186035,
+    "WMMSE (LMMSE melange)": 5.32428503036499
+   },
+   "10": {
+    "modele": 14.289018630981445,
+    "WMMSE sur encodeur realigne": 14.24390697479248,
+    "WMMSE (LMMSE melange)": 13.977738380432129
+   },
+   "20": {
+    "modele": 25.468307495117188,
+    "WMMSE sur encodeur realigne": 25.300474166870117,
+    "WMMSE (LMMSE melange)": 23.619510650634766
+   },
+   "25": {
+    "modele": 30.265405654907227,
+    "WMMSE sur encodeur realigne": 29.921159744262695,
+    "WMMSE (LMMSE melange)": 26.78966522216797
+   }
+  },
+  "rma": {
+   "0": {
+    "modele": 5.468222141265869,
+    "WMMSE sur encodeur realigne": 5.466927528381348,
+    "WMMSE (LMMSE melange)": 5.44503927230835
+   },
+   "10": {
+    "modele": 14.609046936035156,
+    "WMMSE sur encodeur realigne": 14.565367698669434,
+    "WMMSE (LMMSE melange)": 14.33146858215332
+   },
+   "20": {
+    "modele": 26.282045364379883,
+    "WMMSE sur encodeur realigne": 26.057750701904297,
+    "WMMSE (LMMSE melange)": 24.198184967041016
+   },
+   "25": {
+    "modele": 31.842117309570312,
+    "WMMSE sur encodeur realigne": 31.437789916992188,
+    "WMMSE (LMMSE melange)": 27.537628173828125
+   }
+  }
+ },
+ "granularity": {
+  "umi": {
+   "0": {
+    "SC": {
+     "modele": 5.391756534576416,
+     "modele, C tenu par groupe": 5.391756534576416,
+     "modele, C interpole": 5.391756534576416,
+     "WMMSE (LMMSE melange)": 5.365447044372559
+    },
+    "1 RB": {
+     "modele": 5.26601505279541,
+     "modele, C tenu par groupe": 5.252772808074951,
+     "modele, C interpole": 5.288979530334473,
+     "WMMSE (LMMSE melange)": 5.261342525482178
+    },
+    "2 RB": {
+     "modele": 5.058446884155273,
+     "modele, C tenu par groupe": 5.0710530281066895,
+     "modele, C interpole": 5.125437259674072,
+     "WMMSE (LMMSE melange)": 5.0612030029296875
+    },
+    "4 RB": {
+     "modele": 4.676562309265137,
+     "modele, C tenu par groupe": 4.798402786254883,
+     "modele, C interpole": 4.870118141174316,
+     "WMMSE (LMMSE melange)": 4.681792736053467
+    }
+   },
+   "10": {
+    "SC": {
+     "modele": 14.488040924072266,
+     "modele, C tenu par groupe": 14.488040924072266,
+     "modele, C interpole": 14.488040924072266,
+     "WMMSE (LMMSE melange)": 14.211898803710938
+    },
+    "1 RB": {
+     "modele": 13.760899543762207,
+     "modele, C tenu par groupe": 12.292069435119629,
+     "modele, C interpole": 13.008896827697754,
+     "WMMSE (LMMSE melange)": 13.580841064453125
+    },
+    "2 RB": {
+     "modele": 12.841873168945312,
+     "modele, C tenu par groupe": 10.65798568725586,
+     "modele, C interpole": 11.33293342590332,
+     "WMMSE (LMMSE melange)": 12.666769981384277
+    },
+    "4 RB": {
+     "modele": 11.414639472961426,
+     "modele, C tenu par groupe": 8.932378768920898,
+     "modele, C interpole": 9.473322868347168,
+     "WMMSE (LMMSE melange)": 11.259419441223145
+    }
+   },
+   "20": {
+    "SC": {
+     "modele": 25.870038986206055,
+     "modele, C tenu par groupe": 25.870038986206055,
+     "modele, C interpole": 25.870038986206055,
+     "WMMSE (LMMSE melange)": 24.071304321289062
+    },
+    "1 RB": {
+     "modele": 22.95972442626953,
+     "modele, C tenu par groupe": 17.346630096435547,
+     "modele, C interpole": 19.700963973999023,
+     "WMMSE (LMMSE melange)": 21.784711837768555
+    },
+    "2 RB": {
+     "modele": 20.42498779296875,
+     "modele, C tenu par groupe": 13.717580795288086,
+     "modele, C interpole": 15.1727294921875,
+     "WMMSE (LMMSE melange)": 19.409381866455078
+    },
+    "4 RB": {
+     "modele": 17.206579208374023,
+     "modele, C tenu par groupe": 10.60519027709961,
+     "modele, C interpole": 11.458161354064941,
+     "WMMSE (LMMSE melange)": 16.40347671508789
+    }
+   },
+   "25": {
+    "SC": {
+     "modele": 30.800342559814453,
+     "modele, C tenu par groupe": 30.800342559814453,
+     "modele, C interpole": 30.800342559814453,
+     "WMMSE (LMMSE melange)": 27.331811904907227
+    },
+    "1 RB": {
+     "modele": 26.326631546020508,
+     "modele, C tenu par groupe": 18.7487735748291,
+     "modele, C interpole": 21.738676071166992,
+     "WMMSE (LMMSE melange)": 24.14299964904785
+    },
+    "2 RB": {
+     "modele": 22.970544815063477,
+     "modele, C tenu par groupe": 14.493852615356445,
+     "modele, C interpole": 16.133358001708984,
+     "WMMSE (LMMSE melange)": 21.175546646118164
+    },
+    "4 RB": {
+     "modele": 18.995847702026367,
+     "modele, C tenu par groupe": 10.981891632080078,
+     "modele, C interpole": 11.8762788772583,
+     "WMMSE (LMMSE melange)": 17.638996124267578
+    }
+   }
+  },
+  "uma": {
+   "0": {
+    "SC": {
+     "modele": 5.35690975189209,
+     "modele, C tenu par groupe": 5.35690975189209,
+     "modele, C interpole": 5.35690975189209,
+     "WMMSE (LMMSE melange)": 5.32428503036499
+    },
+    "1 RB": {
+     "modele": 5.20233154296875,
+     "modele, C tenu par groupe": 5.187084674835205,
+     "modele, C interpole": 5.22387170791626,
+     "WMMSE (LMMSE melange)": 5.201539039611816
+    },
+    "2 RB": {
+     "modele": 4.961555004119873,
+     "modele, C tenu par groupe": 4.986697196960449,
+     "modele, C interpole": 5.039363384246826,
+     "WMMSE (LMMSE melange)": 4.96945858001709
+    },
+    "4 RB": {
+     "modele": 4.537138938903809,
+     "modele, C tenu par groupe": 4.701123237609863,
+     "modele, C interpole": 4.7780609130859375,
+     "WMMSE (LMMSE melange)": 4.548260688781738
+    }
+   },
+   "10": {
+    "SC": {
+     "modele": 14.289018630981445,
+     "modele, C tenu par groupe": 14.289018630981445,
+     "modele, C interpole": 14.289018630981445,
+     "WMMSE (LMMSE melange)": 13.977738380432129
+    },
+    "1 RB": {
+     "modele": 13.406571388244629,
+     "modele, C tenu par groupe": 11.811075210571289,
+     "modele, C interpole": 12.514657974243164,
+     "WMMSE (LMMSE melange)": 13.237704277038574
+    },
+    "2 RB": {
+     "modele": 12.356568336486816,
+     "modele, C tenu par groupe": 10.133806228637695,
+     "modele, C interpole": 10.76677417755127,
+     "WMMSE (LMMSE melange)": 12.195403099060059
+    },
+    "4 RB": {
+     "modele": 10.85055923461914,
+     "modele, C tenu par groupe": 8.515803337097168,
+     "modele, C interpole": 9.054389953613281,
+     "WMMSE (LMMSE melange)": 10.686590194702148
+    }
+   },
+   "20": {
+    "SC": {
+     "modele": 25.468307495117188,
+     "modele, C tenu par groupe": 25.468307495117188,
+     "modele, C interpole": 25.468307495117188,
+     "WMMSE (LMMSE melange)": 23.619510650634766
+    },
+    "1 RB": {
+     "modele": 22.06648063659668,
+     "modele, C tenu par groupe": 16.27316665649414,
+     "modele, C interpole": 18.532798767089844,
+     "WMMSE (LMMSE melange)": 20.99160385131836
+    },
+    "2 RB": {
+     "modele": 19.295866012573242,
+     "modele, C tenu par groupe": 12.728754043579102,
+     "modele, C interpole": 14.069540023803711,
+     "WMMSE (LMMSE melange)": 18.38114356994629
+    },
+    "4 RB": {
+     "modele": 15.946654319763184,
+     "modele, C tenu par groupe": 9.799241065979004,
+     "modele, C interpole": 10.668646812438965,
+     "WMMSE (LMMSE melange)": 15.21616268157959
+    }
+   },
+   "25": {
+    "SC": {
+     "modele": 30.265405654907227,
+     "modele, C tenu par groupe": 30.265405654907227,
+     "modele, C interpole": 30.265405654907227,
+     "WMMSE (LMMSE melange)": 26.78966522216797
+    },
+    "1 RB": {
+     "modele": 25.130823135375977,
+     "modele, C tenu par groupe": 17.481342315673828,
+     "modele, C interpole": 20.311044692993164,
+     "WMMSE (LMMSE melange)": 23.15431785583496
+    },
+    "2 RB": {
+     "modele": 21.52236557006836,
+     "modele, C tenu par groupe": 13.36325740814209,
+     "modele, C interpole": 14.860464096069336,
+     "WMMSE (LMMSE melange)": 19.94154167175293
+    },
+    "4 RB": {
+     "modele": 17.436288833618164,
+     "modele, C tenu par groupe": 10.122313499450684,
+     "modele, C interpole": 11.02159309387207,
+     "WMMSE (LMMSE melange)": 16.238187789916992
+    }
+   }
+  },
+  "rma": {
+   "0": {
+    "SC": {
+     "modele": 5.468222141265869,
+     "modele, C tenu par groupe": 5.468222141265869,
+     "modele, C interpole": 5.468222141265869,
+     "WMMSE (LMMSE melange)": 5.44503927230835
+    },
+    "1 RB": {
+     "modele": 5.456518650054932,
+     "modele, C tenu par groupe": 5.453803062438965,
+     "modele, C interpole": 5.455731391906738,
+     "WMMSE (LMMSE melange)": 5.434298515319824
+    },
+    "2 RB": {
+     "modele": 5.431979656219482,
+     "modele, C tenu par groupe": 5.427245616912842,
+     "modele, C interpole": 5.434975624084473,
+     "WMMSE (LMMSE melange)": 5.410125255584717
+    },
+    "4 RB": {
+     "modele": 5.37094783782959,
+     "modele, C tenu par groupe": 5.365403652191162,
+     "modele, C interpole": 5.378577709197998,
+     "WMMSE (LMMSE melange)": 5.3493242263793945
+    }
+   },
+   "10": {
+    "SC": {
+     "modele": 14.609046936035156,
+     "modele, C tenu par groupe": 14.609046936035156,
+     "modele, C interpole": 14.609046936035156,
+     "WMMSE (LMMSE melange)": 14.33146858215332
+    },
+    "1 RB": {
+     "modele": 14.536944389343262,
+     "modele, C tenu par groupe": 14.295947074890137,
+     "modele, C interpole": 14.44714641571045,
+     "WMMSE (LMMSE melange)": 14.266663551330566
+    },
+    "2 RB": {
+     "modele": 14.40184497833252,
+     "modele, C tenu par groupe": 13.843122482299805,
+     "modele, C interpole": 14.158934593200684,
+     "WMMSE (LMMSE melange)": 14.129312515258789
+    },
+    "4 RB": {
+     "modele": 14.095611572265625,
+     "modele, C tenu par groupe": 13.02320384979248,
+     "modele, C interpole": 13.486825942993164,
+     "WMMSE (LMMSE melange)": 13.821927070617676
+    }
+   },
+   "20": {
+    "SC": {
+     "modele": 26.282045364379883,
+     "modele, C tenu par groupe": 26.282045364379883,
+     "modele, C interpole": 26.282045364379883,
+     "WMMSE (LMMSE melange)": 24.198184967041016
+    },
+    "1 RB": {
+     "modele": 25.866832733154297,
+     "modele, C tenu par groupe": 24.124841690063477,
+     "modele, C interpole": 25.4270076751709,
+     "WMMSE (LMMSE melange)": 23.8848934173584
+    },
+    "2 RB": {
+     "modele": 25.254697799682617,
+     "modele, C tenu par groupe": 22.066125869750977,
+     "modele, C interpole": 24.034934997558594,
+     "WMMSE (LMMSE melange)": 23.32952880859375
+    },
+    "4 RB": {
+     "modele": 24.019744873046875,
+     "modele, C tenu par groupe": 19.164640426635742,
+     "modele, C interpole": 21.17721939086914,
+     "WMMSE (LMMSE melange)": 22.292367935180664
+    }
+   },
+   "25": {
+    "SC": {
+     "modele": 31.842117309570312,
+     "modele, C tenu par groupe": 31.842117309570312,
+     "modele, C interpole": 31.842117309570312,
+     "WMMSE (LMMSE melange)": 27.537628173828125
+    },
+    "1 RB": {
+     "modele": 31.057538986206055,
+     "modele, C tenu par groupe": 27.958913803100586,
+     "modele, C interpole": 30.38690948486328,
+     "WMMSE (LMMSE melange)": 27.051738739013672
+    },
+    "2 RB": {
+     "modele": 29.996463775634766,
+     "modele, C tenu par groupe": 24.890827178955078,
+     "modele, C interpole": 28.099353790283203,
+     "WMMSE (LMMSE melange)": 26.23862075805664
+    },
+    "4 RB": {
+     "modele": 28.049671173095703,
+     "modele, C tenu par groupe": 20.979570388793945,
+     "modele, C interpole": 23.831724166870117,
+     "WMMSE (LMMSE melange)": 24.813705444335938
+    }
+   }
+  }
+ }
+}

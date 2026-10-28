@@ -125,10 +125,15 @@ class DelayEstimator(keras.layers.Layer):
 class DelayDomainPrecoder(keras.Model):
     def __init__(self, num_sc, num_users, num_bs_ant, est_d=32, est_layers=2, angle_mask=False,
                  history=False, banded=False, oversample=1, max_taps=None, precoder_arch="persc",
-                 **precoder_kw):
+                 subband_rb=None, **precoder_kw):
+        """subband_rb (phase 7) : l'encodeur ne voit qu'une sous-bande de subband_rb RB a la fois
+        (memes poids pour toutes les sous-bandes) ; None = toute la bande."""
         super().__init__()
         self.F, self.K, self.M = num_sc, num_users, num_bs_ant
-        self.estimator = DelayEstimator(num_sc, num_users, num_bs_ant, d=est_d, layers=est_layers,
+        self.Fs = num_sc if subband_rb is None else 12 * subband_rb
+        assert num_sc % self.Fs == 0 and self.Fs % num_users == 0
+        guard = min(4, max(1, self.Fs // num_users // 3))           # retards "negatifs" (4 sur toute la bande)
+        self.estimator = DelayEstimator(self.Fs, num_users, num_bs_ant, d=est_d, layers=est_layers, guard=guard,
                                         angle_mask=angle_mask, history=history, banded=banded,
                                         oversample=oversample, max_taps=max_taps)
         if precoder_arch == "persc":                                # tokens par utilisateur (phases 1-4)
@@ -138,8 +143,16 @@ class DelayDomainPrecoder(keras.Model):
             self.precoder = GramPrecoder(num_bs_ant, **precoder_kw)
         self.est_d, self.est_layers = est_d, est_layers
 
+    def encode(self, h_ls, aux=None):
+        """Representation par SC [B, F, K, M] ; sous-bandes traitees independamment."""
+        if self.Fs == self.F:
+            return self.estimator(h_ls, aux)
+        B, S = tf.shape(h_ls)[0], self.F // self.Fs
+        x = tf.reshape(h_ls, [B * S, self.Fs, self.K, self.M])    # le peigne reste aligne (Fs % K = 0)
+        return tf.reshape(self.estimator(x, aux), [B, self.F, self.K, self.M])
+
     def call(self, h_ls, snr_db, aux=None):
-        h_hat = self.estimator(h_ls, aux)                          # [B, F, K, M]
+        h_hat = self.encode(h_ls, aux)                             # [B, F, K, M]
         B = tf.shape(h_hat)[0]
         w = self.precoder(tf.reshape(h_hat, [B * self.F, self.K, self.M]),
                           tf.repeat(snr_db, self.F))
@@ -147,9 +160,9 @@ class DelayDomainPrecoder(keras.Model):
 
     def macs_per_sc(self, K):
         """Precodeur par SC + estimation (une fois par bande, ramenee par SC)."""
-        N, d, M, L = self.F // self.K, self.est_d, self.M, self.est_layers
+        N, d, M, L = self.Fs // self.K, self.est_d, self.M, self.est_layers
         T = self.estimator.T
-        fft = 4 * (T * N + self.F * T) * M                         # IDFT + DFT en matrices (borne haute)
+        fft = 4 * (T * N + self.Fs * T) * M                        # IDFT + DFT en matrices (borne haute)
         per_tok = (2 * M + 1) * d + L * (3 * d * d + 2 * T * d + d * d + 4 * d * d) + d
-        est = K * (fft + T * per_tok)
-        return self.precoder.macs_per_sc(K) + est // self.F
+        est = K * (fft + T * per_tok)                              # par sous-bande
+        return self.precoder.macs_per_sc(K) + est // self.Fs

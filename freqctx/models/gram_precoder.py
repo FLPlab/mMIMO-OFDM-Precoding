@@ -89,6 +89,10 @@ class GramPrecoder(keras.Model):
 
     def call(self, h, snr_db):
         """h [N, K, M] complex64, snr_db [N] -> W [N, M, K]."""
+        return normalize_power(tf.matmul(h, self.coeffs(h, snr_db), adjoint_a=True))   # W = h^H C
+
+    def coeffs(self, h, snr_db):
+        """Les coefficients C [N, K, K] (W = h^H C avant normalisation)."""
         K = tf.shape(h)[1]
         M = tf.cast(tf.shape(h)[2], h.dtype)                 # M lu sur l'entree : un modele pour tout M
         g = tf.matmul(h, h, adjoint_b=True) / M             # [N, K, K]
@@ -103,8 +107,7 @@ class GramPrecoder(keras.Model):
         e = _cplx(self.init(f))                             # [N, K, K, d]
         for i in range(self.L):
             e = self.blocks[0 if self.tied else i](e, g)
-        c = _cplx(self.read(_real(e)))[..., 0]               # [N, K, K]
-        return normalize_power(tf.matmul(h, c, adjoint_a=True))   # W = h^H C
+        return _cplx(self.read(_real(e)))[..., 0]            # [N, K, K]
 
     def macs_per_sc(self, K, M=None):
         """MAC reelles par SC : G, initialisation, L x (G.E + FFN), lecture, W = h^H C."""
