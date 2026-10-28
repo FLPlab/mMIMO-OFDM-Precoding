@@ -17,6 +17,9 @@ Variantes (--variant) :
                 normalisee), (2) il est fige et le precodeur apprend le debit.
     simple    : toute la bande, encodeur SANS attention entre retards
                 (un MLP par retard, --est_layers 0).
+    lmmse_axial : reference apprise (phase 8) -- LMMSE (melange) + precodeur de
+                la litterature type 2D-Gformer (models/axial_precoder.py),
+                4 couches distinctes, meme calcul que notre precodeur en M8K4.
     interp    : toute la bande ; le precodeur n'est calcule qu'a 1 SC sur
                 --step (+ la derniere), W est interpole lineairement sur les
                 autres SC, et le debit est appris sur TOUTES les SC.
@@ -97,7 +100,7 @@ def train_encoder_mse(model, pool, steps, lr=1e-3):
 
 def main():
     ap = argparse.ArgumentParser()
-    ap.add_argument("--variant", required=True, choices=["none", "lmmse", "sub", "separate", "simple", "interp"])
+    ap.add_argument("--variant", required=True, choices=["none", "lmmse", "sub", "separate", "simple", "interp", "lmmse_axial"])
     ap.add_argument("--rb", type=int, default=None)
     ap.add_argument("--step", type=int, default=None, help="interp : precodeur a 1 SC sur step, W interpole")
     ap.add_argument("--steps", type=int, default=STEPS)
@@ -114,12 +117,18 @@ def main():
            "train_drops_per_scenario": TRAIN_DROPS, "steps": a.steps}
     os.makedirs(W7, exist_ok=True)
 
-    if a.variant in ("none", "lmmse"):                         # precodeur seul, SC par SC
+    if a.variant in ("none", "lmmse", "lmmse_axial"):          # precodeur seul, SC par SC
         if a.variant == "none":
             (ti, tt), ev = data("ls_lin")
         else:
-            (ti, tt), ev = data("ls_lmmse", cov_mixture())
-        net = GramPrecoder(8, **PRECODER)
+            (ti, tt), ev = data("ls_lmmse", cov_mixture())    # lmmse et lmmse_axial
+        if a.variant == "lmmse_axial":
+            from models.axial_precoder import AxialPrecoder
+            net = AxialPrecoder(d=16, hidden=64, heads=4, layers=4, tied=False)
+            out["precoder"] = {"arch": "axial (type 2D-Gformer)", "d": 16, "hidden": 64, "heads": 4,
+                               "layers": 4, "tied": False}
+        else:
+            net = GramPrecoder(8, **PRECODER)
         run = run_variant(name, net, (flat(ti), flat(tt)), (flat(ev["umi"][0][:16]), flat(ev["umi"][1][:16])),
                           SNRS_DB, {"RZF": [1.0] * len(SNRS_DB)}, a.steps, seed=0, loss="rel_rzf",
                           weights_dir=W7)
@@ -145,8 +154,9 @@ def main():
         print(f"{s} : " + " ".join(f"{x:.2f}" for x in rates[s]), flush=True)
     out.update({"params": run["params"], "macs_per_sc": run["macs_per_sc"], "rates": rates,
                 "training_history": run["history"], "time_s": round(time.time() - t0)})
-    os.makedirs(os.path.join(RESULTS, "phase7"), exist_ok=True)
-    path = os.path.join(RESULTS, "phase7", f"{name}{'_quick' if a.quick else ''}.json")
+    phase = "phase8" if a.variant == "lmmse_axial" else "phase7"
+    os.makedirs(os.path.join(RESULTS, phase), exist_ok=True)
+    path = os.path.join(RESULTS, phase, f"{name}{'_quick' if a.quick else ''}.json")
     json.dump(out, open(path, "w"), indent=1)
     print("->", path, flush=True)
 
