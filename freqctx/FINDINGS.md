@@ -886,6 +886,59 @@ Sans réentraîner : 12 passages (au lieu de 8) améliorent les cas difficiles (
 
 **Massif de bout en bout, 3× plus de données (1 056 tirages/scénario, 80 000 pas, Gram L8)** (`results/phase5/massive_model_gramL8_n1056_s80k.json`) : 72,91 / 72,00 / 74,08 à 20 dB (+0,21 / +0,27 / +0,10 sur 352 tirages) ; écart au génie 0,8 / 1,5 / 0. L'écart restant en massif est l'estimation (UMa surtout), pas le précodeur.
 
+## Phase 7 — ce qu'apporte le contexte fréquentiel, à précodeur fixe (2026-10-27)
+
+**Question** : d'où vient le gain à partir des pilotes ? Que représente la sortie de l'encodeur fréquentiel ? Est-ce un seul modèle ou deux blocs ? Combien de bande faut-il voir ? Peut-on calculer le précodeur moins souvent en fréquence ?
+
+**Cadre commun** (`experiments/phase7_context.py`) : précodeur = transformer par paires retenu en phase 6 (8 couches distinctes, FFN 64). M8K4, pilote 10 dB, mélange UMi+UMa+RMa, 1 056 tirages/scénario, 80 000 pas, mêmes tirages d'évaluation que les phases 3–6. Une seule chose change par ligne.
+
+Débit (bps/Hz), UMi / UMa / RMa :
+
+| Variante | 0 dB | 20 dB | 25 dB | MAC/SC |
+|---|---|---|---|---|
+| **modèle complet** (encodeur sur toute la bande, appris avec le précodeur ; phase 6) | 5,39 / 5,36 / 5,47 | **25,87 / 25,47 / 26,28** | 30,80 / 30,27 / 31,84 | 1,27 M |
+| sans contexte fréquentiel (LS, SC seule) | 5,32 / 5,28 / 5,40 | 22,43 / 22,04 / 22,61 | 24,75 / 24,31 / 24,98 | 1,11 M |
+| contexte classique : LMMSE (mélange) + même précodeur | 5,37 / 5,32 / 5,44 | 24,27 / 23,82 / 24,51 | 27,69 / 27,16 / 28,05 | 1,11 M |
+| encodeur sur 1 RB | 5,34 / 5,29 / 5,43 | 23,18 / 22,71 / 24,01 | 25,93 / 25,35 / 27,19 | 1,15 M |
+| encodeur sur 3 RB | 5,36 / 5,32 / 5,45 | 24,47 / 23,99 / 25,23 | 28,07 / 27,46 / 29,48 | 1,15 M |
+| encodeur sur 17 RB | 5,38 / 5,35 / 5,46 | 25,47 / 25,03 / 26,05 | 29,96 / 29,36 / 31,27 | 1,19 M |
+| entraînement séparé (encodeur sur l'erreur quadratique, puis figé) | 5,39 / 5,36 / 5,47 | 25,69 / 25,32 / 26,07 | 30,41 / 29,92 / 31,32 | 1,27 M |
+| encodeur sans attention entre retards | 5,39 / 5,35 / 5,47 | 25,68 / 25,29 / 26,12 | 30,42 / 29,90 / 31,44 | 1,16 M |
+| *WMMSE robuste (LMMSE mélange)* | *5,37 / 5,32 / 5,45* | *24,18 / 23,73 / 24,35* | *27,57 / 27,04 / 27,84* | |
+
+**Conclusions :**
+- **Tout le gain à partir des pilotes vient du contexte fréquentiel.** Sans lui, le même transformer fait 22,4 à 20 dB (+0,7 sur RZF(LS), mais −3,4 sur le modèle complet).
+- **L'encodeur appris bat le contexte classique** : à précodeur égal, +1,6 à +1,8 sur LMMSE. Avec LMMSE en entrée, notre précodeur ne fait que +0,1 sur WMMSE robuste : le gain du modèle vient de l'encodeur.
+- **Plus de bande, c'est mieux, de façon régulière** : 1 RB 23,2 → 3 RB 24,5 → 17 RB 25,5 → 51 RB 25,9 (UMi, 20 dB). Il faut au moins 3 RB pour égaler le LMMSE classique sur toute la bande. Lien avec le mémoire : le contexte intra-RB (IB) ne suffit pas ; toute la bande (idée de TA-RB), vue dans le domaine des retards, est la bonne façon de l'exploiter.
+- **Un seul modèle, pas deux blocs indépendants, mais l'écart est modeste** : l'entraînement séparé perd 0,15 à 0,2 à 20 dB (0,4 à 0,5 à 25 dB), rien à 0 dB.
+- **L'attention entre retards apporte environ 0,2** (version sans attention : −0,16 à −0,19) pour un coût faible : gardée.
+
+### Ce que représente la sortie de l'encodeur (`experiments/phase7_analysis.py`, `results/phase7/analysis.json`)
+Modèle complet, graine 0. Erreur quadratique normalisée par rapport au vrai canal (dB), UMi / UMa / RMa :
+
+| | LS | LMMSE | encodeur |
+|---|---|---|---|
+| canal entier (encodeur réaligné par un facteur complexe par utilisateur) | −17,1 / −16,8 / −17,6 | −20,2 / −19,5 / −21,4 | −16,7 / −16,8 / −16,4 |
+| **direction seule** (facteur complexe par utilisateur ET par SC) | −17,9 / −17,5 / −18,3 | −20,9 / −20,2 / −22,0 | **−25,8 / −25,3 / −29,5** |
+
+- **L'encodeur n'est pas un estimateur de canal au sens de l'erreur quadratique** (pas meilleur que le LS sur le canal entier, échelle moyenne ×2,1), **mais il estime la direction du canal de chaque utilisateur sur les antennes 5 à 7,5 dB mieux que LMMSE.** C'est ce dont le précodage a besoin ; l'amplitude par SC, à laquelle le débit est peu sensible, est laissée libre.
+- WMMSE appliqué à la sortie réalignée : 25,70 / 25,30 / 26,06 à 20 dB (contre 24,07 / 23,62 / 24,20 sur LMMSE) : l'information utile est bien dans la sortie de l'encodeur.
+- **Nom retenu : « encodeur fréquentiel »** (pas « estimateur ») ; il apprend une représentation par SC dont l'essentiel est la direction spatiale du canal.
+
+### Granularité en fréquence du précodeur
+**Vérification classique** (RZF, canal parfait, `experiments/phase7_gauge_check.py`) : tenir le précodeur constant sur 1 RB (type PRG 5G) coûte 26,1 → 22,5 en UMi à 20 dB (la bande de cohérence, ≈ 9 SC, est plus petite qu'un RB) ; seul RMa tolère le RB. Interpoler les coefficients C (même en fixant l'échelle et la phase par SC) est pire. **Interpoler W linéairement entre des SC « ancres »** marche : 1 SC sur 3 → −0,13 / −0,20 / −0,01.
+**Appris** (`--variant interp`) : le précodeur n'est calculé qu'aux ancres (1 SC sur s), W interpolé linéairement, débit appris sur toutes les SC :
+
+| pas s | 20 dB | 25 dB | MAC/SC (modèle total) |
+|---|---|---|---|
+| 1 (chaque SC) | 25,87 / 25,47 / 26,28 | 30,80 / 30,27 / 31,84 | 1,27 M |
+| **3** | **25,80 / 25,37 / 26,27** | 30,70 / 30,12 / 31,84 | **0,53 M** |
+| 4 | 25,70 / 25,22 / 26,26 | 30,52 / 29,87 / 31,81 | 0,44 M |
+| 6 | 25,36 / 24,79 / 26,23 | 29,98 / 29,19 / 31,76 | 0,35 M |
+
+- **1 SC sur 3 : perte ≤ 0,1, coût total divisé par 2,4.** L'entraînement récupère une partie de la perte de l'interpolation fixe. Au-delà, UMi et UMa perdent, RMa tient (bande de cohérence plus large) : un pas adaptatif à l'étalement des retards est une perspective.
+- Lien avec le mémoire : c'est la bonne version de l'idée de TA-RB (précodeur grossier puis interpolé), calée sur la bande de cohérence et non sur le RB.
+
 ## Prochaine étape
 (1) 3 graines pour l'attention en fréquence D64. (2) Réduire le coût. (3) Bootstrap sur les tirages. (4) Faire le point avant d'aller plus loin (pilote 20 dB, vieillissement, M64).
 Cible principale ensuite (phases 2–3) : le régime pilote 10 dB, où il reste 2,7 à 5,9 bps/Hz après LMMSE.
