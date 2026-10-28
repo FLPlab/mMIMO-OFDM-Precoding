@@ -125,12 +125,22 @@ class DelayEstimator(keras.layers.Layer):
 class DelayDomainPrecoder(keras.Model):
     def __init__(self, num_sc, num_users, num_bs_ant, est_d=32, est_layers=2, angle_mask=False,
                  history=False, banded=False, oversample=1, max_taps=None, precoder_arch="persc",
-                 subband_rb=None, **precoder_kw):
+                 subband_rb=None, anchor_step=None, **precoder_kw):
         """subband_rb (phase 7) : l'encodeur ne voit qu'une sous-bande de subband_rb RB a la fois
         (memes poids pour toutes les sous-bandes) ; None = toute la bande."""
         super().__init__()
         self.F, self.K, self.M = num_sc, num_users, num_bs_ant
         self.Fs = num_sc if subband_rb is None else 12 * subband_rb
+        self.anchor_step = anchor_step
+        if anchor_step:                          # precodeur calcule a 1 SC sur s (+ la derniere), W interpole
+            anchors = np.unique(np.append(np.arange(0, num_sc, anchor_step), num_sc - 1))
+            P = np.zeros((num_sc, len(anchors)), np.float32)       # interpolation lineaire fixe
+            for f in range(num_sc):
+                j = min(np.searchsorted(anchors, f, side="right") - 1, len(anchors) - 2)
+                t = (f - anchors[j]) / (anchors[j + 1] - anchors[j])
+                P[f, j], P[f, j + 1] = 1 - t, t
+            self.anchors = tf.constant(anchors, tf.int32)
+            self.interp = tf.constant(P, tf.complex64)
         assert num_sc % self.Fs == 0 and self.Fs % num_users == 0
         guard = min(4, max(1, self.Fs // num_users // 3))           # retards "negatifs" (4 sur toute la bande)
         self.estimator = DelayEstimator(self.Fs, num_users, num_bs_ant, d=est_d, layers=est_layers, guard=guard,
@@ -154,6 +164,14 @@ class DelayDomainPrecoder(keras.Model):
     def call(self, h_ls, snr_db, aux=None):
         h_hat = self.encode(h_ls, aux)                             # [B, F, K, M]
         B = tf.shape(h_hat)[0]
+        if self.anchor_step:
+            A = self.anchors.shape[0]
+            ha = tf.gather(h_hat, self.anchors, axis=1)            # [B, A, K, M]
+            wa = tf.reshape(self.precoder(tf.reshape(ha, [B * A, self.K, self.M]), tf.repeat(snr_db, A)),
+                            [B, A, self.M, self.K])
+            w = tf.einsum("fa,bamk->bfmk", self.interp, wa)       # interpolation lineaire de W
+            p = tf.reduce_sum(tf.abs(w) ** 2, axis=[2, 3], keepdims=True)
+            return w / tf.cast(tf.sqrt(p), w.dtype)
         w = self.precoder(tf.reshape(h_hat, [B * self.F, self.K, self.M]),
                           tf.repeat(snr_db, self.F))
         return tf.reshape(w, [B, self.F, self.M, self.K])
@@ -165,4 +183,7 @@ class DelayDomainPrecoder(keras.Model):
         fft = 4 * (T * N + self.Fs * T) * M                        # IDFT + DFT en matrices (borne haute)
         per_tok = (2 * M + 1) * d + L * (3 * d * d + 2 * T * d + d * d + 4 * d * d) + d
         est = K * (fft + T * per_tok)                              # par sous-bande
-        return self.precoder.macs_per_sc(K) + est // self.Fs
+        prec = self.precoder.macs_per_sc(K)
+        if self.anchor_step:                                       # ancres + interpolation (2 MK par SC)
+            prec = prec * self.anchors.shape[0] // self.F + 2 * 4 * self.M * K
+        return prec + est // self.Fs

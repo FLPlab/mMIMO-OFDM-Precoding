@@ -17,6 +17,9 @@ Variantes (--variant) :
                 normalisee), (2) il est fige et le precodeur apprend le debit.
     simple    : toute la bande, encodeur SANS attention entre retards
                 (un MLP par retard, --est_layers 0).
+    interp    : toute la bande ; le precodeur n'est calcule qu'a 1 SC sur
+                --step (+ la derniere), W est interpole lineairement sur les
+                autres SC, et le debit est appris sur TOUTES les SC.
 
     python -u -m experiments.phase7_context --variant none|lmmse|sub --rb 3|separate|simple
 """
@@ -94,15 +97,16 @@ def train_encoder_mse(model, pool, steps, lr=1e-3):
 
 def main():
     ap = argparse.ArgumentParser()
-    ap.add_argument("--variant", required=True, choices=["none", "lmmse", "sub", "separate", "simple"])
+    ap.add_argument("--variant", required=True, choices=["none", "lmmse", "sub", "separate", "simple", "interp"])
     ap.add_argument("--rb", type=int, default=None)
+    ap.add_argument("--step", type=int, default=None, help="interp : precodeur a 1 SC sur step, W interpole")
     ap.add_argument("--steps", type=int, default=STEPS)
     ap.add_argument("--quick", action="store_true", help="test de la chaine (32 tirages, 200 pas)")
     a = ap.parse_args()
     global TRAIN_DROPS, EVAL_DROPS
     if a.quick:
         TRAIN_DROPS, EVAL_DROPS, a.steps = 32, 32, 200
-    name = a.variant + (f"_{a.rb}rb" if a.variant == "sub" else "")
+    name = a.variant + (f"_{a.rb}rb" if a.variant == "sub" else "") + (f"_s{a.step}" if a.variant == "interp" else "")
     print("==", name, flush=True)
     t0 = time.time()
     out = {"meta": {"git_commit": git_commit(), "created": time.strftime("%Y-%m-%d %H:%M")},
@@ -127,6 +131,7 @@ def main():
         net = DelayDomainPrecoder(cfg.num_sc, cfg.num_users, cfg.num_bs_ant, banded=True, oversample=2,
                                   est_layers=0 if a.variant == "simple" else 2,
                                   subband_rb=a.rb if a.variant == "sub" else None,
+                                  anchor_step=a.step if a.variant == "interp" else None,
                                   precoder_arch="pair", **PRECODER)
         if a.variant == "separate":
             net(ti[:1], tf.zeros([1]))
