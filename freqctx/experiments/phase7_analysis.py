@@ -34,7 +34,7 @@ from utils import RESULTS, git_commit
 W4 = "/export/tmp/sala/freqctx/weights/phase4"
 WEIGHTS = "delay_bande_os2_trigL8_untied_n1056_s80k_est32_D64_T4_linear_melange_p10.weights.h5"
 SNRS = [0, 10, 20, 25]
-GROUPS = {"SC": 1, "1 RB": 12, "2 RB": 24, "4 RB": 48}
+GROUPS = {"SC": 1, "3 SC": 3, "4 SC": 4, "6 SC": 6, "1 RB": 12, "2 RB": 24, "4 RB": 48}
 EVAL_DROPS = 192
 
 
@@ -127,9 +127,12 @@ def main():
                 return normalize_power(tf.matmul(hh, c, adjoint_a=True))
             out["granularity"][scen][snr] = {
                 g: {"modele": rate(h, group_center(w_mod, n), snr),
+                    "modele, W interpole": rate(h, normalize_power(interp_centers(w_mod, n)), snr),
                     "modele, C tenu par groupe": rate(h, w_from(group_center(c_all, n)), snr),
                     "modele, C interpole": rate(h, w_from(interp_centers(c_all, n)), snr),
-                    "WMMSE (LMMSE melange)": rate(h, group_center(w_lm, n), snr)} for g, n in GROUPS.items()}
+                    "WMMSE (LMMSE melange)": rate(h, group_center(w_lm, n), snr),
+                    "WMMSE (LMMSE melange), W interpole": rate(h, normalize_power(interp_centers(w_lm, n)), snr)}
+                for g, n in GROUPS.items()}
             print(f"  {scen} {snr} dB", {k: round(v, 2) for k, v in out["gauge_rates"][scen][snr].items()},
                   {g: [round(x, 2) for x in v.values()] for g, v in out["granularity"][scen][snr].items()}, flush=True)
     os.makedirs(os.path.join(RESULTS, "phase7"), exist_ok=True)

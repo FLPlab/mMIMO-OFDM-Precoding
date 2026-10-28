@@ -886,6 +886,8 @@ Sans réentraîner : 12 passages (au lieu de 8) améliorent les cas difficiles (
 
 **Massif de bout en bout, 3× plus de données (1 056 tirages/scénario, 80 000 pas, Gram L8)** (`results/phase5/massive_model_gramL8_n1056_s80k.json`) : 72,91 / 72,00 / 74,08 à 20 dB (+0,21 / +0,27 / +0,10 sur 352 tirages) ; écart au génie 0,8 / 1,5 / 0. L'écart restant en massif est l'estimation (UMa surtout), pas le précodeur.
 
+**Ménage du 2026-10-28** : pour la phase 6, seuls sont gardés dans le dépôt les résultats retenus (`trig_L8_d16_h64_untied*.json`, version étroite `trig_L8_d16_h16_untied.json`, référence structurée `gram_L8_d16_h64.json`) et `summary.md` (tableau de tous les runs, y compris écartés). Les fichiers des variantes écartées (modèle axial, normalisation de G, tri sans G, Gram à couches distinctes, versions partagées, L4/L6, FFN 32, passages supplémentaires de Gram) et leur code (`models/axial_precoder.py`, option de normalisation, `experiments/phase6_loops.py`) sont retirés ; leurs chiffres restent ci-dessus, et tout est récupérable dans l'historique git (commit 9efa024 et avant).
+
 ## Phase 7 — ce qu'apporte le contexte fréquentiel, à précodeur fixe (2026-10-27)
 
 **Question** : d'où vient le gain à partir des pilotes ? Que représente la sortie de l'encodeur fréquentiel ? Est-ce un seul modèle ou deux blocs ? Combien de bande faut-il voir ? Peut-on calculer le précodeur moins souvent en fréquence ?

@@ -10,7 +10,8 @@ Architectures :
     gram        : etat par paire, bloc G.E (forme "deroulee"), W = h^H C
     tri         : etat par paire, attention triangulaire apprise, W = h^H C
     trig        : tri + G reinjecte a chaque couche
-    axial       : un token par (antenne, utilisateur), Gram appris par couche, W direct
+    (ecartes, voir FINDINGS phase 6 : tokens antenne x utilisateur, normalisation
+     de G -- code retire, recuperable dans l'historique git)
 """
 import argparse
 import json
@@ -22,7 +23,6 @@ import numpy as np
 import tensorflow as tf
 
 from experiments.phase6_bench import SNRS, evaluate_all, train_pools
-from models.axial_precoder import AxialPrecoder
 from models.gram_precoder import GramPrecoder
 from precoders.classical import rzf
 from train import rate_per_sample
@@ -32,22 +32,17 @@ W6 = "/export/tmp/sala/freqctx/weights/phase6"
 
 
 def build(a):
-    if a.arch == "axial":
-        return AxialPrecoder(d=a.d, hidden=a.hidden, heads=a.heads, layers=a.layers, tied=not a.untied)
     mix = {"gram": "gram", "tri": "triangular", "trig": "triangular_g"}[a.arch]
-    return GramPrecoder(64, d=a.d, hidden=a.hidden, layers=a.layers, mix=mix, tied=not a.untied,
-                        gnorm=a.gnorm)
+    return GramPrecoder(64, d=a.d, hidden=a.hidden, layers=a.layers, mix=mix, tied=not a.untied)
 
 
 def main():
     ap = argparse.ArgumentParser()
-    ap.add_argument("--arch", required=True, choices=["gram", "tri", "trig", "axial"])
+    ap.add_argument("--arch", required=True, choices=["gram", "tri", "trig"])
     ap.add_argument("--layers", type=int, default=8)
     ap.add_argument("--d", type=int, default=16)
     ap.add_argument("--hidden", type=int, default=64)
-    ap.add_argument("--heads", type=int, default=4)
     ap.add_argument("--untied", action="store_true")
-    ap.add_argument("--gnorm", action="store_true")
     ap.add_argument("--train", default="mix", choices=["mix", "massive"])
     ap.add_argument("--steps", type=int, default=40000)
     ap.add_argument("--batch", type=int, default=2048)
@@ -55,8 +50,7 @@ def main():
     ap.add_argument("--seed", type=int, default=0)
     ap.add_argument("--tag", default="")
     a = ap.parse_args()
-    name = a.tag or (f"{a.arch}_L{a.layers}_d{a.d}_h{a.hidden}" + ("_untied" if a.untied else "")
-                     + ("_gnorm" if a.gnorm else "") + ("" if a.train == "mix" else "_trainmassive")
+    name = a.tag or (f"{a.arch}_L{a.layers}_d{a.d}_h{a.hidden}" + ("_untied" if a.untied else "") + ("" if a.train == "mix" else "_trainmassive")
                      + (f"_s{a.seed}" if a.seed else ""))
     print("==", name, flush=True)
     keras.utils.set_random_seed(a.seed)

@@ -70,14 +70,12 @@ class TriangularBlock(keras.layers.Layer):
 
 class GramPrecoder(keras.Model):
     """mix : "gram" (bloc G.E), "triangular", "triangular_g" (G reinjecte).
-    tied : un seul bloc repete L fois (True) ou L blocs distincts.
-    gnorm : G divise par sa diagonale moyenne (invariance a l'echelle du canal) ;
-            le SNR effectif (snr + 10 log10 echelle) est donne en entree."""
+    tied : un seul bloc repete L fois (True) ou L blocs distincts."""
 
-    def __init__(self, num_bs_ant, d=16, hidden=64, layers=4, mix="gram", tied=True, gnorm=False, **kw):
+    def __init__(self, num_bs_ant, d=16, hidden=64, layers=4, mix="gram", tied=True, **kw):
         super().__init__(**kw)
         self.M, self.d, self.hidden, self.L, self.mix = num_bs_ant, d, hidden, layers, mix
-        self.tied, self.gnorm = tied, gnorm
+        self.tied = tied
         self.init = keras.layers.Dense(2 * d)
 
         def make():
@@ -97,10 +95,6 @@ class GramPrecoder(keras.Model):
         M = tf.cast(tf.shape(h)[2], h.dtype)                 # M lu sur l'entree : un modele pour tout M
         g = tf.matmul(h, h, adjoint_b=True) / M             # [N, K, K]
         snr_db = tf.cast(snr_db, tf.float32)
-        if self.gnorm:
-            scale = tf.reduce_mean(tf.math.real(tf.linalg.diag_part(g)), axis=-1)   # [N]
-            g = g / tf.cast(scale, g.dtype)[:, None, None]
-            snr_db = snr_db + 10.0 * tf.math.log(scale) / tf.math.log(10.0)
         eye = tf.broadcast_to(tf.eye(K)[None], tf.shape(tf.math.real(g)))
         snr = tf.broadcast_to(tf.reshape(snr_db / 10.0, [-1, 1, 1]), tf.shape(eye))
         f = tf.stack([tf.math.real(g), tf.math.imag(g), tf.abs(g), eye, snr], axis=-1)

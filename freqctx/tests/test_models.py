@@ -8,7 +8,6 @@ from models.per_sc import PerSCPrecoder
 from train import DropPool, WindowedPool, evaluate
 from models.delay_domain import DelayDomainPrecoder
 from models.gram_precoder import GramPrecoder
-from models.axial_precoder import AxialPrecoder
 
 
 def main():
@@ -81,26 +80,13 @@ def main():
         assert np.allclose(tf.reduce_sum(tf.abs(w) ** 2, [1, 2]).numpy(), 1.0, atol=1e-4)
         print(f"[ok] precodeur {mix} : forme, puissance, equivariance (ecart {err:.1e}), "
               f"{mt.count_params()} params")
-    for kw in ({"mix": "gram", "tied": False}, {"mix": "triangular_g", "gnorm": True}):
+    for kw in ({"mix": "gram", "tied": False}, {"mix": "triangular_g", "tied": False}):
         mt = GramPrecoder(M, d=8, hidden=16, **kw)
         w = mt(h, snr)
         err = float(tf.reduce_max(tf.abs(mt(tf.gather(h, perm, axis=1), snr) - tf.gather(w, perm, axis=2))))
         assert err < 1e-5, (kw, err)
         e2 = float(tf.reduce_max(tf.abs(mt(h[..., :4], snr)))) > 0          # un modele pour tout M
-        if kw.get("gnorm"):                                                  # invariance a l'echelle
-            e3 = float(tf.reduce_max(tf.abs(mt(3.0 * h, snr - 20 * np.log10(3.0)) - w)))
-            assert e3 < 1e-4, e3
         print(f"[ok] precodeur par paires {kw} : equivariance (ecart {err:.1e}), autre M accepte")
-    ma = AxialPrecoder(d=8, hidden=16, heads=2, layers=2)
-    w = ma(h, snr)
-    err = float(tf.reduce_max(tf.abs(ma(tf.gather(h, perm, axis=1), snr) - tf.gather(w, perm, axis=2))))
-    pa = np.random.permutation(M)
-    err_a = float(tf.reduce_max(tf.abs(ma(tf.gather(h, pa, axis=2), snr) - tf.gather(w, pa, axis=1))))
-    assert w.shape == (N, M, K) and err < 1e-5 and err_a < 1e-5, (err, err_a)
-    assert np.allclose(tf.reduce_sum(tf.abs(w) ** 2, [1, 2]).numpy(), 1.0, atol=1e-4)
-    assert ma(h[..., :4], snr).shape == (N, 4, K)
-    print(f"[ok] precodeur axial : equivariance utilisateurs ({err:.1e}) et antennes ({err_a:.1e}), "
-          f"puissance, autre M accepte, {ma.count_params()} params")
     test_windowed_pool()
     test_delay_domain()
     print("TOUS LES TESTS PASSENT")
