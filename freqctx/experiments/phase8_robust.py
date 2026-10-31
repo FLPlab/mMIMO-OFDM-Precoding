@@ -32,7 +32,7 @@ MODELS = {"modele (par SC)": ("/export/tmp/sala/freqctx/weights/phase4",
                               "delay_bande_os2_trigL8_untied_n1056_s80k_est32_D64_T4_linear_melange_p10", None),
           "modele (1 SC sur 3)": ("/export/tmp/sala/freqctx/weights/phase7", "interp_s3", 3),
           "modele (pilote aleatoire)": ("/export/tmp/sala/freqctx/weights/phase7", "pilot_rand", None),
-          "base figee (pilote aleatoire, FFN 32)": ("/export/tmp/sala/freqctx/weights/phase7", "pilot_rand_ph32",
+          "base figee (pilote aleatoire FFN 32)": ("/export/tmp/sala/freqctx/weights/phase7", "pilot_rand_ph32",
                                                      None, {"hidden": 32})}
 PILOTS, DELAYS_MS, SNRS = [0, 5, 10, 15, 20], [0.0, 2.5, 5.0], [0, 10, 20, 25]
 EVAL_DROPS, BATCH, CHUNK = 192, 16, 16384

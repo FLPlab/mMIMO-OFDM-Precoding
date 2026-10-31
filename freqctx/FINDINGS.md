@@ -1036,6 +1036,18 @@ nJ par SC et par mise à jour ; notre modèle en INT8, classique en FP32 :
 - **Massif** : 44 fois moins que LMMSE + WMMSE en version par SC ; la version économique passe **sous LMMSE + RZF** (0,44 contre 0,79 nJ), pour +4 bps/Hz.
 - **Réserves** : (1) le fonctionnement en INT8 n'est pas encore validé (quantification à faire) ; (2) modèle d'énergie générique (pas une synthèse FPGA) ; (3) activations estimées en ordre de grandeur ; (4) classique compté en FP32 alors que notre WMMSE utilise des inversions en double précision (favorable au classique) ; (5) symétrie + interpolation pas encore entraînées ensemble, et ces variantes pas encore entraînées en massif.
 
+### Réglage de taille et BASE FIGÉE (2026-10-31 ; `results/phase7/pilot_rand_{ph32,pd8,ed16,el1}.json`, `results/phase8/robustness_base.json`)
+Un seul changement par essai à partir du modèle à pilote aléatoire ; règle fixée à l'avance : garder si la perte est ≤ 0,05 bps/Hz à 20 et 25 dB et si le modèle reste au-dessus du classique à pilote 0 dB. Écart au modèle d'origine, UMi / UMa / RMa :
+
+| Réduction | 20 dB | 25 dB | MAC/SC | Décision |
+|---|---|---|---|---|
+| FFN du précodeur 64 → 32 | 0 / −0,01 / −0,01 | −0,02 / −0,02 / −0,03 | 1,27 M → 0,88 M | **retenue** |
+| état d'une paire 16 → 8 | −0,03 / −0,03 / −0,03 | −0,06 / −0,08 / −0,08 | 0,65 M | écartée |
+| largeur de l'encodeur 32 → 16 | −0,03 / −0,03 / −0,02 | −0,06 / −0,07 / −0,06 | 1,21 M | écartée |
+| encodeur 2 → 1 couche | −0,07 / −0,08 / −0,06 | −0,15 / −0,16 / −0,14 | 1,22 M | écartée |
+
+**Base figée** : encodeur fréquentiel (domaine des retards, grille 2×, 2 couches d'attention, largeur 32, filtre sur 3 retards) + transformer par paires (attention triangulaire, G réinjecté, 8 couches distinctes, état 16 complexes, FFN 32), sortie W = Ĥᴴ C, entraînement avec SNR pilote aléatoire U(0, 20) dB. **72,2 k paramètres, 0,88 M MAC/SC** (M8K4, FFT comptées en produits de matrices). Robustesse identique au modèle à pilote aléatoire (±0,01) : pilote 0 dB 22,40 / 22,22 / 24,21 contre 19,03 / 18,91 / 20,30 pour WMMSE robuste ; 5 ms de vieillissement 18,15 / 17,99 / 21,99 contre 17,38 / 17,18 / 20,71. Variante de coût : précodeur calculé sur 1 SC sur 3.
+
 ## Prochaine étape
 (1) 3 graines pour l'attention en fréquence D64. (2) Réduire le coût. (3) Bootstrap sur les tirages. (4) Faire le point avant d'aller plus loin (pilote 20 dB, vieillissement, M64).
 Cible principale ensuite (phases 2–3) : le régime pilote 10 dB, où il reste 2,7 à 5,9 bps/Hz après LMMSE.
