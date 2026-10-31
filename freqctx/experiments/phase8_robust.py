@@ -31,15 +31,17 @@ from utils import RESULTS, git_commit
 MODELS = {"modele (par SC)": ("/export/tmp/sala/freqctx/weights/phase4",
                               "delay_bande_os2_trigL8_untied_n1056_s80k_est32_D64_T4_linear_melange_p10", None),
           "modele (1 SC sur 3)": ("/export/tmp/sala/freqctx/weights/phase7", "interp_s3", 3),
-          "modele (pilote aleatoire)": ("/export/tmp/sala/freqctx/weights/phase7", "pilot_rand", None)}
+          "modele (pilote aleatoire)": ("/export/tmp/sala/freqctx/weights/phase7", "pilot_rand", None),
+          "base figee (pilote aleatoire, FFN 32)": ("/export/tmp/sala/freqctx/weights/phase7", "pilot_rand_ph32",
+                                                     None, {"hidden": 32})}
 PILOTS, DELAYS_MS, SNRS = [0, 5, 10, 15, 20], [0.0, 2.5, 5.0], [0, 10, 20, 25]
 EVAL_DROPS, BATCH, CHUNK = 192, 16, 16384
 
 
-def load(path, name, step):
+def load(path, name, step, override=None):
     cfg = SystemConfig()
     net = DelayDomainPrecoder(cfg.num_sc, cfg.num_users, cfg.num_bs_ant, banded=True, oversample=2,
-                              precoder_arch="pair", anchor_step=step, **PRECODER)
+                              precoder_arch="pair", anchor_step=step, **dict(PRECODER, **(override or {})))
     net(tf.zeros([1, cfg.num_sc, cfg.num_users, cfg.num_bs_ant], tf.complex64), tf.zeros([1]))
     net.load_weights(os.path.join(path, f"{name}.weights.h5"))
     return net
