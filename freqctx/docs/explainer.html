@@ -1,0 +1,300 @@
+<title>Du canal au précodeur</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Archivo:wdth,wght@87,500;87,650;100,400&family=Source+Sans+3:ital,wght@0,400;0,600;1,400&family=JetBrains+Mono:wght@400;600&display=swap">
+<style>
+:root{
+  --bg:#f5f7f6; --surface:#ffffff; --ink:#1b2422; --muted:#56635f; --line:#d3dbd8;
+  --signal:#1d6b87; --signal-soft:#e2eff4; --gain:#b0700f; --gain-soft:#f7ecd9;
+  --good:#2f7a4a; --bad:#a3413a; --code-bg:#eef2f0; --noise:#9aa8a3;
+}
+@media (prefers-color-scheme: dark){
+  :root:not([data-theme="light"]){
+    color-scheme:dark;
+    --bg:#111615; --surface:#182120; --ink:#e3eae7; --muted:#9aa8a3; --line:#2c3836;
+    --signal:#63b6d2; --signal-soft:#16303a; --gain:#e2a54a; --gain-soft:#33280f;
+    --good:#6cc08a; --bad:#e08a82; --code-bg:#1e2826; --noise:#56635f;
+  }
+}
+:root[data-theme="dark"]{
+  color-scheme:dark;
+  --bg:#111615; --surface:#182120; --ink:#e3eae7; --muted:#9aa8a3; --line:#2c3836;
+  --signal:#63b6d2; --signal-soft:#16303a; --gain:#e2a54a; --gain-soft:#33280f;
+  --good:#6cc08a; --bad:#e08a82; --code-bg:#1e2826; --noise:#56635f;
+}
+body{background:var(--bg);color:var(--ink);font-family:"Source Sans 3",system-ui,sans-serif;font-size:16.5px;line-height:1.6;padding-inline:20px;padding-block:28px 64px}
+.wrap{max-width:980px;margin:0 auto;display:flex;flex-direction:column;gap:56px}
+h1,h2,h3{font-family:"Archivo","Helvetica Neue",Arial,sans-serif;font-stretch:87%;text-wrap:balance;margin:0}
+h1{font-size:2.1rem;font-weight:650;letter-spacing:-.01em;line-height:1.15}
+h2{font-size:1.45rem;font-weight:650}
+h3{font-size:1.05rem;font-weight:650}
+p{margin:0;max-width:68ch}
+.lead{color:var(--muted);font-size:1.08rem}
+.eyebrow{font-family:"JetBrains Mono",ui-monospace,monospace;font-size:.74rem;letter-spacing:.08em;text-transform:uppercase;color:var(--signal)}
+section{display:flex;flex-direction:column;gap:16px}
+code,.mono{font-family:"JetBrains Mono",ui-monospace,monospace;font-size:.86em}
+code{background:var(--code-bg);padding:1px 5px;border-radius:4px}
+.facts{display:flex;flex-wrap:wrap;gap:8px}
+.fact{border:1px solid var(--line);background:var(--surface);border-radius:6px;padding:6px 10px;font-size:.9rem}
+.fact b{font-family:"JetBrains Mono",monospace;font-weight:600;color:var(--signal);margin-right:4px}
+.figure{background:var(--surface);border:1px solid var(--line);border-radius:10px;padding:18px 14px;overflow-x:auto}
+.figure svg{display:block;width:100%;height:auto}
+.figure.wide svg{min-width:820px}
+.caption{font-size:.88rem;color:var(--muted)}
+.scroll{overflow-x:auto;border:1px solid var(--line);border-radius:8px;background:var(--surface)}
+table{border-collapse:collapse;width:100%;font-size:.92rem;font-variant-numeric:tabular-nums}
+th,td{text-align:left;padding:8px 12px;border-bottom:1px solid var(--line);vertical-align:top}
+th{font-family:"Archivo",sans-serif;font-stretch:87%;font-weight:650;font-size:.82rem;letter-spacing:.03em;color:var(--muted);text-transform:uppercase;white-space:nowrap}
+tr:last-child td{border-bottom:none}
+td.num{text-align:right;white-space:nowrap}
+.pos{color:var(--good)}
+.cols{display:grid;grid-template-columns:repeat(auto-fit,minmax(260px,1fr));gap:16px}
+.panel{background:var(--surface);border:1px solid var(--line);border-radius:10px;padding:16px 18px;display:flex;flex-direction:column;gap:8px}
+.panel ul{margin:0;padding-left:1.1em;display:flex;flex-direction:column;gap:4px}
+.eq{font-family:"JetBrains Mono",monospace;font-size:.92rem;background:var(--code-bg);border-radius:6px;padding:10px 14px;overflow-x:auto;white-space:nowrap}
+.note{border-left:3px solid var(--gain);padding:4px 0 4px 14px;color:var(--ink)}
+.steps{display:grid;grid-template-columns:repeat(auto-fit,minmax(280px,1fr));gap:16px}
+.step{display:flex;flex-direction:column;gap:6px;padding:14px 16px;border:1px solid var(--line);border-radius:10px;background:var(--surface)}
+.step .k{font-family:"JetBrains Mono",monospace;font-size:.74rem;letter-spacing:.06em;color:var(--signal);text-transform:uppercase}
+dl{display:grid;grid-template-columns:minmax(120px,max-content) 1fr;gap:6px 18px;margin:0}
+dt{font-family:"JetBrains Mono",monospace;font-size:.88rem;color:var(--signal)}
+dd{margin:0}
+@media (max-width:520px){h1{font-size:1.65rem}body{font-size:15.5px}dl{grid-template-columns:1fr}dd{margin-bottom:8px}}
+svg text{font-family:"JetBrains Mono",ui-monospace,monospace}
+:focus-visible{outline:2px solid var(--signal);outline-offset:2px}
+</style>
+
+<div class="wrap">
+
+<header style="display:flex;flex-direction:column;gap:12px">
+  <div class="eyebrow">freqctx · présentation du projet · octobre 2026</div>
+  <h1>Du canal au précodeur : comment une station de base parle à plusieurs utilisateurs à la fois</h1>
+  <p class="lead">Ce document explique, sans prérequis, la chaîne de communication simulée avec Sionna, ce qu'est le précodage, pourquoi le MIMO massif change la donne, et ce que fait notre modèle appris. Les valeurs sont celles du projet.</p>
+  <div class="facts">
+    <span class="fact"><b>3,5 GHz</b>porteuse</span>
+    <span class="fact"><b>20 MHz</b>612 sous-porteuses de 30 kHz</span>
+    <span class="fact"><b>TDD</b>montée et descente sur la même fréquence</span>
+    <span class="fact"><b>UMi · UMa · RMa</b>modèles 3GPP TR 38.901</span>
+  </div>
+</header>
+
+<section>
+  <div class="eyebrow">Le système</div>
+  <h2>Une antenne réseau, plusieurs utilisateurs, la même fréquence</h2>
+  <p>La station de base (BS) a M antennes. Elle sert K utilisateurs, chacun avec une seule antenne, au même instant et sur la même bande. Le signal est découpé en sous-porteuses (SC) par l'OFDM : chaque SC est un petit canal indépendant, et tout ce qui suit se fait SC par SC.</p>
+  <div class="cols">
+    <div class="panel"><h3>Configuration M8K4</h3><p>8 antennes (4 colonnes × 2 polarisations), 4 utilisateurs, 612 SC (51 blocs de ressources de 12 SC).</p></div>
+    <div class="panel"><h3>MIMO massif M64K8</h3><p>64 antennes (32 colonnes × 2 polarisations), 8 utilisateurs, 600 SC.</p></div>
+  </div>
+</section>
+
+<section>
+  <div class="eyebrow">La chaîne simulée</div>
+  <h2>Six étapes, de la scène radio au débit</h2>
+  <div class="figure wide" role="img" aria-label="Chaîne : canal Sionna, sondage montant par pilotes, estimation à la station de base, précodage descendant, réception par les utilisateurs, mesure du débit sur le vrai canal.">
+    <svg viewBox="0 0 960 250" xmlns="http://www.w3.org/2000/svg">
+      <defs><marker id="a1" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" style="fill:var(--muted)"/></marker></defs>
+      <rect x="8" y="10" width="944" height="104" rx="10" style="fill:var(--gain-soft)"/>
+      <text x="22" y="30" style="fill:var(--gain);font-size:12px;font-weight:600">VOIE MONTANTE · les utilisateurs envoient des pilotes, la BS apprend le canal</text>
+      <rect x="8" y="136" width="944" height="104" rx="10" style="fill:var(--signal-soft)"/>
+      <text x="22" y="156" style="fill:var(--signal);font-size:12px;font-weight:600">VOIE DESCENDANTE · la BS envoie les données, précodées</text>
+      <g style="font-size:12px">
+        <rect x="24" y="42" width="250" height="60" rx="6" style="fill:var(--surface);stroke:var(--line)"/>
+        <text x="149" y="64" text-anchor="middle" style="fill:var(--ink);font-weight:600">1 · Canal (Sionna)</text>
+        <text x="149" y="84" text-anchor="middle" style="fill:var(--muted)">~20 chemins → H(f) [K × M]</text>
+        <rect x="354" y="42" width="250" height="60" rx="6" style="fill:var(--surface);stroke:var(--line)"/>
+        <text x="479" y="64" text-anchor="middle" style="fill:var(--ink);font-weight:600">2 · Sondage (pilotes)</text>
+        <text x="479" y="84" text-anchor="middle" style="fill:var(--muted)">peigne, bruit à 10 dB</text>
+        <rect x="684" y="42" width="250" height="60" rx="6" style="fill:var(--surface);stroke:var(--gain);stroke-width:1.6"/>
+        <text x="809" y="64" text-anchor="middle" style="fill:var(--ink);font-weight:600">3 · Estimation à la BS</text>
+        <text x="809" y="84" text-anchor="middle" style="fill:var(--muted)">LS, LMMSE… ou notre encodeur</text>
+        <rect x="684" y="168" width="250" height="60" rx="6" style="fill:var(--surface);stroke:var(--signal);stroke-width:1.6"/>
+        <text x="809" y="190" text-anchor="middle" style="fill:var(--ink);font-weight:600">4 · Précodage</text>
+        <text x="809" y="210" text-anchor="middle" style="fill:var(--muted)">x = W s, puissance 1 par SC</text>
+        <rect x="354" y="168" width="250" height="60" rx="6" style="fill:var(--surface);stroke:var(--line)"/>
+        <text x="479" y="190" text-anchor="middle" style="fill:var(--ink);font-weight:600">5 · Réception</text>
+        <text x="479" y="210" text-anchor="middle" style="fill:var(--muted)">y_k = h_k W s + bruit</text>
+        <rect x="24" y="168" width="250" height="60" rx="6" style="fill:var(--surface);stroke:var(--line)"/>
+        <text x="149" y="190" text-anchor="middle" style="fill:var(--ink);font-weight:600">6 · Mesure</text>
+        <text x="149" y="210" text-anchor="middle" style="fill:var(--muted)">débit sur le VRAI canal</text>
+      </g>
+      <g style="stroke:var(--muted);stroke-width:1.4;fill:none">
+        <line x1="274" y1="72" x2="352" y2="72" marker-end="url(#a1)"/>
+        <line x1="604" y1="72" x2="682" y2="72" marker-end="url(#a1)"/>
+        <line x1="809" y1="102" x2="809" y2="166" marker-end="url(#a1)"/>
+        <line x1="684" y1="198" x2="606" y2="198" marker-end="url(#a1)"/>
+        <line x1="354" y1="198" x2="276" y2="198" marker-end="url(#a1)"/>
+      </g>
+    </svg>
+  </div>
+  <div class="steps">
+    <div class="step"><span class="k">1 · le canal</span><p>Sionna tire une scène : positions des utilisateurs, visibilité directe ou non, vitesse de 3 à 30 km/h. Le signal arrive par une vingtaine de chemins (réflexions, diffractions), chacun avec un retard, une puissance et des angles. Leur somme donne, sur chaque SC, la matrice H(f) des coefficients entre chaque antenne et chaque utilisateur.</p></div>
+    <div class="step"><span class="k">2 · le sondage</span><p>Comme le SRS de la 5G : chaque utilisateur émet des pilotes connus sur un peigne de SC (l'utilisateur k sur k, k+4, k+8…), soit 153 SC pilotes par utilisateur en M8K4. La BS les reçoit avec du bruit, au SNR pilote (10 dB nominal).</p></div>
+    <div class="step"><span class="k">3 · l'estimation</span><p>LS : sur chaque SC pilote, reçu divisé par pilote, puis interpolation entre les pilotes. Simple mais bruité. LMMSE : lissage en fréquence avec la covariance moyenne du canal, la référence classique. En TDD, le canal descendant est le transposé du canal montant mesuré.</p></div>
+    <div class="step"><span class="k">4 · le précodage</span><p>Sur chaque SC, la BS émet x = W s : s contient un symbole par utilisateur, W (M × K) dit comment répartir chaque symbole sur les antennes. La puissance totale vaut 1 par SC.</p></div>
+    <div class="step"><span class="k">5 · la réception</span><p>L'utilisateur k reçoit son symbole, l'interférence des symboles des autres, et du bruit.</p></div>
+    <div class="step"><span class="k">6 · la mesure</span><p>Le précodeur est calculé sur le canal estimé, mais le débit est mesuré sur le canal vrai : chaque erreur d'estimation se paie en interférence.</p></div>
+  </div>
+  <div class="eq">SINR_k = |h_k w_k|² / ( Σ_{j≠k} |h_k w_j|² + σ² )&nbsp;&nbsp;&nbsp;&nbsp;débit = Σ_k log₂(1 + SINR_k)&nbsp;&nbsp;[bps/Hz]</div>
+  <p class="caption">Ce qu'on utilise de Sionna : les modèles de canal 3GPP et le sondage avec estimation LS et LMMSE. Le débit est un débit de Shannon ; la modulation et le codage (QAM, LDPC) ne sont pas encore simulés. Le canal est normalisé (énergie moyenne 1) : pas d'affaiblissement de parcours ni d'ordonnancement.</p>
+</section>
+
+<section>
+  <div class="eyebrow">Le canal multi-chemins</div>
+  <h2>Pourquoi le canal varie en fréquence, et pourquoi c'est une chance</h2>
+  <p>Chaque chemin arrive avec son propre retard. En fréquence, ces retards se traduisent par des rotations de phase différentes, qui s'additionnent tantôt bien, tantôt mal : le canal ondule d'une SC à l'autre. En ville, il change notablement tous les 9 SC environ (la bande de cohérence, ≈ 270 kHz) ; en zone rurale, plus lentement.</p>
+  <p>Vu dans l'autre sens, c'est une structure très forte : passer de la fréquence au domaine des retards (une transformée de Fourier inverse) transforme les 612 valeurs bruitées en quelques pics, un par chemin, au-dessus d'un plancher de bruit étalé partout.</p>
+  <div class="figure wide" role="img" aria-label="À gauche, la réponse en fréquence ondule sur 612 sous-porteuses avec du bruit. À droite, après IFFT, quelques pics de chemins dépassent un plancher de bruit uniforme.">
+    <svg viewBox="0 0 960 230" xmlns="http://www.w3.org/2000/svg">
+      <defs><marker id="a2" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" style="fill:var(--muted)"/></marker></defs>
+      <text x="30" y="22" style="fill:var(--ink);font-size:12px;font-weight:600">fréquence : |H(f)| sur 612 SC (pilotes bruités)</text>
+      <line x1="30" y1="190" x2="410" y2="190" style="stroke:var(--line)"/>
+      <path d="M30,120 C60,70 90,60 120,110 C150,160 170,170 200,120 C230,70 250,80 280,130 C310,175 340,150 370,100 C385,80 400,90 410,105" style="fill:none;stroke:var(--signal);stroke-width:2"/>
+      <g style="fill:var(--noise)">
+        <circle cx="45" cy="92" r="2.2"/><circle cx="70" cy="74" r="2.2"/><circle cx="95" cy="72" r="2.2"/><circle cx="118" cy="118" r="2.2"/><circle cx="140" cy="140" r="2.2"/><circle cx="165" cy="175" r="2.2"/><circle cx="190" cy="128" r="2.2"/><circle cx="215" cy="88" r="2.2"/><circle cx="240" cy="82" r="2.2"/><circle cx="262" cy="104" r="2.2"/><circle cx="288" cy="146" r="2.2"/><circle cx="312" cy="160" r="2.2"/><circle cx="338" cy="148" r="2.2"/><circle cx="362" cy="98" r="2.2"/><circle cx="388" cy="96" r="2.2"/>
+      </g>
+      <text x="30" y="210" style="fill:var(--muted);font-size:11px">SC 0</text><text x="410" y="210" text-anchor="end" style="fill:var(--muted);font-size:11px">SC 611</text>
+      <line x1="430" y1="125" x2="520" y2="125" style="stroke:var(--muted);stroke-width:1.4" marker-end="url(#a2)"/>
+      <text x="475" y="115" text-anchor="middle" style="fill:var(--muted);font-size:11px">IFFT</text>
+      <text x="540" y="22" style="fill:var(--ink);font-size:12px;font-weight:600">retards : 306 cases de 27 ns</text>
+      <line x1="540" y1="190" x2="930" y2="190" style="stroke:var(--line)"/>
+      <rect x="540" y="176" width="390" height="14" style="fill:var(--code-bg)"/>
+      <text x="925" y="172" text-anchor="end" style="fill:var(--muted);font-size:11px">plancher de bruit</text>
+      <g style="fill:var(--gain)">
+        <rect x="562" y="60" width="7" height="130"/><rect x="590" y="105" width="7" height="85"/><rect x="608" y="130" width="7" height="60"/><rect x="655" y="120" width="7" height="70"/><rect x="700" y="150" width="7" height="40"/><rect x="760" y="158" width="7" height="32"/>
+      </g>
+      <text x="565" y="52" style="fill:var(--gain);font-size:11px">chemin direct</text>
+      <text x="540" y="210" style="fill:var(--muted);font-size:11px">0 ns</text><text x="930" y="210" text-anchor="end" style="fill:var(--muted);font-size:11px">≈ 8 µs</text>
+    </svg>
+  </div>
+  <p class="caption">Schéma de principe. Garder les pics et jeter le plancher, c'est débruiter. Plus on regarde de bande à la fois, plus la grille des retards est fine, et mieux les chemins se séparent du bruit.</p>
+</section>
+
+<section>
+  <div class="eyebrow">Le précodage</div>
+  <h2>Faire arriver chaque message au bon utilisateur</h2>
+  <p>Sur une même SC, la BS parle aux K utilisateurs en même temps. Sans précaution, chacun reçoit les messages des autres. Le précodeur W choisit, pour chaque utilisateur, des poids sur les antennes de sorte que les ondes s'additionnent chez lui et s'annulent chez les autres.</p>
+  <div class="scroll">
+    <table>
+      <thead><tr><th>Précodeur</th><th>Idée</th><th>Limite</th></tr></thead>
+      <tbody>
+        <tr><td>MRT</td><td>Viser chaque utilisateur au maximum : W = Hᴴ.</td><td>Ignore l'interférence.</td></tr>
+        <tr><td>ZF</td><td>Annuler complètement l'interférence.</td><td>Amplifie le bruit quand les canaux se ressemblent.</td></tr>
+        <tr><td>RZF</td><td>Compromis : W = Hᴴ (H Hᴴ + α I)⁻¹, avec α = K σ².</td><td>Une inversion de matrice K × K par SC.</td></tr>
+        <tr><td>WMMSE</td><td>Maximise le débit somme par itérations.</td><td>Environ 30 itérations, chacune avec des inversions.</td></tr>
+      </tbody>
+    </table>
+  </div>
+  <p class="note">Tout précodeur dépend de ce que la BS sait du canal. Avec une estimation imparfaite, l'annulation de l'interférence est ratée et il reste une interférence résiduelle qui ne baisse pas quand le SNR monte. C'est pourquoi mieux connaître le canal rapporte davantage à fort SNR.</p>
+</section>
+
+<section>
+  <div class="eyebrow">Le MIMO massif</div>
+  <h2>Beaucoup plus d'antennes que d'utilisateurs</h2>
+  <div class="cols">
+    <div class="panel"><h3>Canaux presque orthogonaux</h3><p>Avec 64 antennes, les canaux de deux utilisateurs se ressemblent peu. La matrice G = H Hᴴ, qui mesure ces ressemblances, est presque diagonale : précoder devient facile. En canal parfait, RZF y égale WMMSE (75,26 contre 75,29 bps/Hz).</p></div>
+    <div class="panel"><h3>Gain d'antenne</h3><p>Les contributions des antennes s'additionnent : le signal reçu est bien plus fort, d'où des débits d'environ 72 bps/Hz au lieu d'environ 26 en M8K4.</p></div>
+    <div class="panel"><h3>Beaucoup plus à estimer</h3><p>64 coefficients par utilisateur et par SC, avec toujours peu de pilotes. L'estimation devient le goulot d'étranglement, et c'est là qu'un meilleur traitement des pilotes rapporte le plus.</p></div>
+  </div>
+</section>
+
+<section>
+  <div class="eyebrow">Notre modèle</div>
+  <h2>Un encodeur sur toute la bande, puis un petit transformer par sous-porteuse</h2>
+  <p>Un seul réseau, entraîné de bout en bout sur le débit. Il remplace à la fois l'estimation et le précodage classiques, sans aucune inversion de matrice, avec 98 000 paramètres.</p>
+  <div class="figure wide" role="img" aria-label="Pilotes LS, encodeur fréquentiel avec IFFT, transformer sur les retards et FFT, puis transformer par paires d'utilisateurs avec matrice de Gram, attention triangulaire et précodeur W égal à h hermitien fois C.">
+    <svg viewBox="0 0 960 300" xmlns="http://www.w3.org/2000/svg">
+      <defs><marker id="a3" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" style="fill:var(--muted)"/></marker></defs>
+      <rect x="8" y="10" width="944" height="130" rx="10" style="fill:var(--gain-soft)"/>
+      <text x="22" y="30" style="fill:var(--gain);font-size:12px;font-weight:600">ENCODEUR FRÉQUENTIEL · par utilisateur, sur toute la bande</text>
+      <rect x="8" y="160" width="944" height="130" rx="10" style="fill:var(--signal-soft)"/>
+      <text x="22" y="180" style="fill:var(--signal);font-size:12px;font-weight:600">TRANSFORMER PAR PAIRES D'UTILISATEURS · sur chaque SC, mêmes poids</text>
+      <g style="font-size:12px">
+        <rect x="24" y="44" width="150" height="78" rx="6" style="fill:var(--surface);stroke:var(--line)"/>
+        <text x="99" y="68" text-anchor="middle" style="fill:var(--ink);font-weight:600">Pilotes LS</text>
+        <text x="99" y="88" text-anchor="middle" style="fill:var(--muted)">153 SC pilotes</text>
+        <text x="99" y="106" text-anchor="middle" style="fill:var(--muted)">× 8 antennes</text>
+        <rect x="200" y="44" width="130" height="78" rx="6" style="fill:var(--surface);stroke:var(--line);stroke-dasharray:4 3"/>
+        <text x="265" y="68" text-anchor="middle" style="fill:var(--ink);font-weight:600">IFFT</text>
+        <text x="265" y="88" text-anchor="middle" style="fill:var(--muted)">→ 306 retards</text>
+        <rect x="356" y="38" width="290" height="90" rx="6" style="fill:var(--surface);stroke:var(--gain);stroke-width:1.6"/>
+        <text x="501" y="62" text-anchor="middle" style="fill:var(--ink);font-weight:600">Transformer sur les retards</text>
+        <text x="501" y="82" text-anchor="middle" style="fill:var(--muted)">quels retards sont des chemins ?</text>
+        <text x="501" y="102" text-anchor="middle" style="fill:var(--muted)">filtre sur 3 retards voisins</text>
+        <rect x="672" y="44" width="130" height="78" rx="6" style="fill:var(--surface);stroke:var(--line);stroke-dasharray:4 3"/>
+        <text x="737" y="68" text-anchor="middle" style="fill:var(--ink);font-weight:600">FFT</text>
+        <text x="737" y="88" text-anchor="middle" style="fill:var(--muted)">→ 612 SC</text>
+        <rect x="828" y="44" width="110" height="78" rx="6" style="fill:var(--surface);stroke:var(--line)"/>
+        <text x="883" y="68" text-anchor="middle" style="fill:var(--ink);font-weight:600">ĥ(f)</text>
+        <text x="883" y="88" text-anchor="middle" style="fill:var(--muted)">direction</text>
+        <text x="883" y="106" text-anchor="middle" style="fill:var(--muted)">du canal</text>
+        <rect x="24" y="194" width="150" height="78" rx="6" style="fill:var(--surface);stroke:var(--line)"/>
+        <text x="99" y="218" text-anchor="middle" style="fill:var(--ink);font-weight:600">G = ĥ ĥᴴ</text>
+        <text x="99" y="238" text-anchor="middle" style="fill:var(--muted)">ressemblances</text>
+        <text x="99" y="256" text-anchor="middle" style="fill:var(--muted)">4 × 4</text>
+        <rect x="200" y="194" width="150" height="78" rx="6" style="fill:var(--surface);stroke:var(--line)"/>
+        <text x="275" y="218" text-anchor="middle" style="fill:var(--ink);font-weight:600">1 token</text>
+        <text x="275" y="238" text-anchor="middle" style="fill:var(--muted)">par paire (j, k)</text>
+        <rect x="376" y="188" width="300" height="90" rx="6" style="fill:var(--surface);stroke:var(--signal);stroke-width:1.6"/>
+        <text x="526" y="212" text-anchor="middle" style="fill:var(--ink);font-weight:600">8 couches d'attention triangulaire</text>
+        <text x="526" y="232" text-anchor="middle" style="fill:var(--muted)">(j,k) combine (j,l) et (l,k)</text>
+        <text x="526" y="252" text-anchor="middle" style="fill:var(--muted)">= inversion apprise, sans inversion</text>
+        <rect x="702" y="194" width="236" height="78" rx="6" style="fill:var(--surface);stroke:var(--line);stroke-dasharray:4 3"/>
+        <text x="820" y="218" text-anchor="middle" style="fill:var(--ink);font-weight:600">W = ĥᴴ C</text>
+        <text x="820" y="238" text-anchor="middle" style="fill:var(--muted)">C : 4 × 4 coefficients</text>
+        <text x="820" y="256" text-anchor="middle" style="fill:var(--muted)">puissance 1 par SC</text>
+      </g>
+      <g style="stroke:var(--muted);stroke-width:1.4;fill:none">
+        <line x1="174" y1="83" x2="198" y2="83" marker-end="url(#a3)"/>
+        <line x1="330" y1="83" x2="354" y2="83" marker-end="url(#a3)"/>
+        <line x1="646" y1="83" x2="670" y2="83" marker-end="url(#a3)"/>
+        <line x1="802" y1="83" x2="826" y2="83" marker-end="url(#a3)"/>
+        <path d="M883,122 L883,150 L99,150 L99,192" marker-end="url(#a3)"/>
+        <line x1="174" y1="233" x2="198" y2="233" marker-end="url(#a3)"/>
+        <line x1="350" y1="233" x2="374" y2="233" marker-end="url(#a3)"/>
+        <line x1="676" y1="233" x2="700" y2="233" marker-end="url(#a3)"/>
+      </g>
+    </svg>
+  </div>
+  <div class="cols">
+    <div class="panel"><h3>Pourquoi toute la bande</h3><p>Le canal n'a qu'une vingtaine de chemins. En regardant les 153 pilotes ensemble, ils ressortent comme des pics au-dessus du bruit. L'encodeur apprend lesquels garder. Sa sortie ne reproduit pas le canal : elle en donne la direction sur les antennes, 5 à 7,5 dB plus précisément que LMMSE, ce qui est exactement ce dont le précodage a besoin.</p></div>
+    <div class="panel"><h3>Pourquoi des paires d'utilisateurs</h3><p>Pour annuler l'interférence, ce qui compte, ce sont les relations entre utilisateurs, résumées par G. Raisonner sur les paires donne au réseau les bons objets ; combiner (j,l) et (l,k), c'est faire des produits de matrices, la brique d'une inversion. Le modèle ne dépend ni de M ni de K : le même marche en M8K4 et en massif.</p></div>
+    <div class="panel"><h3>Pourquoi W = ĥᴴ C</h3><p>Le meilleur précodeur est toujours une combinaison des canaux des utilisateurs. Le réseau n'apprend que la petite matrice C, de taille K × K, quel que soit le nombre d'antennes.</p></div>
+  </div>
+  <p class="caption">Entraînement : perte = −débit relatif à RZF, trois scénarios mélangés, SNR pilote tiré entre 0 et 20 dB. Variante de coût : le transformer par paires n'est calculé que sur 1 SC sur 3, et W est interpolé entre elles (−0,1 bps/Hz au plus, calcul divisé par 2,4).</p>
+</section>
+
+<section>
+  <div class="eyebrow">Ce que ça donne</div>
+  <h2>Résultats, pilote 10 dB, données à 20 dB</h2>
+  <div class="scroll">
+    <table>
+      <thead><tr><th>Configuration</th><th class="num">notre modèle</th><th class="num">meilleur classique (WMMSE robuste sur LMMSE)</th><th class="num">écart</th></tr></thead>
+      <tbody>
+        <tr><td>M8K4, UMi / UMa / RMa</td><td class="num">25,87 / 25,47 / 26,28</td><td class="num">24,18 / 23,73 / 24,35</td><td class="num pos">+1,7 à +1,9</td></tr>
+        <tr><td>Massif M64K8, UMi / UMa / RMa</td><td class="num">72,91 / 72,00 / 74,08</td><td class="num">68,97 / 68,00 / 69,51</td><td class="num pos">+3,9 à +4,6</td></tr>
+        <tr><td>M8K4, pilote 0 dB (UMi)</td><td class="num">22,41</td><td class="num">19,03</td><td class="num pos">+3,4</td></tr>
+        <tr><td>M8K4, données 5 ms après le sondage (UMi)</td><td class="num">18,16</td><td class="num">17,38</td><td class="num pos">+0,8</td></tr>
+      </tbody>
+    </table>
+  </div>
+  <p>Le modèle bat aussi deux références apprises dans le même cadre : TA-RB (réécrit à partir d'un mémoire précédent, 1,1 M paramètres, 24,2 en M8K4 UMi) et un précodeur de la littérature appliqué sur LMMSE (24,2). Un précodeur appris seul n'apporte presque rien : le gain vient de l'encodeur fréquentiel appris avec le précodeur.</p>
+</section>
+
+<section>
+  <div class="eyebrow">Vocabulaire</div>
+  <h2>Les termes du domaine</h2>
+  <dl>
+    <dt>OFDM, SC</dt><dd>Découpage de la bande en sous-porteuses étroites, traitées chacune comme un canal plat.</dd>
+    <dt>RB</dt><dd>Bloc de ressources : 12 sous-porteuses consécutives, l'unité d'allocation de la 5G.</dd>
+    <dt>CSI</dt><dd>Ce que la BS sait du canal (Channel State Information), parfait ou estimé.</dd>
+    <dt>SRS, pilotes</dt><dd>Symboles connus envoyés par les utilisateurs pour que la BS mesure le canal.</dd>
+    <dt>LS, LMMSE</dt><dd>Estimations du canal : division directe, ou lissage optimal connaissant les statistiques du canal.</dd>
+    <dt>TDD</dt><dd>Montée et descente sur la même fréquence, en alternance : le canal mesuré en montée sert en descente.</dd>
+    <dt>Bande de cohérence</dt><dd>Largeur de fréquence sur laquelle le canal reste à peu près constant (≈ 270 kHz en ville).</dd>
+    <dt>SINR</dt><dd>Rapport entre le signal utile et la somme interférence + bruit.</dd>
+    <dt>Borne génie</dt><dd>Estimation LMMSE qui connaît les retards et puissances exacts de chaque chemin : une référence idéale, pas un système réalisable.</dd>
+  </dl>
+</section>
+
+</div>
