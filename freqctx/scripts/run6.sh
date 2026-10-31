@@ -9,5 +9,5 @@ else
 fi
 export LD_LIBRARY_PATH=$LIB:$LD_LIBRARY_PATH
 gpu=$1; log=$2; shift 2
-CUDA_VISIBLE_DEVICES=$gpu nohup python -u -m experiments.phase6_train "$@" > /export/tmp/sala/freqctx/logs/p6_$log.log 2>&1 < /dev/null &
+TF_FORCE_GPU_ALLOW_GROWTH=true CUDA_VISIBLE_DEVICES=$gpu nohup python -u -m experiments.phase6_train "$@" > /export/tmp/sala/freqctx/logs/p6_$log.log 2>&1 < /dev/null &
 echo "lance $log sur GPU $gpu (pid $!)"

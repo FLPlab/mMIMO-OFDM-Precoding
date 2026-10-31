@@ -33,7 +33,8 @@ W6 = "/export/tmp/sala/freqctx/weights/phase6"
 
 def build(a):
     mix = {"gram": "gram", "tri": "triangular", "trig": "triangular_g"}[a.arch]
-    return GramPrecoder(64, d=a.d, hidden=a.hidden, layers=a.layers, mix=mix, tied=not a.untied)
+    return GramPrecoder(64, d=a.d, hidden=a.hidden, layers=a.layers, mix=mix, tied=not a.untied,
+                        sym=getattr(a, "sym", False))
 
 
 def main():
@@ -43,6 +44,7 @@ def main():
     ap.add_argument("--d", type=int, default=16)
     ap.add_argument("--hidden", type=int, default=64)
     ap.add_argument("--untied", action="store_true")
+    ap.add_argument("--sym", action="store_true", help="symetrie hermitienne (phase 9)")
     ap.add_argument("--train", default="mix", choices=["mix", "massive"])
     ap.add_argument("--steps", type=int, default=40000)
     ap.add_argument("--batch", type=int, default=2048)
@@ -50,7 +52,7 @@ def main():
     ap.add_argument("--seed", type=int, default=0)
     ap.add_argument("--tag", default="")
     a = ap.parse_args()
-    name = a.tag or (f"{a.arch}_L{a.layers}_d{a.d}_h{a.hidden}" + ("_untied" if a.untied else "") + ("" if a.train == "mix" else "_trainmassive")
+    name = a.tag or (f"{a.arch}_L{a.layers}_d{a.d}_h{a.hidden}" + ("_untied" if a.untied else "") + ("_sym" if a.sym else "") + ("" if a.train == "mix" else "_trainmassive")
                      + (f"_s{a.seed}" if a.seed else ""))
     print("==", name, flush=True)
     keras.utils.set_random_seed(a.seed)
