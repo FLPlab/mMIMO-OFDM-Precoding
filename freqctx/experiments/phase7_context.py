@@ -129,11 +129,19 @@ def main():
     ap.add_argument("--step", type=int, default=None, help="interp : precodeur a 1 SC sur step, W interpole")
     ap.add_argument("--steps", type=int, default=STEPS)
     ap.add_argument("--quick", action="store_true", help="test de la chaine (32 tirages, 200 pas)")
+    ap.add_argument("--p_hidden", type=int, default=None, help="(phase 9, taille) FFN du precodeur")
+    ap.add_argument("--p_d", type=int, default=None, help="(phase 9, taille) etat d'une paire")
+    ap.add_argument("--est_d", type=int, default=None, help="(phase 9, taille) largeur de l'encodeur")
+    ap.add_argument("--est_layers", type=int, default=None, help="(phase 9, taille) couches de l'encodeur")
     a = ap.parse_args()
     global TRAIN_DROPS, EVAL_DROPS
     if a.quick:
         TRAIN_DROPS, EVAL_DROPS, a.steps = 32, 32, 200
     name = a.variant + (f"_{a.rb}rb" if a.variant == "sub" else "") + (f"_s{a.step}" if a.variant == "interp" else "")
+    global PRECODER
+    PRECODER = dict(PRECODER, **({"hidden": a.p_hidden} if a.p_hidden else {}), **({"d": a.p_d} if a.p_d else {}))
+    name += "".join(f"_{k}{v}" for k, v in (("ph", a.p_hidden), ("pd", a.p_d), ("ed", a.est_d), ("el", a.est_layers))
+                    if v is not None)
     print("==", name, flush=True)
     t0 = time.time()
     out = {"meta": {"git_commit": git_commit(), "created": time.strftime("%Y-%m-%d %H:%M")},
@@ -170,7 +178,8 @@ def main():
                                "tokens_per_rb": 4}
         else:
             net = DelayDomainPrecoder(cfg.num_sc, cfg.num_users, cfg.num_bs_ant, banded=True, oversample=2,
-                                    est_layers=0 if a.variant == "simple" else 2,
+                                    est_layers=0 if a.variant == "simple" else (a.est_layers if a.est_layers is not None else 2),
+                                    est_d=a.est_d or 32,
                                     subband_rb=a.rb if a.variant == "sub" else None,
                                     anchor_step=a.step if a.variant == "interp" else None,
                                     precoder_arch="pair", **PRECODER,
