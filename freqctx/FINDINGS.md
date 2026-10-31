@@ -1002,6 +1002,19 @@ L'état est hermitien (E[k,j] = conj E[j,k]) ; l'entrée de la paire {j,k} est c
 - Débit (pilote aléatoire, comme `pilot_rand`) : 25,79 / 25,39 / 26,21 à 20 dB (−0,05 / −0,06 / −0,05) ; 30,62 / 30,09 / 31,66 à 25 dB (−0,12 / −0,13 / −0,13) ; 0 dB inchangé.
 - Coût : 0,99 M MAC/SC au lieu de 1,27 M (−22 %), 72,6 k paramètres au lieu de 97,8 k. Précodeur seul : −26 % (M8K4), −29 % (massif).
 
+**Vérification sur le banc de la phase 6 (précodeur seul, cas difficiles et tailles jamais vues ; `results/phase6/trig_L8_d16_h{64,128}_untied_sym.json`) — ÉCARTÉE :**
+
+| (% de RZF) | vues 20 dB | vues 30 dB | ρ = 0,95 à 30 dB | non vues 30 dB | M8K8 jamais vu, 30 dB | MAC/SC M8K4 |
+|---|---|---|---|---|---|---|
+| base (FFN 64) | 101,1 | **98,9** | **94,4** | **99,7** | **98,0** | 1,11 M |
+| symétrique, FFN 64 | 99,9 | 95,6 | 82,4 | 98,1 | 93,3 | 0,83 M |
+| symétrique, FFN 128 (mêmes paramètres que la base) | 100,0 | 96,3 | 84,5 | 97,2 | 87,5 | 1,33 M |
+| base étroite, FFN 16 (référence de coût) | 100,1 | 96,2 | 80,2 | 97,3 | — | 0,52 M |
+
+- **La symétrie limite le modèle sur les cas difficiles** (ρ = 0,95 à 30 dB : 82 % contre 94 %), et **élargir le réseau ne rattrape pas l'écart** : c'est la contrainte (FFN à poids réels sur Re/Im, aucune rotation de phase interne), pas la capacité. La forme de sortie est juste en théorie, mais la façon de l'imposer réduit l'expressivité.
+- **La version étroite sans symétrie fait aussi bien pour 37 % de calcul en moins** que la version symétrique : la symétrie n'apporte rien qu'un réglage de largeur n'apporte déjà.
+- **Décision : écartée.** Base sans symétrie (architecture plus simple).
+
 ### Vraie FFT dans l'encodeur (recomptage, `DelayDomainPrecoder.macs_per_sc(fft=True)`)
 Encodeur : M8K4 161 k → 114 k MAC/SC (−29 % ; l'essentiel est l'attention entre les 306 retards) ; massif 425 k → 102 k (÷ 4,2).
 
