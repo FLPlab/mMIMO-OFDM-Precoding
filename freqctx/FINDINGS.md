@@ -995,6 +995,34 @@ Même modèle, mêmes données de canal ; seul changement : SNR pilote tiré uni
 - L'encodeur estime donc lui-même le niveau de bruit (sur les retards sans trajet) : pas besoin de lui donner le SNR pilote.
 - **Proposition : ce modèle devient le modèle principal.**
 
+## Phase 9 — réduire le coût, et le juger en énergie (2026-10-31)
+
+### Symétrie hermitienne du précodeur par paires (`--variant sym`, `results/phase7/sym.json`)
+L'état est hermitien (E[k,j] = conj E[j,k]) ; l'entrée de la paire {j,k} est construite avec ses deux orientations (s_jk = c_jk + conj c_kj) ; le FFN, à poids réels appliqués de la même façon aux parties réelle et imaginaire (donc conjugaison-équivariant), ne tourne que sur les K(K+1)/2 paires j ≤ k ; sortie C = S diag(p) (S hermitienne, une puissance par utilisateur lue sur la diagonale : la forme de WMMSE). Une version naïve (FFN ordinaire sur les paires j ≤ k) cassait l'équivariance aux permutations d'utilisateurs (écart 0,54) : écartée.
+- Débit (pilote aléatoire, comme `pilot_rand`) : 25,79 / 25,39 / 26,21 à 20 dB (−0,05 / −0,06 / −0,05) ; 30,62 / 30,09 / 31,66 à 25 dB (−0,12 / −0,13 / −0,13) ; 0 dB inchangé.
+- Coût : 0,99 M MAC/SC au lieu de 1,27 M (−22 %), 72,6 k paramètres au lieu de 97,8 k. Précodeur seul : −26 % (M8K4), −29 % (massif).
+
+### Vraie FFT dans l'encodeur (recomptage, `DelayDomainPrecoder.macs_per_sc(fft=True)`)
+Encodeur : M8K4 161 k → 114 k MAC/SC (−29 % ; l'essentiel est l'attention entre les 306 retards) ; massif 425 k → 102 k (÷ 4,2).
+
+### Énergie (modèle du laboratoire, celui du mémoire ; `experiments/phase9_energy.py`, `results/phase9/energy.json`)
+nJ par SC et par mise à jour ; notre modèle en INT8, classique en FP32 :
+
+| | M8K4 | Massif M64K8 |
+|---|---|---|
+| LMMSE + RZF (FP32) | 0,09 | 0,79 |
+| LMMSE + WMMSE, 30 it. (FP32) | 0,57 | 73,1 |
+| notre modèle, par SC (INT8) | 0,43 | 1,66 |
+| symétrique (INT8) | 0,34 | 1,22 |
+| 1 SC sur 3 (INT8) | 0,17 | 0,58 |
+| symétrique + 1 SC sur 3 (INT8, *non entraîné ensemble*) | 0,14 | 0,44 |
+| notre modèle, par SC, en FP32 (pour comparaison) | 5,36 | 20,5 |
+
+- **En énergie, la précision compte plus que le nombre d'opérations** : notre modèle en INT8 coûte 12 fois moins qu'en FP32.
+- **M8K4** : dès la version par SC, moins que LMMSE + WMMSE ; version économique ≈ 1,5 fois LMMSE + RZF, pour +1,7 bps/Hz.
+- **Massif** : 44 fois moins que LMMSE + WMMSE en version par SC ; la version économique passe **sous LMMSE + RZF** (0,44 contre 0,79 nJ), pour +4 bps/Hz.
+- **Réserves** : (1) le fonctionnement en INT8 n'est pas encore validé (quantification à faire) ; (2) modèle d'énergie générique (pas une synthèse FPGA) ; (3) activations estimées en ordre de grandeur ; (4) classique compté en FP32 alors que notre WMMSE utilise des inversions en double précision (favorable au classique) ; (5) symétrie + interpolation pas encore entraînées ensemble, et ces variantes pas encore entraînées en massif.
+
 ## Prochaine étape
 (1) 3 graines pour l'attention en fréquence D64. (2) Réduire le coût. (3) Bootstrap sur les tirages. (4) Faire le point avant d'aller plus loin (pilote 20 dB, vieillissement, M64).
 Cible principale ensuite (phases 2–3) : le régime pilote 10 dB, où il reste 2,7 à 5,9 bps/Hz après LMMSE.

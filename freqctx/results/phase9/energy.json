@@ -1,0 +1,104 @@
+{
+ "M8K4": {
+  "LMMSE + RZF (FP32)": {
+   "mac_per_sc": 20864,
+   "weights": 187272,
+   "acts_per_sc": 256,
+   "bits": 32,
+   "energy_nJ_per_sc": 0.08630887695348118
+  },
+  "LMMSE + WMMSE (FP32)": {
+   "mac_per_sc": 116864,
+   "weights": 187272,
+   "acts_per_sc": 5824,
+   "bits": 32,
+   "energy_nJ_per_sc": 0.5728130442042366
+  },
+  "notre modele, par SC (INT8)": {
+   "mac_per_sc": 1224361,
+   "weights": 97800,
+   "acts_per_sc": 33356,
+   "bits": 8,
+   "energy_nJ_per_sc": 0.4346949740197721
+  },
+  "notre modele, symetrique (INT8)": {
+   "mac_per_sc": 939689,
+   "weights": 72601,
+   "acts_per_sc": 30284,
+   "bits": 8,
+   "energy_nJ_per_sc": 0.341159826686086
+  },
+  "notre modele, 1 SC sur 3 (INT8)": {
+   "mac_per_sc": 486079,
+   "weights": 97800,
+   "acts_per_sc": 13639,
+   "bits": 8,
+   "energy_nJ_per_sc": 0.1732593013096956
+  },
+  "notre modele, symetrique + 1 SC sur 3 (INT8)": {
+   "mac_per_sc": 390723,
+   "weights": 72601,
+   "acts_per_sc": 12610,
+   "bits": 8,
+   "energy_nJ_per_sc": 0.14191543785149263
+  },
+  "notre modele, par SC (FP32)": {
+   "mac_per_sc": 1224361,
+   "weights": 97800,
+   "acts_per_sc": 33356,
+   "bits": 32,
+   "energy_nJ_per_sc": 5.361788141725877
+  }
+ },
+ "M64K8": {
+  "LMMSE + RZF (FP32)": {
+   "mac_per_sc": 188416,
+   "weights": 90000,
+   "acts_per_sc": 3328,
+   "bits": 32,
+   "energy_nJ_per_sc": 0.7854668445879717
+  },
+  "LMMSE + WMMSE (FP32)": {
+   "mac_per_sc": 18995199,
+   "weights": 90000,
+   "acts_per_sc": 70144,
+   "bits": 32,
+   "energy_nJ_per_sc": 73.14350330415533
+  },
+  "notre modele, par SC (INT8)": {
+   "mac_per_sc": 4704143,
+   "weights": 96392,
+   "acts_per_sc": 123068,
+   "bits": 8,
+   "energy_nJ_per_sc": 1.6617523233959082
+  },
+  "notre modele, symetrique (INT8)": {
+   "mac_per_sc": 3364751,
+   "weights": 71193,
+   "acts_per_sc": 108732,
+   "bits": 8,
+   "energy_nJ_per_sc": 1.221925511207416
+  },
+  "notre modele, 1 SC sur 3 (INT8)": {
+   "mac_per_sc": 1648004,
+   "weights": 96392,
+   "acts_per_sc": 44462,
+   "bits": 8,
+   "energy_nJ_per_sc": 0.5843789405673268
+  },
+  "notre modele, symetrique + 1 SC sur 3 (INT8)": {
+   "mac_per_sc": 1199308,
+   "weights": 71193,
+   "acts_per_sc": 39659,
+   "bits": 8,
+   "energy_nJ_per_sc": 0.4370242180381992
+  },
+  "notre modele, par SC (FP32)": {
+   "mac_per_sc": 4704143,
+   "weights": 96392,
+   "acts_per_sc": 123068,
+   "bits": 32,
+   "energy_nJ_per_sc": 20.483659658524434
+  }
+ }
+}
