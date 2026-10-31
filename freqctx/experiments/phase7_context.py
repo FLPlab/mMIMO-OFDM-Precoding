@@ -26,6 +26,9 @@ Variantes (--variant) :
                 U(0, 20) dB par lot de 8 tirages (sans le donner en entree :
                 l'encodeur peut mesurer le bruit sur les retards sans trajet) ;
                 evaluation standard a 10 dB (robustesse : phase8_robust).
+    sym       : (phase 9) precodeur par paires a symetrie hermitienne : FFN
+                conjugaison-equivariant sur les K(K+1)/2 paires j <= k seulement,
+                C = S diag(p) ; pilote aleatoire comme pilot_rand.
     interp    : toute la bande ; le precodeur n'est calcule qu'a 1 SC sur
                 --step (+ la derniere), W est interpole lineairement sur les
                 autres SC, et le debit est appris sur TOUTES les SC.
@@ -121,7 +124,7 @@ def train_encoder_mse(model, pool, steps, lr=1e-3):
 
 def main():
     ap = argparse.ArgumentParser()
-    ap.add_argument("--variant", required=True, choices=["none", "lmmse", "sub", "separate", "simple", "interp", "lmmse_axial", "tarb", "pilot_rand"])
+    ap.add_argument("--variant", required=True, choices=["none", "lmmse", "sub", "separate", "simple", "interp", "lmmse_axial", "tarb", "pilot_rand", "sym"])
     ap.add_argument("--rb", type=int, default=None)
     ap.add_argument("--step", type=int, default=None, help="interp : precodeur a 1 SC sur step, W interpole")
     ap.add_argument("--steps", type=int, default=STEPS)
@@ -156,7 +159,7 @@ def main():
         rates = {s: evaluate(net, (flat(ev[s][0]), flat(ev[s][1])), SNRS_DB) for s in SCENARIOS}
     else:
         (ti, tt), ev = data("ls_lin")
-        if a.variant == "pilot_rand":
+        if a.variant in ("pilot_rand", "sym"):
             ti, tt = data_random_pilot()
         pool = DropPool(ti, tt)
         cfg = SystemConfig()
@@ -170,7 +173,8 @@ def main():
                                     est_layers=0 if a.variant == "simple" else 2,
                                     subband_rb=a.rb if a.variant == "sub" else None,
                                     anchor_step=a.step if a.variant == "interp" else None,
-                                    precoder_arch="pair", **PRECODER)
+                                    precoder_arch="pair", **PRECODER,
+                                    **({"sym": True} if a.variant == "sym" else {}))
         if a.variant == "separate":
             net(ti[:1], tf.zeros([1]))
             keras.utils.set_random_seed(0)

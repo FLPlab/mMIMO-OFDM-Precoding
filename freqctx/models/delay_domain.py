@@ -176,11 +176,19 @@ class DelayDomainPrecoder(keras.Model):
                           tf.repeat(snr_db, self.F))
         return tf.reshape(w, [B, self.F, self.M, self.K])
 
-    def macs_per_sc(self, K):
-        """Precodeur par SC + estimation (une fois par bande, ramenee par SC)."""
+    def macs_per_sc(self, K, fft=False):
+        """Precodeur par SC + estimation (une fois par bande, ramenee par SC).
+        fft=False : IDFT/DFT comptees comme produits de matrices (borne haute, convention
+        des phases 4-8) ; fft=True : vraies FFT radix 2 (2 L log2 L MAC reelles pour une
+        FFT complexe de taille L), IDFT sur la grille fine O*N, DFT sur O*F points."""
         N, d, M, L = self.Fs // self.K, self.est_d, self.M, self.est_layers
         T = self.estimator.T
-        fft = 4 * (T * N + self.Fs * T) * M                        # IDFT + DFT en matrices (borne haute)
+        if fft:
+            O = self.estimator.oversample
+            f_len = lambda n: 2 * n * np.log2(n)
+            fft = int((f_len(O * N) + f_len(O * self.Fs)) * M)
+        else:
+            fft = 4 * (T * N + self.Fs * T) * M                    # IDFT + DFT en matrices (borne haute)
         per_tok = (2 * M + 1) * d + L * (3 * d * d + 2 * T * d + d * d + 4 * d * d) + d
         est = K * (fft + T * per_tok)                              # par sous-bande
         prec = self.precoder.macs_per_sc(K)

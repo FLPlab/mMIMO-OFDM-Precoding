@@ -58,24 +58,61 @@ class TriangularBlock(keras.layers.Layer):
         self.b = keras.layers.Dense(2 * d, use_bias=False)
         self.f1 = keras.layers.Dense(hidden, activation="gelu")
         self.f2 = keras.layers.Dense(2 * d)
+        self.d, self.hidden = d, hidden
 
-    def call(self, e, g):                                   # g utilise seulement si edge_g
+    def build_sym(self):
+        """FFN conjugaison-equivariant (version symetrique) : poids REELS appliques
+        de la meme facon aux parties reelle et imaginaire, biais reels, porte sur le module."""
+        if not hasattr(self, "g1"):
+            self.g1 = keras.layers.Dense(self.hidden, use_bias=False)
+            self.g2 = keras.layers.Dense(self.d, use_bias=False)
+            self.b1 = self.add_weight(shape=(self.hidden,), initializer="zeros")
+            self.b2 = self.add_weight(shape=(self.d,), initializer="zeros")
+            self.gb = self.add_weight(shape=(self.hidden,), initializer="zeros")
+
+    def _cffn(self, s):
+        lin = lambda layer, z, b: tf.complex(layer(tf.math.real(z)) + b, layer(tf.math.imag(z)))
+        h = lin(self.g1, s, self.b1)
+        h = h * tf.cast(tf.sigmoid(tf.abs(h) + self.gb), h.dtype)          # porte sur le module
+        return lin(self.g2, h, self.b2)
+
+    def call(self, e, g, upper=None):                       # g utilise seulement si edge_g
         x = self.norm(_real(e))
         if self.edge_g:                                     # caracteristique d'arete, pas un calcul impose
             x = tf.concat([x, tf.stack([tf.math.real(g), tf.math.imag(g), tf.abs(g)], -1)], -1)
         K = tf.cast(tf.shape(e)[1], tf.complex64)
         m = tf.einsum("njlc,nlkc->njkc", _cplx(self.a(x)), _cplx(self.b(x))) / K
-        return e + _cplx(self.f2(self.f1(tf.concat([x, _real(m)], axis=-1))))
+        if upper is None:
+            return e + _cplx(self.f2(self.f1(tf.concat([x, _real(m)], axis=-1))))
+        # symetrie hermitienne (phase 9) : entree de la paire {j, k} construite avec ses deux
+        # orientations, s_jk = c_jk + conj(c_kj) (donc s_kj = conj(s_jk), s_jj reel) ; FFN
+        # conjugaison-equivariant sur les seules paires j <= k ; la paire (k, j) recoit le conjugue.
+        self.build_sym()
+        c = tf.concat([e, m, g[..., None]], axis=-1)        # [N, K, K, 2d+1] complexe
+        sc = c + tf.math.conj(tf.transpose(c, [0, 2, 1, 3]))
+        sc = sc / tf.cast(tf.sqrt(tf.reduce_mean(tf.abs(sc) ** 2, -1, keepdims=True) + 1e-6), sc.dtype)
+        up_idx, full_idx, conj = upper
+        su = tf.gather(tf.reshape(sc, [tf.shape(sc)[0], -1, sc.shape[-1]]), up_idx, axis=1)
+        du = self._cffn(su)                                 # [N, P, d]
+        df = tf.gather(du, full_idx, axis=1)                # [N, K*K, d]
+        df = tf.where(conj[None, :, None] > 0, tf.math.conj(df), df)
+        return e + tf.reshape(df, tf.shape(e))
 
 
 class GramPrecoder(keras.Model):
     """mix : "gram" (bloc G.E), "triangular", "triangular_g" (G reinjecte).
     tied : un seul bloc repete L fois (True) ou L blocs distincts."""
 
-    def __init__(self, num_bs_ant, d=16, hidden=64, layers=4, mix="gram", tied=True, **kw):
+    def __init__(self, num_bs_ant, d=16, hidden=64, layers=4, mix="gram", tied=True, sym=False, **kw):
+        """sym (phase 9, triangulaire seulement) : etat hermitien E[k,j] = conj(E[j,k]) ; le FFN
+        ne tourne que sur les K(K+1)/2 paires j <= k ; sortie C = S diag(p), S hermitienne lue
+        sur les paires, p > 0 une puissance par utilisateur lue sur la diagonale (forme de WMMSE)."""
         super().__init__(**kw)
         self.M, self.d, self.hidden, self.L, self.mix = num_bs_ant, d, hidden, layers, mix
-        self.tied = tied
+        self.tied, self.sym = tied, sym
+        if sym:
+            assert mix.startswith("triangular")
+            self.read_p = keras.layers.Dense(1)
         self.init = keras.layers.Dense(2 * d)
 
         def make():
@@ -99,9 +136,24 @@ class GramPrecoder(keras.Model):
         snr = tf.broadcast_to(tf.reshape(snr_db / 10.0, [-1, 1, 1]), tf.shape(eye))
         f = tf.stack([tf.math.real(g), tf.math.imag(g), tf.abs(g), eye, snr], axis=-1)
         e = _cplx(self.init(f))                             # [N, K, K, d]
+        if not self.sym:
+            for i in range(self.L):
+                e = self.blocks[0 if self.tied else i](e, g)
+            return _cplx(self.read(_real(e)))[..., 0]        # [N, K, K]
+        Kp = h.shape[1]
+        up = [(j, k) for j in range(Kp) for k in range(j, Kp)]
+        pos = {jk: p for p, jk in enumerate(up)}
+        up_idx = tf.constant([j * Kp + k for j, k in up], tf.int32)
+        full_idx = tf.constant([pos[(min(j, k), max(j, k))] for j in range(Kp) for k in range(Kp)], tf.int32)
+        conj = tf.constant([1 if j > k else (-1 if j == k else 0) for j in range(Kp) for k in range(Kp)], tf.int32)
+        e = 0.5 * (e + tf.math.conj(tf.transpose(e, [0, 2, 1, 3])))          # etat initial hermitien
         for i in range(self.L):
-            e = self.blocks[0 if self.tied else i](e, g)
-        return _cplx(self.read(_real(e)))[..., 0]            # [N, K, K]
+            e = self.blocks[0 if self.tied else i](e, g, upper=(up_idx, full_idx, conj))
+        s = _cplx(self.read(_real(e)))[..., 0]
+        s = 0.5 * (s + tf.linalg.adjoint(s))                                 # S hermitienne
+        diag = tf.einsum("nkkd->nkd", e)                                     # [N, K, d], reel
+        p = tf.nn.softplus(self.read_p(tf.math.real(diag)))[..., 0]          # puissance par utilisateur
+        return s * tf.cast(p, s.dtype)[:, None, :]                           # C = S diag(p)
 
     def macs_per_sc(self, K, M=None):
         """MAC reelles par SC : G, initialisation, L x (G.E + FFN), lecture, W = h^H C."""
@@ -110,4 +162,9 @@ class GramPrecoder(keras.Model):
         per_edge = 5 * 2 * d + L * (4 * d * hd + hd * 2 * d) + 2 * d * 2
         if self.mix.startswith("triangular"):                        # projections a, b ; FFN sur [x, m]
             per_edge += L * 2 * (2 * d + 3 * (self.mix == "triangular_g")) * (2 * d)
+        if self.sym:            # FFN (poids reels sur Re et Im) sur K(K+1)/2 paires seulement
+            ffn = L * (4 * d * hd + hd * 2 * d)
+            cffn = L * 2 * ((2 * d + 1) * hd + hd * d)
+            return (4 * K * K * M + K * K * (per_edge - ffn) + K * (K + 1) // 2 * cffn
+                    + L * 4 * K ** 3 * d + 4 * M * K * K)
         return 4 * K * K * M + K * K * per_edge + L * 4 * K ** 3 * d + 4 * M * K * K
