@@ -1112,6 +1112,9 @@ Débit à 20 dB (25 dB), UMi / UMa / RMa :
 - **RZF s'effondre** (9,8) : sans répartition de puissance, il sert mal des utilisateurs aussi inégaux ; WMMSE a besoin de plus d'itérations (100 : +0,25 sur 30).
 - **Décision proposée** : nouvelle base = entrée normalisée (même débit en virgule flottante, et elle réduit fortement la perte de quantification, phase 10) **entraînée à puissances réelles**. Le léger recul à puissances égales (−0,2) pourrait se récupérer avec un entraînement sur un mélange des deux ; à tester si besoin.
 
+### BASE FIGÉE (version 2, 2026-11-01)
+Validée par l'utilisateur. Encodeur fréquentiel (domaine des retards, grille 2×, 2 couches d'attention, largeur 32, filtre sur 3 retards) + transformer par paires (attention triangulaire, G réinjecté, 8 couches distinctes, état 16 complexes, FFN 32) avec **entrée normalisée par utilisateur** (G = corrélations, puissance relative de chaque utilisateur en dB sur les paires, W = h̃ᴴ C). Entraînement : SNR pilote aléatoire U(0, 20) dB, **puissances réelles entre utilisateurs** (affaiblissement de parcours et masque 3GPP, contrôle de puissance montant), mélange UMi + UMa + RMa. Poids : `/export/tmp/sala/freqctx/weights/phase7/pilot_rand_ph32_norm_relpow.weights.h5` (srvgrm12). 72 k paramètres, 0,88 M MAC/SC (M8K4). Débit à 20 dB : 17,08 / 17,19 / 17,41 à puissances réelles (WMMSE robuste convergé 16,22 / 16,26 / 16,38) ; 25,66 / 25,24 / 26,05 à puissances égales.
+
 ## Prochaine étape
 (1) 3 graines pour l'attention en fréquence D64. (2) Réduire le coût. (3) Bootstrap sur les tirages. (4) Faire le point avant d'aller plus loin (pilote 20 dB, vieillissement, M64).
 Cible principale ensuite (phases 2–3) : le régime pilote 10 dB, où il reste 2,7 à 5,9 bps/Hz après LMMSE.
