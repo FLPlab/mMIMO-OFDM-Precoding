@@ -108,7 +108,7 @@ def batched(fn, H, bs=4096):
 
 def train(a, P):
     torch.manual_seed(0)
-    net = PairPrecoder(d=16, hidden=a.hidden, layers=8).to(DEV)
+    net = PairPrecoder(d=16, hidden=a.hidden, layers=8, inp=a.inp).to(DEV)
     opt = torch.optim.Adam(net.parameters(), lr=1e-3)
     sched = torch.optim.lr_scheduler.CosineAnnealingLR(opt, a.steps)
     Htr = draw(P, a.train_samples, seed=1)
@@ -127,8 +127,9 @@ def train(a, P):
             hist.append({"step": s, "obj": -float(loss), "time_s": round(time.time() - t0)})
             print("   ", hist[-1], flush=True)
     os.makedirs(OUT_W, exist_ok=True)
-    torch.save(net.state_dict(), f"{OUT_W}/pair_h{a.hidden}.pt")
-    json.dump(hist, open(f"{OUT_W}/pair_h{a.hidden}_history.json", "w"))
+    wname = f"pair_h{a.hidden}" + ("" if a.inp == "raw" else f"_{a.inp}")
+    torch.save(net.state_dict(), f"{OUT_W}/{wname}.pt")
+    json.dump(hist, open(f"{OUT_W}/{wname}_history.json", "w"))
 
 
 def main():
@@ -139,6 +140,7 @@ def main():
     ap.add_argument("--batch", type=int, default=2048)
     ap.add_argument("--train_samples", type=int, default=800000)
     ap.add_argument("--test_samples", type=int, default=20000)
+    ap.add_argument("--inp", default="raw", choices=["raw", "log", "norm"])
     a = ap.parse_args()
     P = pool()
     if a.train:
@@ -159,9 +161,11 @@ def main():
                 Fp = m(lab_input(H))
                 return lab_rate(Fp / torch.linalg.norm(Fp, dim=(1, 2), keepdim=True), H)
             res[f"BitAdapt {cfg} FP32 ({n // 1000} k params)"] = batched(f, Hte)
-        wpath = f"{OUT_W}/pair_h{a.hidden}.pt"
-        if os.path.exists(wpath):
-            net = PairPrecoder(d=16, hidden=a.hidden, layers=8).to(DEV)
+        for inp in ("raw", "log", "norm"):
+            wpath = f"{OUT_W}/pair_h{a.hidden}" + ("" if inp == "raw" else f"_{inp}") + ".pt"
+            if not os.path.exists(wpath):
+                continue
+            net = PairPrecoder(d=16, hidden=a.hidden, layers=8, inp=inp).to(DEV)
             net.load_state_dict(torch.load(wpath, map_location=DEV, weights_only=True))
             net.eval()
             n = sum(p.numel() for p in net.parameters())
@@ -169,7 +173,7 @@ def main():
             def g(H):
                 h, snr = ours_input(H)
                 return lab_rate(net(h, snr), H)
-            res[f"notre precodeur par paires FP32 ({n // 1000} k params)"] = batched(g, Hte)
+            res[f"notre precodeur par paires FP32, entree {inp} ({n // 1000} k params)"] = batched(g, Hte)
     out = {k: {"sum_rate_mean": float(v.mean()), "p5": float(np.percentile(v.numpy(), 5))} for k, v in res.items()}
     for k, v in out.items():
         print(f"{k:50s} debit moyen {v['sum_rate_mean']:6.2f} | 5e centile {v['p5']:6.2f}", flush=True)

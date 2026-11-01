@@ -97,33 +97,68 @@ class TriangularBlock(nn.Module):
         self.f1 = nn.Linear(2 * d + 3 + 2 * d, hidden)
         self.f2 = nn.Linear(hidden, 2 * d)
 
-    def forward(self, e, g):                                # e [N, K, K, d] complexe, g [N, K, K]
-        x = torch.cat([self.norm(_real(e)), torch.stack([g.real, g.imag, g.abs()], -1)], -1)
+    def forward(self, e, ef):                               # e [N, K, K, d] complexe, ef [N, K, K, 3] reel
+        x = torch.cat([self.norm(_real(e)), ef], -1)
         m = torch.einsum("njlc,nlkc->njkc", _cplx(self.a(x)), _cplx(self.b(x))) / e.shape[1]
         return e + _cplx(self.f2(Fn.gelu(self.f1(torch.cat([x, _real(m)], -1)))))
 
 
 class PairPrecoder(nn.Module):
-    """Transformer par paires d'utilisateurs : W = h^H C."""
+    """Transformer par paires d'utilisateurs : W = hp^H C.
+    inp (phase 10, dynamique des entrees avec des puissances tres inegales) :
+      "raw"  : base figee (G = h h^H / M, aretes [Re G, Im G, |G|]) -- equivalent Keras ;
+      "log"  : idem, mais G donnee en module (dB/10) et phase (cos, sin) ;
+      "norm" : canal de chaque utilisateur normalise (hp = h_k / ||h_k||, G = correlations, |G| <= 1) ;
+               puissance relative de chaque utilisateur (dB/10) donnee a part sur les paires ;
+               W = hp^H C reste dans l'espace des canaux."""
 
-    def __init__(self, d=16, hidden=32, layers=8):
+    def __init__(self, d=16, hidden=32, layers=8, inp="raw"):
         super().__init__()
-        self.init = nn.Linear(5, 2 * d)
+        self.inp = inp
+        self.init = nn.Linear(7 if inp == "norm" else 5, 2 * d)
         self.blocks = nn.ModuleList([TriangularBlock(d, hidden) for _ in range(layers)])
         self.read = nn.Linear(2 * d, 2)
 
-    def coeffs(self, h, snr_db):                            # h [N, K, M], snr_db [N]
-        K, M = h.shape[1], h.shape[2]
-        g = h @ h.conj().transpose(-1, -2) / M
-        eye = torch.eye(K, device=h.device).expand(g.shape)
+    def prepare(self, h):
+        """Renvoie (hp, extra) : vecteurs utilises pour G et W, et caracteristiques par paire en plus."""
+        if self.inp == "norm":
+            n2 = (h.abs() ** 2).sum(-1)                                   # [N, K]
+            hp = h / torch.sqrt(n2)[..., None].to(h.dtype)
+            pdb = 10 * torch.log10(n2 / n2.mean(-1, keepdim=True)) / 10.0  # puissance relative, dB/10
+            K = h.shape[1]
+            extra = torch.stack([pdb[:, :, None].expand(-1, -1, K), pdb[:, None, :].expand(-1, K, -1)], -1)
+            return hp, extra
+        return h, None
+
+    def gram(self, hp):
+        return hp @ hp.conj().transpose(-1, -2) / (1 if self.inp == "norm" else hp.shape[2])
+
+    def edges(self, g):
+        if self.inp == "log":
+            a = g.abs()
+            ph = g / a.clamp_min(1e-12)
+            return torch.stack([ph.real, ph.imag, 10 * torch.log10(a.clamp_min(1e-6)) / 10.0], -1)
+        return torch.stack([g.real, g.imag, g.abs()], -1)
+
+    def coeffs_from(self, g, snr_db, extra):
+        K = g.shape[1]
+        ef = self.edges(g)
+        eye = torch.eye(K, device=g.device).expand(g.shape)
         snr = (snr_db / 10.0)[:, None, None].expand(g.shape)
-        e = _cplx(self.init(torch.stack([g.real, g.imag, g.abs(), eye, snr], -1)))
+        parts = [ef, eye[..., None], snr[..., None]] + ([extra] if extra is not None else [])
+        e = _cplx(self.init(torch.cat(parts, -1)))
         for blk in self.blocks:
-            e = blk(e, g)
-        return _cplx(self.read(_real(e)))[..., 0]          # [N, K, K]
+            e = blk(e, ef)
+        return _cplx(self.read(_real(e)))[..., 0]                          # [N, K, K]
+
+    def coeffs(self, h, snr_db):
+        hp, extra = self.prepare(h)
+        return self.coeffs_from(self.gram(hp), snr_db, extra)
 
     def forward(self, h, snr_db):
-        return normalize_power(h.conj().transpose(-1, -2) @ self.coeffs(h, snr_db))   # [N, M, K]
+        hp, extra = self.prepare(h)
+        c = self.coeffs_from(self.gram(hp), snr_db, extra)
+        return normalize_power(hp.conj().transpose(-1, -2) @ c)          # [N, M, K]
 
 
 class FreqctxModel(nn.Module):

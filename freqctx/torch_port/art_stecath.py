@@ -69,8 +69,8 @@ def quantize_products(net):
         blk.q_a, blk.q_b = mk(), mk()
         prods[f"tri{i}"] = (blk.q_a, blk.q_b)
 
-        def fwd(self, e, g):
-            x = torch.cat([self.norm(_real(e)), torch.stack([g.real, g.imag, g.abs()], -1)], -1)
+        def fwd(self, e, ef):
+            x = torch.cat([self.norm(_real(e)), ef], -1)
             a = _qz(self.q_a, _cplx(self.a(x)))
             b = _qz(self.q_b, _cplx(self.b(x)))
             m = torch.einsum("njlc,nlkc->njkc", a, b) / e.shape[1]
@@ -78,19 +78,15 @@ def quantize_products(net):
         blk.forward = types.MethodType(fwd, blk)
 
     def coeffs(self, h, snr_db):
-        K_, M_ = h.shape[1], h.shape[2]
-        hq = _qz(self.q_h, h)
-        g = hq @ hq.conj().transpose(-1, -2) / M_
-        eye = torch.eye(K_, device=h.device).expand(g.shape)
-        snr = (snr_db / 10.0)[:, None, None].expand(g.shape)
-        e = _cplx(self.init(torch.stack([g.real, g.imag, g.abs(), eye, snr], -1)))
-        for blk in self.blocks:
-            e = blk(e, g)
-        return _cplx(self.read(_real(e)))[..., 0]
+        hp, extra = self.prepare(h)
+        hq = _qz(self.q_h, hp)
+        return self.coeffs_from(self.gram(hq), snr_db, extra)
 
     def forward(self, h, snr_db):
-        c = _qz(self.q_c, self.coeffs(h, snr_db))
-        return normalize_power(_qz(self.q_h, h).conj().transpose(-1, -2) @ c)
+        hp, extra = self.prepare(h)
+        hq = _qz(self.q_h, hp)
+        c = _qz(self.q_c, self.coeffs_from(self.gram(hq), snr_db, extra))
+        return normalize_power(hq.conj().transpose(-1, -2) @ c)
     net.coeffs = types.MethodType(coeffs, net)
     net.forward = types.MethodType(forward, net)
     return prods
@@ -102,7 +98,7 @@ def calibrate_products(net, prods, H):
     sc = lambda v: torch.nn.Parameter(torch.tensor(v * 2 / 255 ** 0.5, device=DEV))
     with torch.no_grad():
         h, snr = ours_input(H.to(DEV))
-        net.q_h.s = sc(h.abs().mean().item())
+        net.q_h.s = sc(net.prepare(h)[0].abs().mean().item())
         for blk in net.blocks:
             blk.q_a.s, blk.q_b.s = sc(0.5), sc(0.5)
         net.q_c.s = sc(1.0)
@@ -138,12 +134,14 @@ def main():
     ap.add_argument("--ft_steps", type=int, default=5000)
     ap.add_argument("--batch", type=int, default=2048)
     ap.add_argument("--qprod", action="store_true", help="quantifie aussi G, le produit triangulaire et W = h^H C")
+    ap.add_argument("--inp", default="raw", choices=["raw", "log", "norm"], help="entree du precodeur (phase 10)")
     a = ap.parse_args()
     torch.manual_seed(0)
     P = pool()
     Htr, Hte = draw(P, 800000, seed=1), draw(P, 20000, seed=2026)
-    net = PairPrecoder(d=D, hidden=a.hidden, layers=LAYERS).to(DEV)
-    net.load_state_dict(torch.load(f"{OUT_W}/pair_h{a.hidden}.pt", map_location=DEV, weights_only=True))
+    net = PairPrecoder(d=D, hidden=a.hidden, layers=LAYERS, inp=a.inp).to(DEV)
+    wname = f"pair_h{a.hidden}" + ("" if a.inp == "raw" else f"_{a.inp}")
+    net.load_state_dict(torch.load(f"{OUT_W}/{wname}.pt", map_location=DEV, weights_only=True))
     layers = pair_precoder_layers(net, K)                      # comptes avant le remplacement
     fixed = pair_precoder_fixed(K, M, D, LAYERS)
 
@@ -197,7 +195,7 @@ def main():
             hist.append({"step": s, "sr_train": float(sr), "energy_corr_pJ": e, "time_s": round(time.time() - t0)})
             print("   ", hist[-1], flush=True)
     b = {n: (float(v[0]), float(v[1])) for n, v in all_bits(True).items()}
-    out = {"lambda": a.lam, "hidden": a.hidden, "qprod": a.qprod, "sr_fp32": sr_fp32, "sr_quant": test_rate(net),
+    out = {"lambda": a.lam, "hidden": a.hidden, "qprod": a.qprod, "inp": a.inp, "sr_fp32": sr_fp32, "sr_quant": test_rate(net),
            "energy_pJ": {"fp32_corrige": e32[True], "fp32_labo": e32[False],
                          "quant_corrige": float(total_energy(layers, b, True, fixed)),
                          "quant_labo": float(total_energy(layers, b, False, fixed))},
@@ -205,7 +203,7 @@ def main():
            "mean_bits_a": float(np.mean([v[1] for v in b.values()])), "history": hist}
     print(json.dumps({k: v for k, v in out.items() if k not in ("bits", "history")}, indent=1), flush=True)
     os.makedirs(RESULTS, exist_ok=True)
-    tag = f"art_pair_h{a.hidden}_lam{a.lam:g}" + ("_qprod" if a.qprod else "")
+    tag = f"art_pair_h{a.hidden}_lam{a.lam:g}" + ("_qprod" if a.qprod else "") + ("" if a.inp == "raw" else f"_{a.inp}")
     json.dump(out, open(f"{RESULTS}/{tag}.json", "w"), indent=1)
     torch.save(net.state_dict(), f"{OUT_W}/{tag}.pt")
 
