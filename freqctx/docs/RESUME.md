@@ -77,6 +77,7 @@ Résultats St-Catherine, précodeur seul :
 
 - **srvgrm12** (3× L40S, environnement `tf-gpu` pour TensorFlow et `bitadapt` pour PyTorch) est à préférer, même avec les jobs de l'utilisateur, qui accepte le partage avec `TF_FORCE_GPU_ALLOW_GROWTH=true`.
 - **srvgrm08** (4× P100, environnement `freqctx`) est 4 fois plus lent, et les convolutions de TA-RB n'y passent pas.
+- **Sauvegardes** : le code, les résultats (`results/`, JSON) et le journal sont commités sur la branche `freqctx` (dépôt local ; branche pas encore poussée sur GitHub GlodiSala/Sionna). Les poids (35 Mo) sont dans `/export/tmp/sala/freqctx/weights/` (srvgrm12, disque local) avec une copie dans `/users/sala/Documents/test_projet/freqctx_weights_backup/`. Les données d'entraînement (4 Go dans `/export/tmp/sala/freqctx/data/`) se régénèrent avec les scripts.
 - Toujours lancer avec `python -u`. Les scripts de lancement sont dans `scripts/run6.sh` et `scripts/run7.sh`.
 - **Règles de l'utilisateur** :
   - ne pas toucher à `mimo_precoding/` ;
