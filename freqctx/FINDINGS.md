@@ -1048,6 +1048,33 @@ Un seul changement par essai à partir du modèle à pilote aléatoire ; règle 
 
 **Base figée** : encodeur fréquentiel (domaine des retards, grille 2×, 2 couches d'attention, largeur 32, filtre sur 3 retards) + transformer par paires (attention triangulaire, G réinjecté, 8 couches distinctes, état 16 complexes, FFN 32), sortie W = Ĥᴴ C, entraînement avec SNR pilote aléatoire U(0, 20) dB. **72,2 k paramètres, 0,88 M MAC/SC** (M8K4, FFT comptées en produits de matrices). Robustesse identique au modèle à pilote aléatoire (±0,01) : pilote 0 dB 22,40 / 22,22 / 24,21 contre 19,03 / 18,91 / 20,30 pour WMMSE robuste ; 5 ms de vieillissement 18,15 / 17,99 / 21,99 contre 17,38 / 17,18 / 20,71. Variante de coût : précodeur calculé sur 1 SC sur 3.
 
+## Phase 10 — St-Catherine et quantification ART (chaîne BitAdapt du labo, 2026-11-01)
+
+**Cadre** (`torch_port/`) : port PyTorch de la base figée (équivalence Keras 4e-5, `torch_port/check_equivalence.py`). Jeu St-Catherine du labo (lancer de rayons, mono-porteuse 2 GHz, M=64, K=4, 9 032 positions, SNR par utilisateur de −16 à +35 dB : puissances très inégales). **Précodeur seul, CSI parfait**, protocole et débit du labo (`rate_calculator_3d`, bruit 1e-13). Notre précodeur par paires (même architecture que la base, 44 k paramètres) entraîné de zéro sur St-Catherine avec leur perte (−débit). Test : 20 000 échantillons fixes (`torch_port/stecath.py`, `results/stecath/fp32_comparison.json`).
+
+| 32 bits | params | débit moyen | 5e centile |
+|---|---|---|---|
+| RZF | — | 17,03 | 8,41 |
+| WMMSE 30 it. / 300 it. | — | 24,41 / 26,88 | 13,28 / 13,37 |
+| BitAdapt tiny / small / medium | 348 k / 825 k / 1 827 k | 23,04 / 24,12 / 24,45 | 11,61 / 12,10 / 12,22 |
+| **notre précodeur par paires** | **44 k** | **26,99** | 12,98 |
+
+- Avec des puissances très inégales, **RZF est mauvais (pas de répartition de puissance) et WMMSE converge lentement** (30 itérations : 24,4 ; 300 : 26,9). Notre précodeur atteint WMMSE convergé avec 40× moins de paramètres que leur « medium » (qui plafonne au niveau de WMMSE 30 it.).
+
+**Modèle d'énergie** (Moons et al. 2017, constantes de Horowitz ISSCC 2014 — vérifiées : MAC entier 8 bits 0,23 pJ, 32 bits 3,2 pJ ⇒ 0,858 (Q/16)^1,9). Quatre erreurs corrigées dans `Pipeline/Energy.py` du labo (branche `fix/energy-model` poussée sur GitHub) : mémoire linéaire en Q (et non (Q/16)^1,9), parallélisme √p = √(64·16/Q) (dépendance inversée), MAC des couches denses × nombre de tokens, longueur de séquence de l'attention (c'était le lot = 1), appels avec (1, K, 2N) au lieu de (1, 64, 128). Effet sur « small » : 8 bits 0,637 → 1,734 µJ ; rapport 32/4 bits 47× → 24×. Notre version : `torch_port/energy.py`.
+
+**Quantification ART** (quantificateurs LSQ et perte du labo, énergie corrigée ; `torch_port/art_stecath.py`, `results/stecath/energy_comparison.json`). Énergie par échantillon :
+
+| | débit quantifié | énergie (µJ) |
+|---|---|---|
+| nous, λ=1 / 5 / 20 (couches à poids) | 24,71 / 24,48 / 23,39 | 0,236 / 0,173 / 0,129 |
+| **nous, λ=5, produits sans poids aussi quantifiés** (G, triangulaire, W) | **23,62** | **0,113** |
+| BitAdapt medium λ=1 / small λ=1 / tiny λ=1 | 24,10 / 23,24 / 21,80 | 0,811 / 0,378 / 0,154 |
+
+- **Notre précodeur domine la courbe débit-énergie** : tout quantifié, 23,6 bps/Hz à 0,11 µJ, contre 23,2 à 0,38 µJ pour leur « small » (3,4× moins d'énergie) ; couches seules, λ=5 : mieux que leur « medium » pour 4,7× moins d'énergie.
+- **Mais notre modèle perd plus à la quantification** (27,0 → 23,6–24,7, contre −0,4 à −0,9 pour les leurs) : probablement la dynamique des entrées (G) avec des utilisateurs à 50 dB d'écart. Piste : entrée en échelle logarithmique ou normalisation par utilisateur.
+- Réserves : débits du labo = les leurs (leur jeu de test, même distribution) ; positions communes entre entraînement et test (leur protocole) ; G et W gardent 8 bits.
+
 ## Prochaine étape
 (1) 3 graines pour l'attention en fréquence D64. (2) Réduire le coût. (3) Bootstrap sur les tirages. (4) Faire le point avant d'aller plus loin (pilote 20 dB, vieillissement, M64).
 Cible principale ensuite (phases 2–3) : le régime pilote 10 dB, où il reste 2,7 à 5,9 bps/Hz après LMMSE.
