@@ -1,0 +1,35 @@
+{
+ "test_samples": 20000,
+ "seed": 2026,
+ "noise_pwr": 1e-13,
+ "results": {
+  "RZF": {
+   "sum_rate_mean": 17.03152084350586,
+   "p5": 8.414566040039062
+  },
+  "WMMSE (30 it.)": {
+   "sum_rate_mean": 24.414106369018555,
+   "p5": 13.277965545654297
+  },
+  "WMMSE (300 it.)": {
+   "sum_rate_mean": 26.881027221679688,
+   "p5": 13.370887756347656
+  },
+  "BitAdapt tiny FP32 (348 k params)": {
+   "sum_rate_mean": 23.04102897644043,
+   "p5": 11.613411903381348
+  },
+  "BitAdapt small FP32 (825 k params)": {
+   "sum_rate_mean": 24.12396240234375,
+   "p5": 12.096375465393066
+  },
+  "BitAdapt medium FP32 (1827 k params)": {
+   "sum_rate_mean": 24.446548461914062,
+   "p5": 12.218379974365234
+  },
+  "notre precodeur par paires FP32 (44 k params)": {
+   "sum_rate_mean": 26.993450164794922,
+   "p5": 12.977792739868164
+  }
+ }
+}
