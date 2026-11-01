@@ -27,9 +27,17 @@
    "sum_rate_mean": 24.446548461914062,
    "p5": 12.218379974365234
   },
-  "notre precodeur par paires FP32 (44 k params)": {
+  "notre precodeur par paires FP32, entree raw (44 k params)": {
    "sum_rate_mean": 26.993450164794922,
    "p5": 12.977792739868164
+  },
+  "notre precodeur par paires FP32, entree log (44 k params)": {
+   "sum_rate_mean": 27.090696334838867,
+   "p5": 13.210054397583008
+  },
+  "notre precodeur par paires FP32, entree norm (44 k params)": {
+   "sum_rate_mean": 27.595134735107422,
+   "p5": 13.329843521118164
   }
  }
 }

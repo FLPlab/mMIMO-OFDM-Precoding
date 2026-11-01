@@ -1075,6 +1075,22 @@ Un seul changement par essai à partir du modèle à pilote aléatoire ; règle 
 - **Mais notre modèle perd plus à la quantification** (27,0 → 23,6–24,7, contre −0,4 à −0,9 pour les leurs) : probablement la dynamique des entrées (G) avec des utilisateurs à 50 dB d'écart. Piste : entrée en échelle logarithmique ou normalisation par utilisateur.
 - Réserves : débits du labo = les leurs (leur jeu de test, même distribution) ; positions communes entre entraînement et test (leur protocole) ; G et W gardent 8 bits.
 
+### Dynamique des entrées : G en log, ou canaux normalisés par utilisateur (`--inp log|norm`, `results/stecath/art_pair_h32_lam5_qprod_{log,norm}.json`)
+Un seul changement, l'entrée du précodeur. « log » : G en module (dB) et phase. « norm » : chaque canal d'utilisateur normalisé (G = corrélations, |G| ≤ 1), puissance relative de chaque utilisateur (dB) donnée à part sur les paires, sortie W = h̃ᴴ C (même espace de canaux). ART λ = 5, tout quantifié :
+
+| entrée | débit 32 bits | débit quantifié | énergie (µJ) |
+|---|---|---|---|
+| raw (base) | 26,99 | 23,62 | 0,113 |
+| log | 27,09 | 23,62 | 0,101 |
+| **norm** | **27,60** | **26,61** | 0,109 |
+| *BitAdapt medium λ=1 / small λ=1* | *24,49 / 24,15* | *24,10 / 23,24* | *0,811 / 0,378* |
+| *WMMSE 300 it. (32 bits)* | *26,88* | | |
+
+- **La normalisation par utilisateur règle le problème de quantification** : perte de quantification 1,0 bps/Hz au lieu de 3,4, et le modèle 32 bits progresse aussi (+0,6). Le module en log seul ne suffit pas : c'est l'écart de puissance entre utilisateurs, pas la dynamique d'une entrée, qui gênait.
+- **Tout quantifié (≈ 3,9 bits de poids, 5,8 d'activations ; G et W à 7–8 bits), 26,6 bps/Hz à 0,11 µJ** : +2,5 bps/Hz sur le meilleur modèle BitAdapt quantifié, pour 7,4× moins d'énergie, et au niveau de WMMSE convergé en 32 bits.
+- En 32 bits, la variante normalisée dépasse WMMSE à 300 itérations (27,6 contre 26,9) : WMMSE reste dans un optimum local quand les puissances sont très inégales.
+- **À reporter dans la base Sionna/OFDM** (entrée normalisée par utilisateur) : changement sans perte d'expressivité, qui rend le modèle robuste aux puissances inégales, le point de réalisme qui restait ouvert.
+
 ## Prochaine étape
 (1) 3 graines pour l'attention en fréquence D64. (2) Réduire le coût. (3) Bootstrap sur les tirages. (4) Faire le point avant d'aller plus loin (pilote 20 dB, vieillissement, M64).
 Cible principale ensuite (phases 2–3) : le régime pilote 10 dB, où il reste 2,7 à 5,9 bps/Hz après LMMSE.
