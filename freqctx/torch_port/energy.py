@@ -15,6 +15,12 @@ Ecarts releves dans Pipeline/Energy.py (2026-11-01), verifies sur la source, Moo
 "corrige" : memoire lineaire en Q (E_M = 2 E_MAC(16) Q/16, E_L = E_MAC(16) Q/16), sqrt(p) =
 sqrt(64 * 16 / Q) ; MAC, poids et activations comptes avec le bon nombre de tokens. C'est la
 correction poussee sur la branche fix/energy-model du depot du labo.
+Source des constantes (verifiee) : Horowitz, "Computing's energy problem", ISSCC 2014, 45 nm.
+MAC entier 8 bits = mult 0.2 + add 0.03 = 0.23 pJ ; 32 bits = 3.1 + 0.1 = 3.2 pJ. L'ajustement
+E_MAC(Q) = a (Q/16)^b sur ces deux points donne b = log(3.2/0.23)/log 4 = 1.90 et
+a = 0.23 * 2^1.9 = 0.858 : exactement 0.857904 (Q/16)^1.9. Memoire chez Horowitz : SRAM 8 Ko /
+32 Ko / 1 Mo = 10 / 20 / 100 pJ par mot de 64 bits, donc proportionnelle au nombre de bits ;
+E_M = 2 E_MAC(16) (~1.7 pJ pour 16 bits) est du bon ordre pour un petit SRAM.
 Tout est differentiable en Q (tenseurs), pour la regularisation d'ART.
 """
 import math
@@ -56,6 +62,16 @@ def pair_precoder_layers(model, K):
             T = K * K
             nw = mod.in_features * mod.out_features + (mod.out_features if mod.bias is not None else 0)
             out[name] = (T * mod.in_features * mod.out_features, nw, T * mod.out_features)
+    return out
+
+
+def pair_precoder_products(K, M, d, layers):
+    """Produits sans poids appris (operandes = activations), comptes avec leurs bits appris :
+    G = h h^H, produit triangulaire de chaque couche, W = h^H C (MAC reelles, complexe = 4 reelles).
+    nom -> (MAC, poids=0, activations produites)."""
+    out = {"G": (4 * K * K * M, 0, 2 * K * K), "W": (4 * M * K * K, 0, 2 * M * K)}
+    for i in range(layers):
+        out[f"tri{i}"] = (4 * K ** 3 * d, 0, 2 * K * K * d)
     return out
 
 

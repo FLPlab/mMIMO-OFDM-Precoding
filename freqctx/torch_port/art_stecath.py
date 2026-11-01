@@ -18,8 +18,12 @@ import time
 import numpy as np
 import torch
 
-from torch_port.energy import pair_precoder_fixed, pair_precoder_layers, total_energy
-from torch_port.models import PairPrecoder
+import types
+
+import torch.nn.functional as Fn
+
+from torch_port.energy import pair_precoder_fixed, pair_precoder_layers, pair_precoder_products, total_energy
+from torch_port.models import PairPrecoder, _cplx, _real, normalize_power
 from torch_port.stecath import DEV, LAB, OUT_W, RESULTS, K, batched, draw, lab_rate, ours_input, pool
 
 sys.path.insert(0, LAB)
@@ -47,6 +51,62 @@ def quantize(net):
                 setattr(mod, cname, QuanLinear(child, quan_w_fn=qw, quan_a_fn=qa))
                 qs[full] = (qw, qa)
     return qs
+
+
+def _qz(q, z):
+    """Quantifie un tenseur complexe (parties reelle et imaginaire, meme echelle)."""
+    return torch.complex(q(z.real), q(z.imag))
+
+
+def quantize_products(net):
+    """--qprod : quantificateurs LSQ (bits appris, 2-8) sur les operandes des produits sans poids :
+    h (pour G = h h^H et W = h^H C), C, et a(x), b(x) de chaque couche triangulaire.
+    Renvoie {nom: (q_operande_1, q_operande_2)} pour l'energie."""
+    mk = lambda: LsqQuan(bit=8, min_bit=2, max_bit=8, all_positive=False).to(DEV)
+    net.q_h, net.q_c = mk(), mk()
+    prods = {"G": (net.q_h, net.q_h), "W": (net.q_c, net.q_h)}
+    for i, blk in enumerate(net.blocks):
+        blk.q_a, blk.q_b = mk(), mk()
+        prods[f"tri{i}"] = (blk.q_a, blk.q_b)
+
+        def fwd(self, e, g):
+            x = torch.cat([self.norm(_real(e)), torch.stack([g.real, g.imag, g.abs()], -1)], -1)
+            a = _qz(self.q_a, _cplx(self.a(x)))
+            b = _qz(self.q_b, _cplx(self.b(x)))
+            m = torch.einsum("njlc,nlkc->njkc", a, b) / e.shape[1]
+            return e + _cplx(self.f2(Fn.gelu(self.f1(torch.cat([x, _real(m)], -1)))))
+        blk.forward = types.MethodType(fwd, blk)
+
+    def coeffs(self, h, snr_db):
+        K_, M_ = h.shape[1], h.shape[2]
+        hq = _qz(self.q_h, h)
+        g = hq @ hq.conj().transpose(-1, -2) / M_
+        eye = torch.eye(K_, device=h.device).expand(g.shape)
+        snr = (snr_db / 10.0)[:, None, None].expand(g.shape)
+        e = _cplx(self.init(torch.stack([g.real, g.imag, g.abs(), eye, snr], -1)))
+        for blk in self.blocks:
+            e = blk(e, g)
+        return _cplx(self.read(_real(e)))[..., 0]
+
+    def forward(self, h, snr_db):
+        c = _qz(self.q_c, self.coeffs(h, snr_db))
+        return normalize_power(_qz(self.q_h, h).conj().transpose(-1, -2) @ c)
+    net.coeffs = types.MethodType(coeffs, net)
+    net.forward = types.MethodType(forward, net)
+    return prods
+
+
+def calibrate_products(net, prods, H):
+    """Echelle initiale des quantificateurs de produits : h et a(x), b(x) d'abord, puis C mesure
+    avec ces echelles (moyenne |x| * 2 / sqrt(255), comme le labo)."""
+    sc = lambda v: torch.nn.Parameter(torch.tensor(v * 2 / 255 ** 0.5, device=DEV))
+    with torch.no_grad():
+        h, snr = ours_input(H.to(DEV))
+        net.q_h.s = sc(h.abs().mean().item())
+        for blk in net.blocks:
+            blk.q_a.s, blk.q_b.s = sc(0.5), sc(0.5)
+        net.q_c.s = sc(1.0)
+        net.q_c.s = sc(net.coeffs(h, snr).abs().mean().item())
 
 
 def calibrate(net, qs, H):
@@ -77,6 +137,7 @@ def main():
     ap.add_argument("--steps", type=int, default=20000)
     ap.add_argument("--ft_steps", type=int, default=5000)
     ap.add_argument("--batch", type=int, default=2048)
+    ap.add_argument("--qprod", action="store_true", help="quantifie aussi G, le produit triangulaire et W = h^H C")
     a = ap.parse_args()
     torch.manual_seed(0)
     P = pool()
@@ -98,13 +159,27 @@ def main():
     qs = quantize(net)
     net.to(DEV)
     calibrate(net, qs, Htr[:4096])
+    prods = {}
+    if a.qprod:                                                # produits sans poids, bits appris eux aussi
+        products = pair_precoder_products(K, M, D, LAYERS)
+        prods = quantize_products(net)
+        calibrate_products(net, prods, Htr[:4096])
+        layers = {**layers, **products}
+        fixed = None
+        e32 = {c: float(total_energy(layers, {n: (32.0, 32.0) for n in layers}, c, None)) for c in (True, False)}
+
+    def all_bits(hard=False):
+        f = (lambda b: b.detach().ceil()) if hard else ceil_pass
+        out = {n: (f(qw.bit), f(qa.bit)) for n, (qw, qa) in qs.items()}
+        out.update({n: (f(q1.bit), f(q2.bit)) for n, (q1, q2) in prods.items()})
+        return out
     bit_params = [p for n, p in net.named_parameters() if n.endswith(".bit")]
     other = [p for n, p in net.named_parameters() if not n.endswith(".bit")]
     opt = torch.optim.Adam([{"params": other, "lr": 1e-4}, {"params": bit_params, "lr": 1e-3}])
     t0, hist = time.time(), []
     for s in range(1, a.steps + a.ft_steps + 1):
         if s == a.steps + 1:                                   # phase 3 : bits arrondis et figes
-            for qw, qa in qs.values():
+            for qw, qa in list(qs.values()) + list(prods.values()):
                 for q in (qw, qa):
                     q.bit.data = q.bit.data.ceil().clamp(q.min_bit, q.max_bit)
                     q.bit.requires_grad_(False)
@@ -113,16 +188,16 @@ def main():
         sr = lab_rate(net(*ours_input(H)), H).mean()
         loss = -sr / sr_fp32
         if s <= a.steps:
-            loss = loss + a.lam * total_energy(layers, bits(qs), True, fixed) / e32[True]
+            loss = loss + a.lam * total_energy(layers, all_bits(), True, fixed) / e32[True]
         opt.zero_grad()
         loss.backward()
         opt.step()
         if s % 2500 == 0:
-            e = float(total_energy(layers, bits(qs, True), True, fixed))
+            e = float(total_energy(layers, all_bits(True), True, fixed))
             hist.append({"step": s, "sr_train": float(sr), "energy_corr_pJ": e, "time_s": round(time.time() - t0)})
             print("   ", hist[-1], flush=True)
-    b = {n: (float(qw.bit.ceil()), float(qa.bit.ceil())) for n, (qw, qa) in qs.items()}
-    out = {"lambda": a.lam, "hidden": a.hidden, "sr_fp32": sr_fp32, "sr_quant": test_rate(net),
+    b = {n: (float(v[0]), float(v[1])) for n, v in all_bits(True).items()}
+    out = {"lambda": a.lam, "hidden": a.hidden, "qprod": a.qprod, "sr_fp32": sr_fp32, "sr_quant": test_rate(net),
            "energy_pJ": {"fp32_corrige": e32[True], "fp32_labo": e32[False],
                          "quant_corrige": float(total_energy(layers, b, True, fixed)),
                          "quant_labo": float(total_energy(layers, b, False, fixed))},
@@ -130,8 +205,9 @@ def main():
            "mean_bits_a": float(np.mean([v[1] for v in b.values()])), "history": hist}
     print(json.dumps({k: v for k, v in out.items() if k not in ("bits", "history")}, indent=1), flush=True)
     os.makedirs(RESULTS, exist_ok=True)
-    json.dump(out, open(f"{RESULTS}/art_pair_h{a.hidden}_lam{a.lam:g}.json", "w"), indent=1)
-    torch.save(net.state_dict(), f"{OUT_W}/art_pair_h{a.hidden}_lam{a.lam:g}.pt")
+    tag = f"art_pair_h{a.hidden}_lam{a.lam:g}" + ("_qprod" if a.qprod else "")
+    json.dump(out, open(f"{RESULTS}/{tag}.json", "w"), indent=1)
+    torch.save(net.state_dict(), f"{OUT_W}/{tag}.pt")
 
 
 if __name__ == "__main__":
