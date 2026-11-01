@@ -4,13 +4,17 @@ Formule du labo, par couche (MAC, poids W, activations A, precisions Q_W et Q_A)
     E_MAC(Q) = 0.857904 (Q / 16)^1.9 ;  E_M = 2 E_MAC ;  E_L = E_MAC
     E = E_MAC (MAC + 3 A) + [E_M W + E_L MAC / sqrt(p_W)] + [2 E_M,A A + E_L,A MAC / sqrt(p_A)],
     sqrt(p) = sqrt(64 Q / 16).
-Trois ecarts releves dans Pipeline/Energy.py (2026-11-01) :
+Ecarts releves dans Pipeline/Energy.py (2026-11-01), verifies sur la source, Moons et al.,
+"Minimum Energy Quantized Neural Networks", Asilomar 2017 (arXiv:1711.00215), eq. (5) et Fig. 2b :
   1. les acces memoire (E_M, E_L) sont mis a l'echelle en (Q/16)^1.9 comme un multiplieur, alors
      que lire / ecrire un mot de Q bits coute ~ proportionnellement a Q ;
   2. compute_linear_macs = in x out, sans le nombre de tokens (les activations, elles, le comptent) ;
-  3. MultiheadAttention : seq_len = current_size[0] = dimension du lot (1 avec input_size=(1,64,128)).
-"corrige" : memoire lineaire en Q (E_M = 2 E_MAC(16) Q/16, E_L = E_MAC(16) Q/16) ; MAC, poids et
-activations comptes avec le bon nombre de tokens (compte explicite par couche ci-dessous).
+  3. MultiheadAttention : seq_len = current_size[0] = dimension du lot (1 avec input_size=(1,64,128)) ;
+  4. parallelisme : le papier prend p = p' 16 / Q (plus d'unites MAC intQ dans la meme surface) ;
+     le code prenait p = 64 Q / 16 (dependance inversee).
+"corrige" : memoire lineaire en Q (E_M = 2 E_MAC(16) Q/16, E_L = E_MAC(16) Q/16), sqrt(p) =
+sqrt(64 * 16 / Q) ; MAC, poids et activations comptes avec le bon nombre de tokens. C'est la
+correction poussee sur la branche fix/energy-model du depot du labo.
 Tout est differentiable en Q (tenseurs), pour la regularisation d'ART.
 """
 import math
@@ -33,7 +37,10 @@ def layer_energy(mac, w, a, Qw, Qa, corrected=True):
     else:
         em_w, el_w = 2 * emac, emac
         em_a, el_a = 2 * _emac(Qa), _emac(Qa)
-    sp_w, sp_a = torch.sqrt(64 * Qw / 16), torch.sqrt(64 * Qa / 16)
+    if corrected:
+        sp_w, sp_a = torch.sqrt(64 * 16 / Qw), torch.sqrt(64 * 16 / Qa)
+    else:
+        sp_w, sp_a = torch.sqrt(64 * Qw / 16), torch.sqrt(64 * Qa / 16)
     ec = emac * (mac + 3 * a)
     ew = em_w * w + el_w * mac / sp_w
     ea = 2 * em_a * a + el_a * mac / sp_a
