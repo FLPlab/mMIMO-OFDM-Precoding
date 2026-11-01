@@ -84,18 +84,33 @@ def data(estimator, cov=None):
     return (tf.concat(tr_in, 0), tf.concat(tr_true, 0)), ev
 
 
-def data_random_pilot(lo=0.0, hi=20.0, batch=8, seed=11):
-    """Donnees d'entrainement LS avec un SNR pilote tire par lot de `batch` tirages."""
+def sound_power_controlled(sounder, h, pilot_snr_db, **kw):
+    """(phase 11) Sondage avec controle de puissance montant complet : chaque utilisateur compense
+    son affaiblissement, ses pilotes arrivent au meme SNR ; la BS (qui connait le gain de chaque
+    utilisateur) remet l'estimation a l'echelle. h [B, F, K, M] a puissances relatives reelles.
+    A puissances egales, identique au sondage direct."""
+    p = tf.reduce_mean(tf.abs(h) ** 2, axis=[1, 3], keepdims=True)          # [B, 1, K, 1]
+    a = tf.cast(tf.sqrt(p), h.dtype)
+    out = sounder(h / a, pilot_snr_db, **kw)
+    if isinstance(out, tuple):
+        return out[0] * a, out[1] * tf.cast(p, out[1].dtype)
+    return out * a
+
+
+def data_random_pilot(lo=0.0, hi=20.0, batch=8, seed=11, relative_power=False):
+    """Donnees d'entrainement LS avec un SNR pilote tire par lot de `batch` tirages.
+    relative_power (phase 11) : affaiblissement de parcours et masque 3GPP gardes, sondage avec
+    controle de puissance montant."""
     from csi import UplinkSounder
     rng = np.random.default_rng(seed)
     tr_in, tr_true = [], []
     for i, scen in enumerate(SCENARIOS):
-        cfg = SystemConfig(scenario=scen, num_slots=1)
+        cfg = SystemConfig(scenario=scen, num_slots=1, relative_power=relative_power)
         sionna_config.seed = 1 + i
         gen, lin = ChannelGenerator(cfg), UplinkSounder(cfg, "lin")
         for _ in range(TRAIN_DROPS // batch):
             h = gen(batch)[:, 0]
-            tr_in.append(lin(h, float(rng.uniform(lo, hi)))), tr_true.append(h)
+            tr_in.append(sound_power_controlled(lin, h, float(rng.uniform(lo, hi)))), tr_true.append(h)
     return tf.concat(tr_in, 0), tf.concat(tr_true, 0)
 
 
@@ -133,6 +148,8 @@ def main():
     ap.add_argument("--p_d", type=int, default=None, help="(phase 9, taille) etat d'une paire")
     ap.add_argument("--est_d", type=int, default=None, help="(phase 9, taille) largeur de l'encodeur")
     ap.add_argument("--est_layers", type=int, default=None, help="(phase 9, taille) couches de l'encodeur")
+    ap.add_argument("--inp", default="raw", choices=["raw", "norm"], help="(phase 11) entree du precodeur")
+    ap.add_argument("--relpow", action="store_true", help="(phase 11) entrainement a puissances relatives reelles")
     a = ap.parse_args()
     global TRAIN_DROPS, EVAL_DROPS
     if a.quick:
@@ -142,6 +159,9 @@ def main():
     PRECODER = dict(PRECODER, **({"hidden": a.p_hidden} if a.p_hidden else {}), **({"d": a.p_d} if a.p_d else {}))
     name += "".join(f"_{k}{v}" for k, v in (("ph", a.p_hidden), ("pd", a.p_d), ("ed", a.est_d), ("el", a.est_layers))
                     if v is not None)
+    name += ("_norm" if a.inp == "norm" else "") + ("_relpow" if a.relpow else "")
+    if a.inp == "norm":
+        PRECODER = dict(PRECODER, inp="norm")
     print("==", name, flush=True)
     t0 = time.time()
     out = {"meta": {"git_commit": git_commit(), "created": time.strftime("%Y-%m-%d %H:%M")},
@@ -168,7 +188,7 @@ def main():
     else:
         (ti, tt), ev = data("ls_lin")
         if a.variant in ("pilot_rand", "sym"):
-            ti, tt = data_random_pilot()
+            ti, tt = data_random_pilot(relative_power=a.relpow)
         pool = DropPool(ti, tt)
         cfg = SystemConfig()
         if a.variant == "tarb":

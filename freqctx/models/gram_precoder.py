@@ -103,13 +103,16 @@ class GramPrecoder(keras.Model):
     """mix : "gram" (bloc G.E), "triangular", "triangular_g" (G reinjecte).
     tied : un seul bloc repete L fois (True) ou L blocs distincts."""
 
-    def __init__(self, num_bs_ant, d=16, hidden=64, layers=4, mix="gram", tied=True, sym=False, **kw):
+    def __init__(self, num_bs_ant, d=16, hidden=64, layers=4, mix="gram", tied=True, sym=False, inp="raw", **kw):
         """sym (phase 9, triangulaire seulement) : etat hermitien E[k,j] = conj(E[j,k]) ; le FFN
         ne tourne que sur les K(K+1)/2 paires j <= k ; sortie C = S diag(p), S hermitienne lue
         sur les paires, p > 0 une puissance par utilisateur lue sur la diagonale (forme de WMMSE)."""
         super().__init__(**kw)
         self.M, self.d, self.hidden, self.L, self.mix = num_bs_ant, d, hidden, layers, mix
-        self.tied, self.sym = tied, sym
+        self.tied, self.sym, self.inp = tied, sym, inp
+        # inp="norm" (phase 11, comme torch_port inp="norm") : canal de chaque utilisateur normalise
+        # (G = correlations), puissance relative (dB/10) de chaque utilisateur donnee sur les paires,
+        # W = h~^H C. Rend le precodeur robuste aux puissances inegales et a la quantification.
         if sym:
             assert mix.startswith("triangular")
             self.read_p = keras.layers.Dense(1)
@@ -122,19 +125,33 @@ class GramPrecoder(keras.Model):
         self.blocks = [make()] if tied else [make() for _ in range(layers)]
         self.read = keras.layers.Dense(2)
 
+    def _norm(self, h):
+        n2 = tf.reduce_sum(tf.abs(h) ** 2, axis=-1)                      # [N, K]
+        hp = h / tf.cast(tf.sqrt(n2), h.dtype)[..., None]
+        pdb = tf.math.log(n2 / tf.reduce_mean(n2, -1, keepdims=True)) / tf.math.log(10.0)  # dB/10
+        return hp, pdb
+
     def call(self, h, snr_db):
         """h [N, K, M] complex64, snr_db [N] -> W [N, M, K]."""
-        return normalize_power(tf.matmul(h, self.coeffs(h, snr_db), adjoint_a=True))   # W = h^H C
+        hp = self._norm(h)[0] if self.inp == "norm" else h               # W = h~^H C (inp="norm")
+        return normalize_power(tf.matmul(hp, self.coeffs(h, snr_db), adjoint_a=True))
 
     def coeffs(self, h, snr_db):
         """Les coefficients C [N, K, K] (W = h^H C avant normalisation)."""
         K = tf.shape(h)[1]
         M = tf.cast(tf.shape(h)[2], h.dtype)                 # M lu sur l'entree : un modele pour tout M
-        g = tf.matmul(h, h, adjoint_b=True) / M             # [N, K, K]
+        if self.inp == "norm":
+            hp, pdb = self._norm(h)
+            g = tf.matmul(hp, hp, adjoint_b=True)           # correlations, |g| <= 1
+        else:
+            g = tf.matmul(h, h, adjoint_b=True) / M         # [N, K, K]
         snr_db = tf.cast(snr_db, tf.float32)
         eye = tf.broadcast_to(tf.eye(K)[None], tf.shape(tf.math.real(g)))
         snr = tf.broadcast_to(tf.reshape(snr_db / 10.0, [-1, 1, 1]), tf.shape(eye))
-        f = tf.stack([tf.math.real(g), tf.math.imag(g), tf.abs(g), eye, snr], axis=-1)
+        parts = [tf.math.real(g), tf.math.imag(g), tf.abs(g), eye, snr]
+        if self.inp == "norm":                              # puissance relative des deux utilisateurs
+            parts += [tf.broadcast_to(pdb[:, :, None], tf.shape(eye)), tf.broadcast_to(pdb[:, None, :], tf.shape(eye))]
+        f = tf.stack(parts, axis=-1)
         e = _cplx(self.init(f))                             # [N, K, K, d]
         if not self.sym:
             for i in range(self.L):

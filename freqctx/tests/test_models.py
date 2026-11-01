@@ -96,6 +96,14 @@ def main():
     full(h, snr)
     print(f"[ok] precodeur par paires symetrique : equivariance (ecart {err:.1e}), puissance ; "
           f"{ms.count_params()} params, {ms.macs_per_sc(K)} MAC/SC contre {full.macs_per_sc(K)}")
+    mn = GramPrecoder(M, d=8, hidden=16, layers=2, mix="triangular_g", tied=False, inp="norm")
+    w = mn(h, snr)
+    err = float(tf.reduce_max(tf.abs(mn(tf.gather(h, perm, axis=1), snr) - tf.gather(w, perm, axis=2))))
+    sc = tf.cast(tf.constant([[1.0], [10.0], [0.1], [3.0]])[None], h.dtype)       # puissances inegales
+    e_sc = float(tf.reduce_max(tf.abs(mn(h * sc, snr) - mn(h * sc * 7.0, snr))))  # invariance a l'echelle globale
+    assert w.shape == (N, M, K) and err < 1e-5 and e_sc < 1e-4, (err, e_sc)
+    print(f"[ok] precodeur par paires, entree normalisee par utilisateur : equivariance ({err:.1e}), "
+          f"invariance a l'echelle globale ({e_sc:.1e}), {mn.count_params()} params")
     test_windowed_pool()
     test_delay_domain()
     print("TOUS LES TESTS PASSENT")

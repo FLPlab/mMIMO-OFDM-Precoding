@@ -32,7 +32,7 @@ class ChannelGenerator:
         o2i = {} if cfg.scenario == "rma" else {"o2i_model": "low"}   # RMa : pas de modele O2I
         self.model = _MODELS[cfg.scenario](
             carrier_frequency=fc, ut_array=ut_array, bs_array=bs_array, direction="uplink",
-            enable_pathloss=False, enable_shadow_fading=False, **o2i)
+            enable_pathloss=cfg.relative_power, enable_shadow_fading=cfg.relative_power, **o2i)
         self.frequencies = subcarrier_frequencies(cfg.num_sc, cfg.subcarrier_spacing)
 
     def __call__(self, batch_size):
@@ -46,5 +46,9 @@ class ChannelGenerator:
         a, tau = self.model(batch_size, cfg.num_slots, 1.0 / (cfg.slot_duration * cfg.slot_step))
         self.last_cir = (a, tau)          # trajets du dernier tirage (bornes "genie")
         # [B, 1, M, K, 1, S, F] -> [B, S, F, K, M]
-        h = cir_to_ofdm_channel(self.frequencies, a, tau, normalize=True)
-        return tf.transpose(h[:, 0, :, :, 0], [0, 3, 4, 2, 1])
+        h = cir_to_ofdm_channel(self.frequencies, a, tau, normalize=not cfg.relative_power)
+        h = tf.transpose(h[:, 0, :, :, 0], [0, 3, 4, 2, 1])
+        if cfg.relative_power:            # normalisation par tirage : les ecarts entre utilisateurs restent
+            p = tf.reduce_mean(tf.abs(h) ** 2, axis=[1, 2, 3, 4], keepdims=True)
+            h = h / tf.cast(tf.sqrt(p), h.dtype)
+        return h

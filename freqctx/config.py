@@ -24,6 +24,9 @@ class SystemConfig:
     indoor_probability: float = None    # None = valeur 3GPP du scenario
     num_slots: int = 3                  # slot 0 = sondage, slots 1.. = donnees (vieillissement)
     slot_step: int = 1                  # ecart entre deux instants generes, en slots
+    relative_power: bool = False        # (phase 11) affaiblissement de parcours + masque 3GPP gardes :
+                                        # canal normalise par tirage (puissance moyenne 1 sur les
+                                        # utilisateurs), ecarts de puissance reels entre utilisateurs
 
     @property
     def num_sc(self):
