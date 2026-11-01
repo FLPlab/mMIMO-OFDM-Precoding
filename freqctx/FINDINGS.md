@@ -1091,6 +1091,27 @@ Un seul changement, l'entrée du précodeur. « log » : G en module (dB) et pha
 - En 32 bits, la variante normalisée dépasse WMMSE à 300 itérations (27,6 contre 26,9) : WMMSE reste dans un optimum local quand les puissances sont très inégales.
 - **À reporter dans la base Sionna/OFDM** (entrée normalisée par utilisateur) : changement sans perte d'expressivité, qui rend le modèle robuste aux puissances inégales, le point de réalisme qui restait ouvert.
 
+## Phase 11 — puissances inégales entre utilisateurs dans la base OFDM (2026-11-01)
+
+**Cadre** (`experiments/phase11_power.py`, `results/phase11/power_spread.json`) : affaiblissement de parcours et masque 3GPP de Sionna gardés (`SystemConfig.relative_power`), canal normalisé par tirage : écart médian 28–35 dB entre le plus fort et le plus faible utilisateur d'un tirage (jusqu'à 84 dB). Sondage avec **contrôle de puissance montant complet** (pilotes au même SNR, 10 dB ; la BS remet chaque estimation à l'échelle) ; débit sur le vrai canal à puissances réelles. Base figée (FFN 32, pilote aléatoire), entrée d'origine ou normalisée par utilisateur (`GramPrecoder(inp="norm")`), entraînée à puissances égales ou réelles. M8K4, 192 tirages / scénario.
+
+Débit à 20 dB (25 dB), UMi / UMa / RMa :
+
+| | puissances **réelles** | puissances **égales** (test standard) |
+|---|---|---|
+| origine, entraînée à puissances égales | 16,51 / 16,68 / 16,87 | 25,84 / 25,44 / 26,25 |
+| normalisée, entraînée à puissances égales | 15,85 / 16,10 / 15,87 | 25,82 / 25,42 / 26,26 |
+| origine, entraînée à puissances réelles | 17,07 / 17,20 / 17,39 | 25,66 / 25,26 / 26,01 |
+| **normalisée, entraînée à puissances réelles** | **17,08 / 17,19 / 17,41** (20,61 / 20,66 / 21,10) | 25,66 / 25,24 / 26,05 |
+| WMMSE robuste 100 it. (LMMSE) | 16,22 / 16,26 / 16,38 (18,95 / 19,02 / 19,06) | 24,18 / 23,73 / 24,35 (30 it.) |
+| WMMSE robuste 30 it. (LMMSE) | 15,96 / 16,04 / 16,15 | |
+| RZF (LMMSE) | 9,82 / 9,88 / 9,93 | |
+
+- **Avec des puissances réelles, le modèle garde l'avantage** : +0,86 / +0,93 / +1,03 bps/Hz sur WMMSE robuste convergé à 20 dB, +1,7 à +2,0 à 25 dB. L'avance est plus petite qu'à puissances égales (+1,7) : les utilisateurs faibles (−25 dB médian) pèsent peu dans le débit somme, et l'estimation y compte moins.
+- **Ce qui compte, ce sont les données d'entraînement** : entraîner à puissances réelles apporte +0,5 à +0,6 sur ce test, pour −0,2 sur le test à puissances égales (−0,3 à −0,4 à 25 dB). L'entrée normalisée seule n'apporte rien en virgule flottante (et nuit si le modèle n'a vu que des puissances égales).
+- **RZF s'effondre** (9,8) : sans répartition de puissance, il sert mal des utilisateurs aussi inégaux ; WMMSE a besoin de plus d'itérations (100 : +0,25 sur 30).
+- **Décision proposée** : nouvelle base = entrée normalisée (même débit en virgule flottante, et elle réduit fortement la perte de quantification, phase 10) **entraînée à puissances réelles**. Le léger recul à puissances égales (−0,2) pourrait se récupérer avec un entraînement sur un mélange des deux ; à tester si besoin.
+
 ## Prochaine étape
 (1) 3 graines pour l'attention en fréquence D64. (2) Réduire le coût. (3) Bootstrap sur les tirages. (4) Faire le point avant d'aller plus loin (pilote 20 dB, vieillissement, M64).
 Cible principale ensuite (phases 2–3) : le régime pilote 10 dB, où il reste 2,7 à 5,9 bps/Hz après LMMSE.
