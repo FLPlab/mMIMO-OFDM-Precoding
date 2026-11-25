@@ -22,6 +22,7 @@ import types
 
 import torch.nn.functional as Fn
 
+from hls.cost_model.fpga_cost import CASEA_BW_MAX_VALID, layer_cost_torch
 from torch_port.energy import pair_precoder_fixed, pair_precoder_layers, pair_precoder_products, total_energy
 from torch_port.models import PairPrecoder, _cplx, _real, normalize_power
 from torch_port.stecath import DEV, LAB, OUT_W, RESULTS, K, batched, draw, lab_rate, ours_input, pool
@@ -39,14 +40,15 @@ def ceil_pass(n, gamma=0.01):                                  # Learner.ceil_pa
     return (n_ceil - n_grad).detach() + n_grad
 
 
-def quantize(net):
-    """Remplace chaque nn.Linear par la QuanLinear du labo ; renvoie {nom: (q_w, q_a)}."""
+def quantize(net, wmax=8):
+    """Remplace chaque nn.Linear par la QuanLinear du labo ; renvoie {nom: (q_w, q_a)}.
+    wmax : bits de poids maximaux (4 avec --cost fpga : regime sans DSP ou le modele de cout est valide)."""
     qs = {}
     for name, mod in list(net.named_modules()):
         for cname, child in list(mod.named_children()):
             if type(child) is torch.nn.Linear:
                 full = f"{name}.{cname}" if name else cname
-                qw = LsqQuan(bit=8, min_bit=1, max_bit=8)
+                qw = LsqQuan(bit=wmax, min_bit=1, max_bit=wmax)
                 qa = LsqQuan(bit=8, min_bit=2, max_bit=8, all_positive=False)
                 setattr(mod, cname, QuanLinear(child, quan_w_fn=qw, quan_a_fn=qa))
                 qs[full] = (qw, qa)
@@ -126,6 +128,25 @@ def bits(qs, hard=False):
     return {n: (f(qw.bit), f(qa.bit)) for n, (qw, qa) in qs.items()}
 
 
+def _clamp_bw(bw, bw_cap=CASEA_BW_MAX_VALID):
+    """Borne b_w au domaine valide du modele FPGA cas A (sans DSP), sans toucher au modele
+    lui-meme ni aux bits reellement appris/rapportes (qui restent 1-8)."""
+    return bw.clamp(max=bw_cap) if torch.is_tensor(bw) else min(bw, bw_cap)
+
+
+def fpga_cost(dense_layers, bits_dict, K):
+    """Cout FPGA (LUT-equivalent, cas A : poids constants, design deroule) des couches denses,
+    pour UN token (dense_layers vient de pair_precoder_layers, MAC/activations comptes sur les
+    T=K*K tokens -> on divise par T pour retrouver le nombre de multiplieurs/registres materiels
+    d'une seule passe). bits_dict : nom -> (b_w, b_a), meme convention que total_energy."""
+    T = K * K
+    total = 0.0
+    for n, (mac, _w, act) in dense_layers.items():
+        bw, ba = bits_dict[n]
+        total = total + layer_cost_torch(mac / T, act / T, _clamp_bw(bw), ba)
+    return total
+
+
 def main():
     ap = argparse.ArgumentParser()
     ap.add_argument("--lam", type=float, default=5.0)
@@ -136,6 +157,9 @@ def main():
     ap.add_argument("--batch", type=int, default=2048)
     ap.add_argument("--qprod", action="store_true", help="quantifie aussi G, le produit triangulaire et W = h^H C")
     ap.add_argument("--inp", default="raw", choices=["raw", "log", "norm"], help="entree du precodeur (phase 10)")
+    ap.add_argument("--cost", default="energy", choices=["energy", "fpga"],
+                     help="objectif de cout (phase 2) : energie Moons corrigee (defaut, inchange) ou "
+                          "cout FPGA LUT-equivalent (cas A, poids constants, calibre HLS)")
     a = ap.parse_args()
     torch.manual_seed(0)
     P = pool()
@@ -146,6 +170,9 @@ def main():
     net.load_state_dict(torch.load(f"{OUT_W}/{wname}.pt", map_location=DEV, weights_only=True))
     layers = pair_precoder_layers(net, K)                      # comptes avant le remplacement
     fixed = pair_precoder_fixed(K, M, D, a.layers)
+    dense_layers = dict(layers)                                # couches denses seules (hors qprod) ; seules
+                                                                # visees par le cout FPGA (poids constants)
+    fpga_ref = float(fpga_cost(dense_layers, {n: (float(CASEA_BW_MAX_VALID), 8.0) for n in dense_layers}, K))
 
     def test_rate(model):
         model.eval()
@@ -156,7 +183,7 @@ def main():
 
     sr_fp32 = test_rate(net)
     e32 = {c: float(total_energy(layers, {n: (32.0, 32.0) for n in layers}, c, fixed)) for c in (True, False)}
-    qs = quantize(net)
+    qs = quantize(net, wmax=CASEA_BW_MAX_VALID if a.cost == "fpga" else 8)
     net.to(DEV)
     calibrate(net, qs, Htr[:4096])
     prods = {}
@@ -188,24 +215,36 @@ def main():
         sr = lab_rate(net(*ours_input(H)), H).mean()
         loss = -sr / sr_fp32
         if s <= a.steps:
-            loss = loss + a.lam * total_energy(layers, all_bits(), True, fixed) / e32[True]
+            ab = all_bits()
+            if a.cost == "fpga":
+                cost_term = fpga_cost(dense_layers, {n: ab[n] for n in dense_layers}, K) / fpga_ref
+            else:
+                cost_term = total_energy(layers, ab, True, fixed) / e32[True]
+            loss = loss + a.lam * cost_term
         opt.zero_grad()
         loss.backward()
         opt.step()
         if s % 2500 == 0:
-            e = float(total_energy(layers, all_bits(True), True, fixed))
-            hist.append({"step": s, "sr_train": float(sr), "energy_corr_pJ": e, "time_s": round(time.time() - t0)})
+            hb = all_bits(True)
+            e = float(total_energy(layers, hb, True, fixed))
+            fc = float(fpga_cost(dense_layers, {n: hb[n] for n in dense_layers}, K))
+            hist.append({"step": s, "sr_train": float(sr), "energy_corr_pJ": e, "fpga_cost_lut": fc,
+                         "time_s": round(time.time() - t0)})
             print("   ", hist[-1], flush=True)
     b = {n: (float(v[0]), float(v[1])) for n, v in all_bits(True).items()}
-    out = {"lambda": a.lam, "hidden": a.hidden, "qprod": a.qprod, "inp": a.inp, "sr_fp32": sr_fp32, "sr_quant": test_rate(net),
+    fpga_final = float(fpga_cost(dense_layers, {n: b[n] for n in dense_layers}, K))
+    out = {"lambda": a.lam, "hidden": a.hidden, "qprod": a.qprod, "inp": a.inp, "cost": a.cost,
+           "sr_fp32": sr_fp32, "sr_quant": test_rate(net),
            "energy_pJ": {"fp32_corrige": e32[True], "fp32_labo": e32[False],
                          "quant_corrige": float(total_energy(layers, b, True, fixed)),
                          "quant_labo": float(total_energy(layers, b, False, fixed))},
+           "fpga_cost_lut": {"ref_bw4_ba8": fpga_ref, "quant": fpga_final},
            "bits": b, "mean_bits_w": float(np.mean([v[0] for v in b.values()])),
            "mean_bits_a": float(np.mean([v[1] for v in b.values()])), "history": hist}
     print(json.dumps({k: v for k, v in out.items() if k not in ("bits", "history")}, indent=1), flush=True)
     os.makedirs(RESULTS, exist_ok=True)
-    tag = f"art_pair_h{a.hidden}{lt}_lam{a.lam:g}" + ("_qprod" if a.qprod else "") + ("" if a.inp == "raw" else f"_{a.inp}")
+    cost_tag = "" if a.cost == "energy" else f"_cost{a.cost}"
+    tag = f"art_pair_h{a.hidden}{lt}_lam{a.lam:g}{cost_tag}" + ("_qprod" if a.qprod else "") + ("" if a.inp == "raw" else f"_{a.inp}")
     json.dump(out, open(f"{RESULTS}/{tag}.json", "w"), indent=1)
     torch.save(net.state_dict(), f"{OUT_W}/{tag}.pt")
 

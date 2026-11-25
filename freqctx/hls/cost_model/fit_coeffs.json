@@ -1,0 +1,84 @@
+{
+  "n_points_total": 68,
+  "caseA_lut_per_mac_bw1_degenerate": {
+    "coef": [
+      0.3586341594827586,
+      3.8620016163793127
+    ],
+    "feature": "[ba, 1]",
+    "r2": 0.8528764206147612,
+    "rmse": 0.320854940454167,
+    "n": 5,
+    "valid_range": "bw == 1 (poids ternaire, pas de vrai multiplieur)"
+  },
+  "caseA_lut_per_mac_bw_2_3_4": {
+    "coef": [
+      0.7976623062015507,
+      -1.763137780673616,
+      11.614673132183901
+    ],
+    "feature": "[bw*ba, ba, 1]",
+    "r2": 0.834251199145422,
+    "rmse": 1.5937439994081164,
+    "n": 15,
+    "valid_range": "bw in {2,3,4}, DSP=0"
+  },
+  "caseA_dsp_regime_bw_ge_6_raw": {
+    "note": "pas de formule -- cf. cost_table.csv / RAPPORT.md pour les valeurs brutes",
+    "bw_values": [
+      6,
+      8
+    ]
+  },
+  "caseB_default_lut_per_mac": {
+    "coef": [
+      -0.331252426549824,
+      3.3251065205850714,
+      -2.2110276785148613
+    ],
+    "feature": "[bw*ba, bw+ba, 1]",
+    "r2": 0.7645132769255137,
+    "rmse": 3.5028350256614273,
+    "n": 30
+  },
+  "caseB_default_dsp_per_mac_threshold": {
+    "rule": "0.0 if bw==1 else 0.5",
+    "observed": {
+      "1": [
+        0.0
+      ],
+      "2": [
+        0.5
+      ],
+      "3": [
+        0.5
+      ],
+      "4": [
+        0.5
+      ],
+      "6": [
+        0.5
+      ],
+      "8": [
+        0.5
+      ]
+    }
+  },
+  "caseB_lut_forced_mult_per_mac": {
+    "coef": [
+      1.116097560975608,
+      -0.45225609756096585,
+      21.937743902438974
+    ],
+    "feature": "[bw*ba, bw+ba, 1]",
+    "r2": 0.9934153068476541,
+    "rmse": 1.9435948589172998,
+    "n": 4
+  },
+  "caseB_dsp_forced_per_mac": {
+    "value": 1.0,
+    "observed": [
+      1.0
+    ]
+  }
+}

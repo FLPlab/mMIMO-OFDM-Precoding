@@ -1428,6 +1428,67 @@ Précodeur M8K4 initialisé par le précodeur CSI parfait, réentraîné 20 000 
 - **Le précodeur entraîné en CSI parfait égale ou dépasse WMMSE (robuste) avec un vrai estimateur**, sans réentraîner.
 - **BER** : les précodeurs qui maximisent le débit somme ont un BER moyen plus élevé (puissance concentrée sur les bons utilisateurs ; les flux faibles ont un SINR très bas). Le BER moyen sur les flux n'est pas l'objectif optimisé ; pour une figure BER, il faudra fixer la modulation par flux ou viser un autre objectif (débit minimal, MSE).
 
+### Zero-shot : entraînement sur UMa seul ou sur les 3 modèles 3GPP (`phase14_zeroshot.py --train uma|3gpp`, `results/phase14/zeroshot_{uma,3gpp}.json`)
+Débit à 10 / 20 / 25 / 30 dB, CSI parfait (mêmes tirages que `phase13_bench`) :
+
+| site | 3GPP, M8K4 + M64K8 (existant) | 3GPP, M8K4 | UMa seul | WMMSE 300 it. |
+|---|---|---|---|---|
+| St-Catherine | 12,68 / 22,05 / 27,27 / 32,62 | 12,65 / 21,98 / 27,10 / 32,32 | 12,64 / 21,97 / 27,14 / 32,33 | 12,70 / 22,19 / 27,53 / 33,11 |
+| Décarie | 12,73 / 22,83 / 28,41 / 34,00 | 12,76 / 22,77 / 28,26 / 33,74 | 12,71 / 22,72 / 28,24 / 33,66 | 12,79 / 22,91 / 28,62 / 34,39 |
+| Ericsson | 13,58 / 24,31 / 30,05 / 35,77 | 13,58 / 24,23 / 29,91 / 35,44 | 13,52 / 24,21 / 29,93 / 35,37 | 13,64 / 24,44 / 30,38 / 36,37 |
+
+- UMa seul ≈ 3 modèles 3GPP (±0,1) : la variété entre modèles 3GPP n'aide presque pas pour les sites du labo. Entraîner sur deux tailles (M8K4 + M64K8) aide un peu plus (+0,3 à 30 dB).
+
+### Fine-tuning avec peu de données sur un site (`phase14_finetune.py`, `results/phase14/finetune_<site>.json`)
+Départ : précodeur 3GPP (M8K4 + M64K8). Cellules du site séparées en deux moitiés disjointes (adaptation / test, 64 tirages de test). Adaptation sur N échantillons (une sous-porteuse de 4 utilisateurs ; utilisateurs permutés au hasard), trois méthodes : complet (44,6 k paramètres appris, pas 1e-4), LoRA rang 4 (9,8 k, pas 1e-3), valeurs singulières seules (« vecteurs propres », 1,0 k, pas 1e-3). Débit à 30 dB (à 20 dB, toutes les variantes sont à ±0,1 du zero-shot, lui-même au niveau de WMMSE convergé) :
+
+| site (30 dB) | zero-shot | complet 40 / 400 / 4000 | LoRA 40 / 400 / 4000 | valeurs sing. 40 / 400 / 4000 | WMMSE 300 it. |
+|---|---|---|---|---|---|
+| St-Catherine | 33,28 | 33,15 / 33,13 / **33,35** | 33,17 / 33,16 / 33,33 | 33,21 / 33,12 / 33,34 | 33,56 |
+| Décarie | 34,86 | 34,48 / 34,85 / **34,92** | 34,65 / 34,81 / 34,89 | 34,68 / 34,82 / 34,86 | 35,04 |
+| Ericsson | 35,32 | 34,82 / 35,21 / 35,51 | 34,72 / 35,08 / **35,53** | 34,89 / 35,06 / 35,26 | 36,19 |
+
+- **Le fine-tuning comble peu l'écart au fort SNR** : au mieux +0,07 à +0,21 bps/Hz avec 4 000 échantillons (un quart à un tiers de l'écart à WMMSE convergé). Avec 40 échantillons, le fine-tuning complet DÉGRADE (−0,1 à −0,5 : sur-apprentissage) ; LoRA et les valeurs singulières limitent la casse sans gagner.
+- LoRA (9,8 k paramètres) fait autant que le fine-tuning complet à N = 4 000 ; les valeurs singulières seules (1 k paramètres) suffisent sur St-Catherine, moins sur Ericsson.
+- **Lecture** : l'écart restant au fort SNR n'est pas surtout dû au site (sinon l'adaptation le comblerait) mais à une limite du précodeur à fort SNR sur des canaux très bien conditionnés et peu dispersifs (Ericsson). Pistes : plus de couches ou plus d'entraînement à fort SNR ; ou une ou deux itérations de WMMSE partant de la sortie du réseau.
+
+### Écart au fort SNR : capacité ou entraînement ? (`phase14_capacity.py`, `results/phase14/capacity_*.json`)
+Un seul changement par rapport au précodeur de référence (8 couches, M8K4 + M64K8, SNR U(0, 30) dB, 60 000 pas) ; zero-shot, CSI parfait, mêmes tirages que `phase13_bench`. Débit à 0 / 20 / 30 dB :
+
+| site | 8 couches (référence) | **12 couches** | 8 couches, SNR U(10, 35) | WMMSE 300 it. |
+|---|---|---|---|---|
+| St-Catherine | 5,49 / 22,05 / 32,62 | 5,49 / 22,12 / **32,84** | 5,34 / 21,91 / 32,31 | 5,51 / 22,19 / 33,11 |
+| Décarie | 5,41 / 22,83 / 34,00 | 5,43 / 22,88 / **34,14** | 5,25 / 22,64 / 33,71 | 5,45 / 22,91 / 34,39 |
+| Ericsson | 5,44 / 24,31 / 35,77 | 5,45 / **24,46** / **36,08** | 5,14 / 24,05 / 35,36 | 5,47 / 24,44 / 36,37 |
+| UMi (vu) | 5,16 / 17,68 / 26,93 | 5,16 / 17,68 / 26,96 | 5,12 / 17,65 / 26,91 | 5,17 / 17,69 / 26,60 |
+
+- **La profondeur est le levier** : 12 couches comblent un tiers à la moitié de l'écart à WMMSE convergé à 30 dB sur les sites jamais vus (Ericsson : 35,77 → 36,08 ; à 20 dB, au-dessus de WMMSE), sans aucune donnée du site, mieux que le fine-tuning avec 4 000 échantillons. Coût : ×1,5 en calcul (12 couches au lieu de 8).
+- **Déplacer l'entraînement vers le fort SNR dégrade partout** (−0,3 à −0,4 à 30 dB, −0,2 à −0,3 à 0 dB) : ÉCARTÉ.
+- Cohérent avec la lecture « itérations » du précodeur (chaque couche ≈ une étape d'inversion) : les canaux très bien conditionnés à fort SNR demandent plus d'étapes.
+
+### Modèle de coût FPGA pour ART (agent, `/users/sala/Documents/test_projet/hls_work/cost_model/` : `RAPPORT.md`, `cost_table.csv`, `fpga_cost.py`)
+68 synthèses Vitis HLS (couche dense 16 × 16 déroulée, II = 1, xcu280, 100 MHz), b_w ∈ {1, 2, 3, 4, 6, 8}, b_a ∈ {2, 3, 4, 6, 8}, poids constants (cas A, design déroulé) ou variables (cas B), plus quelques multiplications forcées en LUT ou DSP.
+- **Cas A, b_w ≤ 4 : aucun DSP**, LUT par MAC ≈ 0,80·b_w·b_a − 1,76·b_a + 11,6 (b_w = 2 à 4, R² = 0,83) ; b_w = 1 : 0,36·b_a + 3,9. À b_w = 6 ou 8, Vitis place une partie des produits en DSP de façon irrégulière (0,17 à 0,43 DSP/MAC) : tabulé seulement.
+- Cas B : 0,5 DSP par MAC (deux produits par DSP48E2) dès b_w ≥ 2.
+- **Comparé à Moons** : même choix optimal (b_w = 1, b_a = 2) mais classement global différent (Spearman 0,47) : Moons sous-estime le saut b_w = 1 → 2 et surestime le poids de b_a, qui coûte peu sur FPGA.
+- Fonction différentiable prête (`layer_cost_torch`) pour une perte ART orientée FPGA ; recommandation : pénaliser b_w bien plus que b_a, limiter b_w ≤ 4.
+
+### HLS déroulé et pipeliné (agent Fable, `hls/codegen.py --arch seq|flow|stream`, rapports `hls_work/<variante>/`)
+Modèle 2 couches h16 (143 k MAC), xcu280, horloge cible 4 ns. Toutes les variantes identiques bit à bit à `IntPairPrecoder` (banc natif et simulation C).
+| variante | 64 SC | Fmax | DSP | LUT | instances U280 |
+|---|---|---|---|---|---|
+| départ (int64, sans pragma) | 7,05 M cycles (51 ms) | 137 MHz | 1 802 | 83 k | 5 |
+| `seq` tableaux (ressources minimales) | 1,06 M (4,2 ms) | 255 MHz | 364 | 90 k | 14 |
+| `flow` streams (1 SC par appel) | 4 209 (12,3 µs) | 342 MHz | 1 945 | 294 k | 4 |
+| **`stream` (64 SC par appel, DATAFLOW de 13 processus)** | **1 341 (3,9 µs)** | 342 MHz | 2 147 | 299 k | **4** |
+- `stream` : couches denses déroulées à poids constants, 4 antennes/cycle, le flot ne se vide pas entre sous-porteuses (~17 cycles/SC en régime établi) ; 4 instances → 256 SC en ~1 080 cycles. Déroulage complet (1 SC/cycle) : ~16× les LUT, impossible sur l'U280.
+- `flow` limité par la profondeur de pipeline (~45 cycles) face à 16 tokens ; dérouler les tokens double les ressources sans gain.
+- Aucune division : inverse de racine par table + 1 tour de Newton, perte 0,004 bps/Hz (2 couches), 0,002 (8 couches).
+- 8 couches (738 k MAC) : banc natif bit à bit en `stream`, synthèse en cours. À faire : cosimulation RTL (profondeurs de FIFO), multiplications par constantes 16 bits en LUT pour une 5e instance.
+
+### ART avec le coût FPGA (`torch_port/art_stecath.py --cost fpga`)
+Premier essai (poids jusqu'à 8 bits, coût calculé avec b_w borné à 4) : b_w > 4 gratuit → tous les poids à 8 bits, activations à 2 bits, débit 22,3 (λ = 5) contre 24,1 avec l'objectif énergie. Défaut de la perte, pas un résultat : relancé avec b_w ≤ 4 (régime sans DSP), λ = 1 et 5.
+
 ## Prochaine étape
 (1) 3 graines pour l'attention en fréquence D64. (2) Réduire le coût. (3) Bootstrap sur les tirages. (4) Faire le point avant d'aller plus loin (pilote 20 dB, vieillissement, M64).
 Cible principale ensuite (phases 2–3) : le régime pilote 10 dB, où il reste 2,7 à 5,9 bps/Hz après LMMSE.
