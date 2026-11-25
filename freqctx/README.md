@@ -9,20 +9,22 @@ Cible matérielle : FPGA (un seul bloc multiplexé dans le temps sur toutes les 
 
 ```
 freqctx/
-  config.py              SystemConfig (M, K, bande, scénario, vitesses) + CSIConfig
-  channel.py             ChannelGenerator : Sionna TR 38.901 UMi/UMa -> h [B, slot, SC, K, M]
-  csi.py                 UplinkSounder (pilotes kronecker + LS Sionna), csi_at_bs, smooth_freq
-  metrics.py             sinr, sum_rate (toujours sur le canal VRAI)
-  precoders/classical.py MRT, ZF, RZF, WMMSE (par SC)
-  models/per_sc.py       transformer minimal par SC (phase 1)
-  train.py               données par SC, boucle d'entraînement, évaluation
-  experiments/           un script par expérience : phaseN_<nom>.py
-  tests/                 test_sanity (chaîne), test_models (équivariance), test_env_repro (machines)
-  requirements.txt       versions exactes de l'environnement
-  utils.py               sauvegarde résultats (json + png/pdf + commit git), style figures
-  results/<phase>/       un fichier par expérience complète : <expérience>.{json,png,pdf}
+  config.py              SystemConfig (M, K, bande, scénario, puissances réelles) + CSIConfig
+  channel.py             ChannelGenerator : Sionna TR 38.901 UMi/UMa/RMa -> h [B, slot, SC, K, M]
+  csi.py                 UplinkSounder (pilotes en peigne + LS / LMMSE Sionna), estimateurs de référence
+  precoders/classical.py MRT, ZF, RZF, WMMSE (par SC ; WMMSE robuste)
+  models/                delay_domain.py (encodeur fréquentiel, Wiener en formule fermée), gram_precoder.py
+                         (précodeur par paires d'utilisateurs), per_sc.py (blocs de base)
+  train.py               données, boucle d'entraînement, évaluation
+  experiments/           un script par expérience : phaseN_<nom>.py (phases 0 à 14) + presentation_figs.py
+  torch_port/            port PyTorch, St-Catherine, quantification ART (quantificateurs du labo), énergie
+  hls/                   modèle quantifié -> référence entière -> C++ HLS (voir hls/README.md)
+  tests/                 test_sanity, test_models (équivariance), test_env_repro (machines)
+  results/<phase>/       un fichier par expérience : <expérience>.{json,png,pdf}
+  results/presentation/  figures de synthèse et architecture.pdf
   FINDINGS.md            journal : question -> chiffres -> verdict (retenu / négatif / écarté)
-  docs/architecture.html page de l'architecture actuelle + historique des choix (publiée en artefact, mise à jour à chaque résultat validé)
+  docs/                  RESUME.md (point de reprise), architecture.html, make_architecture_pdf.py, TRI_DEPOT.md
+  requirements.txt       versions exactes de l'environnement
 ```
 
 Règles :
