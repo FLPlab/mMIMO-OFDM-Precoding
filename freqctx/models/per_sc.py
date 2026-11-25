@@ -71,6 +71,8 @@ class Block(keras.layers.Layer):
         self.ln1 = keras.layers.LayerNormalization(epsilon=1e-6)
         self.ln2 = keras.layers.LayerNormalization(epsilon=1e-6)
         self.qkv = keras.layers.Dense(3 * d if mixer == "attention" else d)
+        # (phase 12) mixer="conv" : convolution sur les tokens voisins (noyau 7) + moyenne globale
+        self.conv = keras.layers.Conv1D(d, 7, padding="same") if mixer == "conv" else None
         self.out = keras.layers.Dense(d)
         self.ffn1 = keras.layers.Dense(ffn_mult * d, activation="gelu")
         self.ffn2 = keras.layers.Dense(d)
@@ -93,6 +95,8 @@ class Block(keras.layers.Layer):
                     a = a * tf.tanh(s)
             self.last_attention = a                         # [N, heads, K, K], pour l'analyse
             m = tf.reshape(tf.transpose(tf.matmul(a, v), [0, 2, 1, 3]), [N, K, self.d])
+        elif self.mixer == "conv":
+            m = self.conv(y) + tf.reduce_mean(y, axis=1, keepdims=True)
         else:
             m = tf.broadcast_to(tf.reduce_mean(y, axis=1, keepdims=True), tf.shape(y))
         x = x + self.out(m)

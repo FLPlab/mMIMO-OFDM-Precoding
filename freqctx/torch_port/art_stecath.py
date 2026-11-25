@@ -130,6 +130,7 @@ def main():
     ap = argparse.ArgumentParser()
     ap.add_argument("--lam", type=float, default=5.0)
     ap.add_argument("--hidden", type=int, default=32)
+    ap.add_argument("--layers", type=int, default=LAYERS, help="nombre de couches du precodeur (front de Pareto)")
     ap.add_argument("--steps", type=int, default=20000)
     ap.add_argument("--ft_steps", type=int, default=5000)
     ap.add_argument("--batch", type=int, default=2048)
@@ -139,11 +140,12 @@ def main():
     torch.manual_seed(0)
     P = pool()
     Htr, Hte = draw(P, 800000, seed=1), draw(P, 20000, seed=2026)
-    net = PairPrecoder(d=D, hidden=a.hidden, layers=LAYERS, inp=a.inp).to(DEV)
-    wname = f"pair_h{a.hidden}" + ("" if a.inp == "raw" else f"_{a.inp}")
+    net = PairPrecoder(d=D, hidden=a.hidden, layers=a.layers, inp=a.inp).to(DEV)
+    lt = "" if a.layers == LAYERS else f"_L{a.layers}"
+    wname = f"pair_h{a.hidden}" + lt + ("" if a.inp == "raw" else f"_{a.inp}")
     net.load_state_dict(torch.load(f"{OUT_W}/{wname}.pt", map_location=DEV, weights_only=True))
     layers = pair_precoder_layers(net, K)                      # comptes avant le remplacement
-    fixed = pair_precoder_fixed(K, M, D, LAYERS)
+    fixed = pair_precoder_fixed(K, M, D, a.layers)
 
     def test_rate(model):
         model.eval()
@@ -159,7 +161,7 @@ def main():
     calibrate(net, qs, Htr[:4096])
     prods = {}
     if a.qprod:                                                # produits sans poids, bits appris eux aussi
-        products = pair_precoder_products(K, M, D, LAYERS)
+        products = pair_precoder_products(K, M, D, a.layers)
         prods = quantize_products(net)
         calibrate_products(net, prods, Htr[:4096])
         layers = {**layers, **products}
@@ -203,7 +205,7 @@ def main():
            "mean_bits_a": float(np.mean([v[1] for v in b.values()])), "history": hist}
     print(json.dumps({k: v for k, v in out.items() if k not in ("bits", "history")}, indent=1), flush=True)
     os.makedirs(RESULTS, exist_ok=True)
-    tag = f"art_pair_h{a.hidden}_lam{a.lam:g}" + ("_qprod" if a.qprod else "") + ("" if a.inp == "raw" else f"_{a.inp}")
+    tag = f"art_pair_h{a.hidden}{lt}_lam{a.lam:g}" + ("_qprod" if a.qprod else "") + ("" if a.inp == "raw" else f"_{a.inp}")
     json.dump(out, open(f"{RESULTS}/{tag}.json", "w"), indent=1)
     torch.save(net.state_dict(), f"{OUT_W}/{tag}.pt")
 

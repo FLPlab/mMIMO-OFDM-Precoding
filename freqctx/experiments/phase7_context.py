@@ -22,6 +22,9 @@ Variantes (--variant) :
                 4 couches distinctes, meme calcul que notre precodeur en M8K4.
     tarb      : reference apprise (phase 8) -- TA-RB du memoire reecrit
                 (models/tarb.py), sur le LS des pilotes, memes donnees et perte.
+    wiener    : (phase 12) comme pilot_rand, mais l'encodeur est un Wiener dans le domaine des retards
+                en FORMULE FERMEE (models/delay_domain.WienerDelayEstimator, seuil --kappa) : seul le
+                precodeur apprend. Mesure ce que l'attention entre retards ajoute au Wiener.
     pilot_rand: modele complet, mais entraine avec un SNR pilote ALEATOIRE
                 U(0, 20) dB par lot de 8 tirages (sans le donner en entree :
                 l'encodeur peut mesurer le bruit sur les retards sans trajet) ;
@@ -139,7 +142,7 @@ def train_encoder_mse(model, pool, steps, lr=1e-3):
 
 def main():
     ap = argparse.ArgumentParser()
-    ap.add_argument("--variant", required=True, choices=["none", "lmmse", "sub", "separate", "simple", "interp", "lmmse_axial", "tarb", "pilot_rand", "sym"])
+    ap.add_argument("--variant", required=True, choices=["none", "lmmse", "sub", "separate", "simple", "interp", "lmmse_axial", "tarb", "pilot_rand", "sym", "wiener"])
     ap.add_argument("--rb", type=int, default=None)
     ap.add_argument("--step", type=int, default=None, help="interp : precodeur a 1 SC sur step, W interpole")
     ap.add_argument("--steps", type=int, default=STEPS)
@@ -150,15 +153,19 @@ def main():
     ap.add_argument("--est_layers", type=int, default=None, help="(phase 9, taille) couches de l'encodeur")
     ap.add_argument("--inp", default="raw", choices=["raw", "norm"], help="(phase 11) entree du precodeur")
     ap.add_argument("--relpow", action="store_true", help="(phase 11) entrainement a puissances relatives reelles")
+    ap.add_argument("--est_mix", default="softmax", choices=["softmax", "linear", "conv"],
+                    help="(phase 12) melange entre retards dans l'encodeur")
+    ap.add_argument("--kappa", type=float, default=1.0, help="(phase 12, wiener) seuil du masque en formule fermee")
     a = ap.parse_args()
     global TRAIN_DROPS, EVAL_DROPS
     if a.quick:
         TRAIN_DROPS, EVAL_DROPS, a.steps = 32, 32, 200
-    name = a.variant + (f"_{a.rb}rb" if a.variant == "sub" else "") + (f"_s{a.step}" if a.variant == "interp" else "")
+    name = a.variant + (f"_{a.rb}rb" if a.variant == "sub" else "") + (f"_s{a.step}" if a.variant == "interp" else "") + (f"_k{a.kappa:g}" if a.variant == "wiener" else "")
     global PRECODER
     PRECODER = dict(PRECODER, **({"hidden": a.p_hidden} if a.p_hidden else {}), **({"d": a.p_d} if a.p_d else {}))
     name += "".join(f"_{k}{v}" for k, v in (("ph", a.p_hidden), ("pd", a.p_d), ("ed", a.est_d), ("el", a.est_layers))
                     if v is not None)
+    name += ("" if a.est_mix == "softmax" else f"_em{a.est_mix}")
     name += ("_norm" if a.inp == "norm" else "") + ("_relpow" if a.relpow else "")
     if a.inp == "norm":
         PRECODER = dict(PRECODER, inp="norm")
@@ -187,7 +194,7 @@ def main():
         rates = {s: evaluate(net, (flat(ev[s][0]), flat(ev[s][1])), SNRS_DB) for s in SCENARIOS}
     else:
         (ti, tt), ev = data("ls_lin")
-        if a.variant in ("pilot_rand", "sym"):
+        if a.variant in ("pilot_rand", "sym", "wiener"):
             ti, tt = data_random_pilot(relative_power=a.relpow)
         pool = DropPool(ti, tt)
         cfg = SystemConfig()
@@ -199,11 +206,12 @@ def main():
         else:
             net = DelayDomainPrecoder(cfg.num_sc, cfg.num_users, cfg.num_bs_ant, banded=True, oversample=2,
                                     est_layers=0 if a.variant == "simple" else (a.est_layers if a.est_layers is not None else 2),
-                                    est_d=a.est_d or 32,
+                                    est_d=a.est_d or 32, est_mix=a.est_mix,
                                     subband_rb=a.rb if a.variant == "sub" else None,
                                     anchor_step=a.step if a.variant == "interp" else None,
                                     precoder_arch="pair", **PRECODER,
-                                    **({"sym": True} if a.variant == "sym" else {}))
+                                    **({"sym": True} if a.variant == "sym" else {}),
+                                    **({"wiener_kappa": a.kappa} if a.variant == "wiener" else {}))
         if a.variant == "separate":
             net(ti[:1], tf.zeros([1]))
             keras.utils.set_random_seed(0)

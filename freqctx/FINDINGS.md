@@ -1115,6 +1115,319 @@ Débit à 20 dB (25 dB), UMi / UMa / RMa :
 ### BASE FIGÉE (version 2, 2026-11-01)
 Validée par l'utilisateur. Encodeur fréquentiel (domaine des retards, grille 2×, 2 couches d'attention, largeur 32, filtre sur 3 retards) + transformer par paires (attention triangulaire, G réinjecté, 8 couches distinctes, état 16 complexes, FFN 32) avec **entrée normalisée par utilisateur** (G = corrélations, puissance relative de chaque utilisateur en dB sur les paires, W = h̃ᴴ C). Entraînement : SNR pilote aléatoire U(0, 20) dB, **puissances réelles entre utilisateurs** (affaiblissement de parcours et masque 3GPP, contrôle de puissance montant), mélange UMi + UMa + RMa. Poids : `/export/tmp/sala/freqctx/weights/phase7/pilot_rand_ph32_norm_relpow.weights.h5` (srvgrm12). 72 k paramètres, 0,88 M MAC/SC (M8K4). Débit à 20 dB : 17,08 / 17,19 / 17,41 à puissances réelles (WMMSE robuste convergé 16,22 / 16,26 / 16,38) ; 25,66 / 25,24 / 26,05 à puissances égales.
 
+## Phase 12 — que fait l'encodeur ? Trois figures du masque (2026-11-01, sans entraînement)
+
+**Cadre** (`experiments/phase12_mask.py`, `results/phase12/mask.json`, `mask_examples`, `mask_vs_pilot`, `mask_kernel`) : base v2, puissances réelles + contrôle de puissance montant, 64 tirages / scénario (graines de la phase 11), pilote 0 à 20 dB. L'encodeur est **linéaire en les pilotes une fois ses coefficients choisis** (g_hat[t] = c0 g[t] + c−1 g[t−1] + c+1 g[t+1], vérifié : noyau × pilotes = sortie de l'encodeur à 8·10⁻⁷ près) ; seuls les coefficients dépendent des données. Comparaison à un **Wiener oracle diagonal** sur la même grille, w(τ) = P(τ)/(P(τ)+σ²) (profil sans bruit du vrai canal ; *ce n'est pas le MMSE exact* : la grille 2× a des retards corrélés et de la fuite), et au noyau LMMSE (covariance du mélange). L'échelle de |c0| est libre (×50 à ×130 : le précodeur normalise chaque canal) ; elle est ramenée à 1 en moyenne sur les retards à plus de 20 dB de SNR.
+
+| pilote 10 dB | UMi | UMa | RMa |
+|---|---|---|---|
+| retards gardés (Σ gain²), appris / Wiener oracle | 49 / 65 | 61 / 69 | 43 / 57 |
+| corrélation masque appris – Wiener | 0,61 | 0,57 | 0,41 |
+| largeur du noyau de la SC centrale (pilotes utilisés) : appris / Wiener / LMMSE | **16 / 5 / 3** | **14 / 5 / 3** | **25 / 6 / 3** |
+
+- **Le masque garde les retards des trajets et coupe le plancher de bruit** (≈ 0 contre ≈ 0,15 pour le Wiener diagonal) ; il retrouve un trajet isolé à 5 µs en UMi. Il coupe plus tôt que le Wiener les queues de fuite sous le bruit (UMa, RMa). Pic inexpliqué sur le premier retard (≈ 1,6), à regarder avec les coefficients voisins c±1.
+- **Il s'adapte au bruit sans recevoir le SNR pilote** : le seuil (masque = 0,5) passe d'environ 7 dB de SNR par retard (pilote 0 dB) à environ 17 dB (pilote 20 dB). En niveau absolu, il baisse donc de 10 dB quand le bruit baisse de 20 dB : l'adaptation est réelle mais **moins que proportionnelle**, et le masque est **toujours plus sévère que le Wiener diagonal** (seuil 0 dB). Retards gardés : 28 → 70 (UMi) de 0 à 20 dB, contre 25 → 176 pour le Wiener.
+- **Le résultat le plus lisible est en fréquence** : l'encodeur moyenne sur bien plus de pilotes que LMMSE (14 à 25 contre 3, soit 56 à 100 SC contre 12), **plus large sur RMa** (canal plat) qu'en ville, et **plus étroit quand le pilote est bon** (UMi 29 → 10 pilotes de 0 à 20 dB). Le LMMSE à covariance fixe moyenne sur ~3 pilotes dans tous les scénarios : c'est ce qui lui coûte sur RMa.
+- **Lecture** : un filtre de Wiener dans le domaine des retards dont le profil est estimé tirage par tirage, mais réglé pour le débit (la direction), pas pour l'erreur quadratique : plus sélectif en retard, donc plus lissant en fréquence.
+- *Limites* : |c0| seul (sans c±1) ; Wiener diagonal et non le génie exact par lien de la phase 4 ; normalisation de l'échelle choisie par nous.
+
+### Wiener dans le domaine des retards en formule fermée — RETENU comme référence classique, ÉCARTÉ comme encodeur (`results/phase12/wiener.json`, `results/phase7/wiener_k4_ph32_norm_relpow.json`)
+- **Question** : combien l'attention entre retards ajoute-t-elle par-dessus un Wiener classique sur la même grille ?
+- **Estimateur** (`models/delay_domain.WienerDelayEstimator`, aucun paramètre appris) : même IDFT sur la grille 2× (306 retards) ; P(τ) = puissance moyenne sur les 8 antennes, lissée sur 3 retards ; bruit σ̂² = médiane de P sur les retards (÷ 0,959) ; gain = max(P − κσ̂², 0)/P ; DFT. Seuil κ choisi sur des tirages d'**entraînement** (WMMSE 30 it., 20 dB) : κ = 0,5 / 1 / 2 / **4** / 8 / 16 → 15,91 / 16,64 / 16,87 / **16,91** / 16,79 / 16,46. Le seuil optimal est **sévère** (4σ²), comme le masque appris (phase 12, figures).
+- **Réglages** : cadre de la phase 11 (puissances réelles, contrôle de puissance montant, pilote 10 dB, mêmes 192 tirages / scénario ; la base v2 y redonne exactement 17,08 / 17,19 / 17,41). « Wiener + notre précodeur » : variante `--variant wiener --kappa 4` de `phase7_context` (même entraînement que la base v2, seul l'encodeur change ; seul le précodeur apprend).
+
+Débit à 20 dB (25 dB), UMi / UMa / RMa :
+
+| | 20 dB | 25 dB | params | MAC/SC |
+|---|---|---|---|---|
+| LMMSE (mélange) + WMMSE robuste 100 it. | 16,22 / 16,26 / 16,38 | 18,95 / 19,02 / 19,06 | | |
+| **Wiener formule fermée + WMMSE 100 it.** | **16,73 / 16,77 / 17,11** | **19,59 / 19,62 / 20,22** | 0 | |
+| Wiener formule fermée + RZF | 10,64 / 10,65 / 11,11 | 12,11 / 12,20 / 12,57 | 0 | |
+| Wiener formule fermée + notre précodeur | 16,84 / 16,90 / 17,22 | 20,16 / 20,16 / 20,69 | 44,6 k | 0,77 M |
+| **base v2 (encodeur appris)** | **17,08 / 17,19 / 17,41** | **20,61 / 20,66 / 21,10** | 72,3 k | 0,88 M |
+
+Égalité à 0 et 10 dB à ±0,05 près entre les quatre lignes non-RZF (5,15–5,21 ; 10,25–10,51). À puissances égales (test standard de `phase7_context`), Wiener + notre précodeur : 25,16 / 24,69 / 25,74 contre 25,66 / 25,24 / 26,05 pour la base v2.
+
+**Décomposition de l'avance de la base v2 sur LMMSE + WMMSE robuste** (20 dB : 0,86 / 0,93 / 1,03 ; 25 dB : 1,66 / 1,64 / 2,04) :
+- **Wiener sur la grille des retards (classique)** : +0,51 / +0,51 / +0,73 à 20 dB (55 à 71 % de l'avance) ; +0,64 / +0,60 / +1,16 à 25 dB.
+- **notre précodeur au lieu de WMMSE** (même Wiener) : +0,11 / +0,13 / +0,11 à 20 dB ; +0,57 / +0,54 / +0,47 à 25 dB.
+- **attention entre retards au lieu du Wiener** : +0,24 / +0,29 / +0,19 à 20 dB (18 à 31 %) ; +0,45 / +0,50 / +0,41 à 25 dB.
+
+**Conclusions :**
+- **L'essentiel de ce que fait l'encodeur s'explique par un Wiener dans le domaine des retards** (grille 2×, profil et bruit estimés sur le tirage, seuil sévère). C'est le résultat d'interprétabilité attendu.
+- **L'attention apporte en plus +0,2 à +0,3 à 20 dB et +0,4 à +0,5 à 25 dB**, pour 28 k paramètres et 0,11 M MAC/SC (13 % du calcul). Elle reste dans la base (bien au-delà de la règle des 0,05 bps/Hz).
+- **Conséquence importante pour l'article A** : ce Wiener + WMMSE est une **référence classique nettement plus forte que LMMSE + WMMSE robuste**. Face à elle, l'avance de la base v2 tombe à **+0,35 / +0,42 / +0,30 à 20 dB (+2 %)** et **+1,0 / +1,0 / +0,9 à 25 dB (+5 %)**, au lieu de +0,9 à +1,0 (20 dB). Il faut la mettre dans le tableau principal (un relecteur la construirait).
+- *Limites* : une seule graine ; robustesse (pilote 0 dB, vieillissement) et puissances égales pas encore évaluées pour la référence Wiener + WMMSE ; κ choisi sur la seule configuration pilote 10 dB.
+
+### Robustesse de la référence Wiener face à la base v2 (`experiments/phase12_robust.py`, `results/phase12/robust.json`)
+Sans réentraîner. Cadre de la phase 11 (puissances réelles, contrôle de puissance montant), 192 tirages / scénario ; SNR pilote sur les tirages de la phase 11, vieillissement sur de nouveaux tirages (graines 5026+10i, pilote 10 dB), puissances égales sur les tirages standard (graines 2026+10i, sondage refait : la base v2 y fait 25,39 / 25,37 / 26,02, au lieu de 25,66 / 25,24 / 26,05 dans `phase7_context`, autre tirage du bruit). Méthodes : base v2 / Wiener + notre précodeur / **Wiener + WMMSE 100 it.** / LMMSE + WMMSE robuste 100 it.
+
+Débit à 20 dB de données, UMi / UMa / RMa :
+
+| | base v2 | Wiener + notre précodeur | Wiener + WMMSE | LMMSE + WMMSE robuste | **v2 − (Wiener + WMMSE)** |
+|---|---|---|---|---|---|
+| pilote 0 dB | 15,48 / 15,33 / 16,30 | 15,17 / 14,90 / 16,09 | 14,96 / 14,68 / 15,88 | 13,96 / 13,74 / 14,35 | **+0,52 / +0,65 / +0,42** |
+| pilote 5 dB | 16,50 / 16,51 / 17,03 | 16,20 / 16,14 / 16,81 | 16,03 / 15,96 / 16,65 | 15,23 / 15,18 / 15,49 | +0,47 / +0,55 / +0,38 |
+| pilote 10 dB | 17,08 / 17,19 / 17,41 | 16,83 / 16,89 / 17,22 | 16,72 / 16,77 / 17,11 | 16,20 / 16,27 / 16,39 | +0,36 / +0,42 / +0,30 |
+| pilote 15 dB | 17,37 / 17,56 / 17,58 | 17,15 / 17,30 / 17,41 | 17,08 / 17,22 / 17,34 | 16,85 / 16,99 / 16,98 | +0,29 / +0,34 / +0,24 |
+| pilote 20 dB | 17,50 / 17,72 / 17,66 | 17,29 / 17,47 / 17,51 | 17,24 / 17,41 / 17,45 | 17,24 / 17,43 / 17,33 | +0,26 / +0,31 / +0,21 |
+| vieilli 0 ms | 17,22 / 17,58 / 17,01 | 16,97 / 17,28 / 16,82 | 16,88 / 17,14 / 16,74 | 16,36 / 16,62 / 16,03 | +0,34 / +0,44 / +0,27 |
+| vieilli 2,5 ms | 15,29 / 15,63 / 15,84 | 15,19 / 15,51 / 15,77 | 14,97 / 15,26 / 15,55 | 14,70 / 14,94 / 15,09 | +0,32 / +0,37 / +0,29 |
+| vieilli 5 ms | 13,47 / 13,67 / 14,72 | 13,45 / 13,65 / 14,71 | 13,17 / 13,30 / 14,43 | 12,97 / 13,08 / 14,07 | +0,30 / +0,37 / +0,29 |
+| puissances égales | 25,39 / 25,37 / 26,02 | 24,89 / 24,82 / 25,71 | 24,99 / 24,89 / 25,80 | 23,95 / 23,95 / 24,36 | +0,40 / +0,48 / +0,22 |
+
+À 25 dB de données, l'avance de la base v2 sur Wiener + WMMSE est d'environ le double : +1,16 / +1,24 / +0,97 (pilote 0 dB), +1,02 / +1,07 / +0,89 (10 dB), +0,89 / +0,92 / +0,67 (20 dB), +0,78 / +0,88 / +0,51 (puissances égales). À 0 dB de données, toutes les méthodes sont à égalité (±0,03).
+
+**Conclusions :**
+- **La base v2 reste au-dessus de Wiener + WMMSE partout** (tous les SNR pilote, tous les retards, puissances égales ou réelles), de **+0,2 à +0,65 bps/Hz à 20 dB** et **+0,5 à +1,2 à 25 dB**. L'avance grandit quand le pilote est mauvais et quand le SNR de données monte.
+- **Le Wiener en formule fermée est robuste** : il bat LMMSE + WMMSE robuste partout sauf avec un très bon pilote (20 dB : égalité), et de +1,0 à +1,5 avec un pilote à 0 dB. C'est la référence classique à mettre dans l'article.
+- **L'apport de l'attention disparaît avec le vieillissement** : à 5 ms, Wiener + notre précodeur égale la base v2 (±0,02) ; l'avance restante sur Wiener + WMMSE (+0,3) y vient alors du précodeur appris. À pilote 0 dB, l'attention apporte au contraire le plus (+0,21 à +0,43).
+- **À puissances égales, Wiener + WMMSE dépasse légèrement Wiener + notre précodeur** (−0,07 à −0,10) : ce précodeur a été entraîné à puissances réelles seulement.
+
+### Encodeur sans softmax : convolution sur les retards, ou attention linéaire (`experiments/phase12_mix.py`, `results/phase12/encoder_mix.json`, `results/phase7/pilot_rand_ph32_em{conv,linear}_norm_relpow.json`)
+- **Question** : l'apport de l'attention softmax entre retards (+0,2 à +0,4 sur le Wiener) vient-il de l'interaction entre retards ? Peut-on le garder avec un bloc plus simple en HLS ?
+- **Un seul changement** par rapport à la base v2 (même entraînement : pilote aléatoire, puissances réelles, 80 000 pas, graine 0), dans les 2 couches de l'encodeur : « conv » = convolution sur 7 retards voisins + moyenne globale sur les retards (`Block(mixer="conv")`) ; « linéaire » = attention sans softmax (scores / T ; calculable en q(kᵀv), coût linéaire en T).
+- Évaluation : cadre de la phase 11 (puissances réelles), mêmes tirages que `phase12_robust` ; puissances égales : test standard de `phase7_context`.
+
+Débit à 20 dB (25 dB), UMi / UMa / RMa :
+
+| | params | MAC/SC | pilote 10 dB | pilote 0 dB | puissances égales (20 dB) |
+|---|---|---|---|---|---|
+| base v2 (softmax) | 72,3 k | 0,88 M | 17,08 / 17,19 / 17,40 (20,60 / 20,66 / 21,10) | 15,48 / 15,33 / 16,30 | 25,66 / 25,24 / 26,05 |
+| **convolution + moyenne** | 82,4 k | 0,82 M | **17,14 / 17,30 / 17,44** (20,73 / 20,87 / 21,17) | **15,62 / 15,50 / 16,36** | **25,83 / 25,44 / 26,14** |
+| attention linéaire | 72,3 k | 0,81 M | 17,09 / 17,22 / 17,42 (20,63 / 20,72 / 21,13) | 15,58 / 15,49 / 16,36 | 25,71 / 25,29 / 26,12 |
+| Wiener formule fermée + WMMSE | 0 | | 16,73 / 16,78 / 17,10 | 14,96 / 14,68 / 15,88 | — |
+
+**Conclusions :**
+- **Le softmax n'est pas nécessaire.** Les deux variantes égalent ou dépassent légèrement la base : convolution +0,04 à +0,11 (pilote 10 dB), +0,06 à +0,17 (pilote 0 dB), +0,09 à +0,20 (puissances égales) ; linéaire +0,01 à +0,16. L'avance sur le Wiener en formule fermée est conservée (+0,3 à +0,8 à 20 dB).
+- **Ce qui compte, c'est l'interaction entre retards** (un MLP par retard, phase 7, perdait 0,17), pas la forme softmax : une interaction locale (7 retards, la fuite d'un trajet) plus une statistique globale (le niveau de bruit) suffit.
+- **Pour le HLS, la convolution est le bloc le plus simple** (MAC seulement, aucune exponentielle ni division, noyau court), avec 7 % de calcul en moins ; +10 k paramètres (noyaux de 7 × 32 × 32).
+- *Limites* : une seule graine (écarts de +0,05 à +0,2, au-dessus de la dispersion entre graines mesurée ailleurs, ±0,01 à 0,03, mais à confirmer) ; pas encore évalué en vieillissement ni en massif.
+- **Proposition** : encodeur à convolution comme candidat de base v3, après une 2e graine.
+
+## Phase 13 — canaux jamais vus : lancer de rayons (2026-11-25, exploration)
+
+### DeepMIMO Boston5G (28 GHz), sans réentraîner (`experiments/phase13_deepmimo.py`, `results/phase13/deepmimo_boston.json`)
+- Trajets DeepMIMO v2 (angle de départ, phase, retard, puissance ; 105 842 positions avec au moins un trajet, 25 trajets au plus) → H(f) sur nos 612 SC, même réseau BS (4 colonnes, 2 polarisations ; la 2e polarisation reçoit une phase aléatoire par trajet, le lancer de rayons ne donnant pas la polarisation), retards relatifs au premier trajet. 192 tirages de 4 positions au hasard. Mêmes modèles qu'à la phase 12 ; LMMSE avec la covariance 3GPP du mélange (mal adaptée ici, comme en pratique).
+
+Débit à 20 dB :
+
+| | base v2 | encodeur conv | Wiener + notre préc. | Wiener + WMMSE | LMMSE + WMMSE robuste | WMMSE CSI parfait |
+|---|---|---|---|---|---|---|
+| puissances réelles, pilote 0 dB | 16,97 | **17,11** | 16,79 | 16,60 | 14,67 | 18,48 |
+| puissances réelles, pilote 10 dB | 18,09 | **18,17** | 17,87 | 17,80 | 17,01 | 18,48 |
+| puissances égales, pilote 0 dB | 23,28 | **23,43** | 22,82 | 22,70 | 19,33 | 25,21 |
+| puissances égales, pilote 10 dB | 24,58 | **24,67** | 24,37 | 24,49 | 23,10 | 25,21 |
+
+- **Le modèle entraîné sur TR 38.901 tient sur un canal de lancer de rayons jamais vu** : toujours au-dessus de Wiener + WMMSE (+0,1 à +0,6), à 0,3–0,4 du WMMSE en CSI parfait au pilote 10 dB. L'encodeur à convolution reste le meilleur.
+- **LMMSE à covariance fixe s'effondre** (−2 à −4 bps/Hz au pilote 0 dB) : la covariance 3GPP ne correspond pas à ce canal. Les méthodes dans le domaine des retards (Wiener, encodeur appris) n'ont pas ce problème.
+- *Limites* : 28 GHz (et non 3,5), polarisation émulée, canaux à peu de trajets (favorables au domaine des retards), une graine.
+
+### Données du labo avec trajets (MIMO GenEE, https://mimogenee.grm.polymtl.ca)
+- Le scénario « Raytracing with mobility » (St-Catherine, Décarie, Ericsson) est téléchargeable (`/download/<site>_64x8x8_raytracing_time_series.csv`, copie dans `/export/tmp/sala/freqctx/data/lab/`). Le fichier enchaîne trois tables : 1 000 trajectoires (départ x, y), leurs vitesses (2 500 pas chacune), et une **grille de 91 400 cellules (i, j) avec 1 à 11 trajets chacune** : `los, tau_s, ux, uy, alpha_re, alpha_im, psi_1, psi_2`. Ces trajets suffisent pour construire des canaux OFDM sur les sites du labo, avec mobilité.
+- **Les canaux sont presque plats sur 20 MHz** : 2,3 à 3,5 trajets par cellule, étalement des retards médian 51 ns (St-Catherine), 2 ns (Décarie), 1 ns (Ericsson), contre ~400 ns en 3GPP.
+
+### Sites du labo en OFDM, sans réentraîner (`experiments/phase13_lab.py`, `results/phase13/lab_<site>_<conv>.json`, figure `results/phase12/fig_raytracing.png`)
+Même chaîne que Boston (puissances réelles, 192 tirages de 4 cellules, une graine). Convention des angles inconnue : testée sur St-Catherine avec trois hypothèses. Débit à 20 dB, pilote 0 dB / 10 dB :
+
+| | encodeur conv | base v2 | Wiener + notre préc. | Wiener + WMMSE | LMMSE + WMMSE robuste | WMMSE CSI parfait |
+|---|---|---|---|---|---|---|
+| St-Catherine, psi2az | **20,67 / 21,81** | 20,44 / 21,70 | 19,82 / 21,39 | 19,65 / 21,37 | 17,12 / 20,25 | 22,10 / 22,10 |
+| St-Catherine, psi1az | **17,16 / 18,19** | 16,84 / 17,96 | 16,38 / 17,74 | 16,34 / 18,11 | 14,23 / 17,12 | 18,85 / 18,85 |
+| St-Catherine, angles aléatoires | **21,18 / 22,47** | 21,05 / 22,40 | 20,36 / 22,02 | 20,26 / 22,04 | 17,65 / 20,91 | 22,79 / 22,79 |
+| Décarie, psi2az | **21,69 / 22,59** | 21,54 / 22,52 | 20,92 / 22,22 | 20,77 / 22,21 | 17,80 / 20,95 | 22,82 / 22,82 |
+| Ericsson, psi2az | **23,40 / 24,14** | 23,25 / 24,06 | 22,44 / 23,70 | 22,38 / 23,78 | 18,88 / 22,36 | 24,38 / 24,38 |
+
+- **Même classement sur les trois sites et les trois conventions d'angles** : encodeur conv > base v2 > Wiener + WMMSE ≫ LMMSE. La convention change le niveau absolu (géométrie entre utilisateurs), pas la conclusion.
+- **En % du WMMSE en CSI parfait** : notre modèle 93 à 96 % (pilote 0 dB) et 98,5 à 99 % (10 dB) ; Wiener + WMMSE 89 à 92 % et 96 à 97,5 % ; LMMSE 77 à 79 % et 91 à 92 %.
+- **L'avance de l'apprentissage se concentre au pilote faible** (+0,8 à +1,0 sur Wiener + WMMSE à 0 dB ; +0,1 à +0,4 à 10 dB). Exception : St-Catherine psi1az à 10 dB, où Wiener + WMMSE (18,11) passe la base v2 (17,96), mais pas l'encodeur conv (18,19).
+- **LMMSE à covariance 3GPP s'effondre** sur ces canaux plats (−4 à −5 bps/Hz au pilote 0 dB) : sa covariance est fausse ici.
+- *Limites* : canaux presque plats (cas facile pour le domaine des retards ; ne teste pas vraiment la sélectivité), angles supposés, une graine.
+
+### Compléments sur les sites du labo : CSI parfait, RZF, covariance estimée sur le site (`--extra`, `results/phase13/lab_<site>_psi2az_extra.json`)
+Débit à 20 dB, pilote 0 dB / 10 dB (St-Catherine / Décarie / Ericsson) :
+
+| | St-Catherine | Décarie | Ericsson |
+|---|---|---|---|
+| encodeur conv (depuis les pilotes) | **20,67 / 21,81** | **21,69 / 22,60** | **23,40 / 24,13** |
+| Wiener + WMMSE | 19,65 / 21,36 | 20,77 / 22,22 | 22,38 / 23,77 |
+| **LMMSE (covariance estimée sur le site) + WMMSE robuste** | 18,55 / 20,79 | 20,42 / 22,11 | 22,17 / 23,65 |
+| LMMSE (covariance 3GPP) + WMMSE robuste | 17,12 / 20,26 | 17,80 / 20,95 | 18,88 / 22,36 |
+| Wiener + RZF | 13,86 / 15,50 | 16,15 / 17,50 | 19,19 / 20,57 |
+| **notre précodeur, CSI parfait** | 22,09 | 22,80 | 24,32 |
+| WMMSE 100 it., CSI parfait | 22,10 | 22,82 | 24,38 |
+| RZF, CSI parfait | 16,28 | 18,11 | 21,20 |
+
+- **Notre précodeur, entraîné sur 3GPP, égale WMMSE en CSI parfait sur les sites du labo** (à 0,01–0,06 près), sans réentraîner. RZF y perd 3 à 6 bps/Hz (pas de répartition de puissance entre utilisateurs inégaux).
+- **La covariance estimée sur le site rend LMMSE bien meilleur** (+1,4 à +3,3 au pilote 0 dB) : la référence 3GPP était injuste ici. Il reste sous Wiener + WMMSE et sous notre modèle (−1,0 à −2,1 au pilote 0 dB ; −0,5 à −1,0 au pilote 10 dB).
+- **Notre modèle depuis les pilotes est à 0,2–0,3 du WMMSE en CSI parfait au pilote 10 dB.**
+
+### WMMSE selon le nombre d'itérations, et sondage sans Sionna (`experiments/phase13_checks.py`, `results/phase13/checks.json`)
+**CSI parfait, puissances réelles, débit à 20 dB** (aucune fonction Sionna dans ce calcul : canal construit en numpy, précodeurs appliqués directement) :
+
+| | notre précodeur | WMMSE 5 it. | 10 it. | 30 it. | 100 it. | 300 it. | RZF |
+|---|---|---|---|---|---|---|---|
+| St-Catherine | 22,09 | 20,53 | 21,17 | 21,76 | 22,10 | 22,19 | 16,28 |
+| Décarie | 22,80 | 21,07 | 21,66 | 22,39 | 22,82 | 22,91 | 18,11 |
+| Ericsson | 24,32 | 23,02 | 23,48 | 24,08 | 24,38 | 24,44 | 21,20 |
+| Sionna UMi (3GPP) | 17,65 | 15,55 | 16,24 | 17,12 | 17,60 | 17,69 | — |
+
+- **Notre précodeur (une passe, sans inversion) vaut WMMSE à ~100 itérations** partout ; WMMSE convergé (300 it.) fait +0,04 à +0,1 de plus. À 30 itérations (réglage courant), WMMSE est 0,2 à 0,5 en dessous. On ne dépasse pas WMMSE convergé en CSI parfait ici ; l'intérêt est le coût (une passe contre ~100 itérations avec inversions K×K).
+
+**Sondage sans Sionna** : LS sur le peigne refait à la main (vrai canal aux SC pilotes + bruit gaussien). **Découverte de convention** : le sondeur Sionna (pilotes « kronecker ») amplifie l'énergie des pilotes ×K = ×4 (+6 dB), car chaque utilisateur n'occupe qu'une SC sur 4 à puissance totale égale : variance du bruit LS mesurée 0,25 au « pilote 0 dB » (0,025 à 10 dB). Avec la même amplification, le sondage à la main redonne les débits Sionna au centième (St-Catherine 20,69 / 21,81 contre 20,70 / 21,81 ; Ericsson 23,39 / 24,13 contre 23,41 / 24,14). **Sionna n'ajoute rien de caché** ; mais **tous les « SNR pilote » du journal sont des SNR par RE avant l'amplification de 6 dB du peigne** — à écrire dans l'article.
+
+### CSI parfait : précodeur calculé sur 1 SC sur s, W interpolé (`experiments/phase13_interp.py`, `results/phase13/interp.json`, figure `results/phase12/fig_interp.png`)
+Débit à 20 dB, puissances réelles, notre précodeur (non réentraîné pour l'interpolation) / WMMSE 100 it. avec la même interpolation :
+
+| s | 1 | 3 | 6 | 12 | 24 | 48 |
+|---|---|---|---|---|---|---|
+| Sionna UMi (~400 ns) | 17,65 / 17,60 | 17,61 / 17,56 | 17,43 / 17,38 | 16,87 / 16,81 | 15,61 / 15,52 | 13,68 / 13,57 |
+| St-Catherine (51 ns) | 22,09 / 22,10 | 22,08 / 22,09 | 22,00 / 22,00 | 21,66 / 21,62 | 21,09 / 21,02 | 20,48 / 20,36 |
+| Décarie (2 ns) | 22,80 / 22,82 | 22,80 / 22,82 | 22,79 / 22,82 | 22,76 / 22,80 | 22,64 / 22,67 | 22,31 / 22,32 |
+| Ericsson (1 ns) | 24,32 / 24,38 | 24,32 / 24,38 | 24,31 / 24,37 | 24,28 / 24,35 | 24,16 / 24,23 | 23,87 / 23,94 |
+
+- **La sélectivité fixe le coût du multiporteuse** : en 3GPP, 1 SC sur 3 (−0,2 %) mais déjà −4,5 % à 1 sur 12 ; sur les sites du labo presque plats, 1 SC sur 12 à 24 ne coûte presque rien (Décarie, Ericsson : −0,2 à −0,7 % à 1 sur 24). Un pas adapté à l'étalement des retards diviserait le calcul par 3 (3GPP) à 24 (labo).
+- Notre précodeur suit WMMSE 100 it. à toutes les granularités (et le dépasse légèrement quand l'interpolation est grossière en 3GPP).
+
+### Énergie de RZF et WMMSE dans le même modèle que les réseaux (`torch_port/energy_classical.py`, `results/stecath/classical_energy.json`, figure `results/presentation/figB_pareto_energy.png`)
+St-Catherine (M=64, K=4, CSI parfait, protocole du labo, 20 000 échantillons). Modèle d'énergie corrigé (= `Pipeline/Energy.py` v5 de BitAdaptHLS, déjà corrigé : mémoire linéaire en Q, parallélisme 64·16/Q, tokens comptés). Opérations de RZF et WMMSE comptées dans leur forme efficace en dimension K (même précodeur que notre implémentation en dimension M), division ou racine = 10 MAC.
+
+| | débit | MAC réelles | énergie 32 bits (µJ) | énergie 16 bits (µJ) |
+|---|---|---|---|---|
+| RZF | 17,03 | 9,0 k | 0,052 | 0,016 |
+| WMMSE 1 / 10 / 30 it. | 19,01 / 22,77 / 24,41 | 18 k / 102 k / 287 k | 0,10 / 0,51 / 1,42 | 0,03 / 0,15 / 0,43 |
+| WMMSE 100 / 300 it. | 25,92 / 26,88 | 0,93 M / 2,78 M | 4,62 / 13,7 | 1,39 / 4,13 |
+| notre précodeur, 32 bits | 27,60 | — | 3,32 | |
+| **notre précodeur, quantifié ART (entrée normalisée)** | **26,61** | | **0,109** | |
+| BitAdapt medium, quantifié (λ=1) | 24,10 | | 0,81 | |
+
+- **À débit égal (~26,6 bps/Hz), WMMSE demande ~200 itérations : ~9 µJ en 32 bits, ~2,8 µJ en 16 bits, soit 25 à 85 fois notre précodeur quantifié.** RZF est moins cher (0,016 à 0,05 µJ) mais perd 9,6 bps/Hz.
+- **Honnêteté sur l'origine du gain** : à précision égale (32 bits), notre précodeur (3,3 µJ) coûte à peu près autant que WMMSE à ~70 itérations. L'avantage vient de ce que le réseau **tolère la quantification à 4–8 bits** (sans division ni inversion), alors que WMMSE (inversions, écarts de puissance de 50 dB) a besoin d'au moins 16 bits ; la courbe WMMSE 16 bits est déjà optimiste.
+- *Limites du modèle* : générique (ASIC 45 nm, pas FPGA), ne compte pas finement les non-linéarités ; à valider par le HLS.
+
+### ⚠ Vérification de la comparaison d'énergie avec BitAdapt (2026-11-25) — COMPARAISON NON VALIDE EN L'ÉTAT
+Trois problèmes trouvés en recoupant avec l'export v5 envoyé à F. Leduc-Primeau le 2026-10-24 (`/export/tmp/sala/home_archive/ELE6310/ELE6310E/export_francois_v5_20261024/`) :
+1. **Points BitAdapt périmés.** `torch_port/lab_energy_compare.py` lisait les checkpoints de l'article (dépôt mMIMO-ART-FPGA, ancien modèle d'énergie, FP32 80 epochs, architectures `FPGA_*`), pas la v5 (réentraînée, modèle corrigé, 6 tailles × 8 λ). En v5 sur St-Catherine, BitAdapt atteint 26,69 bps/Hz (xlarge, 14–28 µJ) ; à ~0,1 µJ, tiny λ=1 fait 20,61. Les tailles small/medium n'ont pas les mêmes dimensions dans les deux dépôts (v5 : small D128 FFN1024, medium D128 FFN2048).
+2. **Deux implémentations du modèle d'énergie qui ne concordent pas** : à architecture identique (tiny, 8 bits), `torch_port/energy.py` donne 0,755 µJ et `Pipeline/Energy.py` v5 donne 1,049 µJ (×1,39). Les formules par couche sont les mêmes ; l'écart vient du comptage MAC / poids / activations par couche. Il faut calculer TOUS les modèles avec le même code.
+3. **Énergie de WMMSE : conventions très différentes.** La v5 (`eval_baselines.py`) utilise E = K·I·N_c, N_c = éq. 12 du papier (terme dominant (8/3)·N_T³·N_U, c'est-à-dire une inversion M×M par utilisateur et par itération) calibré sur 296 µJ à I = 92,8 : 3,2 µJ à I = 1, 79,7 µJ à I = 25. La forme efficace (dimension K, identité push-through, même précodeur) compte ~9 k MAC par itération : 0,10 µJ à I = 1 en 32 bits (×33 de moins), 1,2 µJ à I = 25. **Les gains « 30 à 73× face à WMMSE » de la v5 reposent sur la forme coûteuse** ; avec la forme efficace, ils diminuent fortement (tiny λ=1 : 20,61 @ 0,103 µJ contre WMMSE I=1 efficace 19,0 @ 0,10 µJ en 32 bits).
+- Débits : nos 20 000 échantillons (graine 2026) contre 200 000 en v5, même distribution ; WMMSE 30 it. 24,41 (nous) contre I = 25 23,86 (v5), cohérent.
+- **Conséquence** : la figure `results/presentation/figB_pareto_energy` et les phrases « +10 % de débit, 7× moins d'énergie que BitAdapt » ne sont pas valides tant que (1)–(3) ne sont pas réglés. À faire : calculer l'énergie de notre précodeur avec `Pipeline/Energy.py` v5 (un seul code), utiliser le front v5, et montrer WMMSE avec les deux conventions.
+
+**Corrections faites (2026-11-25)** :
+- **Un seul code d'énergie** (`torch_port/energy_v5.py`, `results/stecath/energy_v5_ours.json`) : `Pipeline/Energy.py` v5 redonne exactement la colonne E8 de la v5 pour tiny (1,049 µJ, contrôle passé). Notre précodeur avec ce code : **0,113 µJ quantifié**, 0,315 µJ à 8 bits, 3,32 µJ en 32 bits (738 k MAC par échantillon). L'écart de l'ancien calcul venait des points BitAdapt (architectures `FPGA_*` différentes de la v5), pas de notre précodeur.
+- **Même jeu de test que la v5** (`torch_port/eval_v5_testset.py`, `results/stecath/v5_testset_ours.json`, 200 000 canaux, chargeur `Data_Load` du dépôt) : notre précodeur **27,62 (32 bits) / 26,64 (quantifié)** ; contrôles RZF 17,04 (v5 : 17,14), notre WMMSE I = 1 / 5 / 10 / 25 = 19,03 / 21,64 / 22,76 / 24,13 (v5 : 19,29 / 21,53 / 22,56 / 23,86 ; v5 cherche μ par bissection, nous en forme fermée).
+- **Figure B refaite** : front de Pareto BitAdapt v5 (non dominés sur 48 modèles), WMMSE sous les deux conventions.
+
+- **Énergies BitAdapt v5 recalculées** (`torch_port/check_v5_energy.py`, `results/stecath/check_v5_energy.json`) avec `Energy.py` v5 à partir des bits par couche de l'export (`bitwidths_all_v5.csv`) : les 48 modèles de St-Catherine sont retrouvés à 5 % près au maximum (arrondis des bits de l'attention).
+- **Conditions de notre quantification** (`torch_port/art_stecath.py`) : quantificateurs LSQ du code du labo (`quan.quantizer.lsq.LsqQuan`), bits initialisés à 8, bornes 1–8 (poids) et 2–8 (activations), comme le plancher v5 ; perte ART = −débit/débit₃₂ + λ·E/E₃₂ (λ = 5) pendant 20 000 pas (lots de 2 048), puis 5 000 pas avec bits arrondis et figés ; produits sans poids (G, produit triangulaire, W) quantifiés aussi et comptés dans l'énergie. Entraînement plus court que la v5 (QAT 120 epochs + phase 3). Bits obtenus : poids 1–6 bits (moyenne ~3,9), activations 2–8 (~5,8), G et W 7–8 bits. Données : St-Catherine, CSI parfait, M=64, K=4, mono-porteuse ; mêmes 9 032 positions pour l'entraînement et le test (protocole du labo).
+- **Non comptés, pour les deux réseaux** : LayerNorm, GELU/ReLU, softmax (BitAdapt), normalisation par utilisateur (rsqrt, nous).
+
+**Lecture de la figure corrigée (St-Catherine, CSI parfait)** :
+- Avec la convention de l'article, tout réseau bat WMMSE de loin. **Avec la forme efficace, le front BitAdapt v5 suit à peu près la courbe WMMSE 32 bits, et WMMSE 16 bits le domine** : l'avantage de BitAdapt sur WMMSE dépend de la convention.
+- **Notre précodeur quantifié (26,64 bps/Hz, 0,113 µJ) domine les deux** : BitAdapt v5 atteint ce débit à ~14–28 µJ (xlarge), WMMSE efficace vers ~200 itérations (~9 µJ en 32 bits, ~2,8 µJ en 16 bits, déjà optimiste). C'est le seul point qui se détache nettement, quelle que soit la convention.
+
+### Massif M64K8 en CSI parfait, puissances réelles, sans réentraîner — NÉGATIF (`experiments/phase13_massive.py`, `results/phase13/massive_csi_parfait.json`)
+Sionna UMi, 64 tirages, 600 SC. Débit à 20 dB (30 dB) : WMMSE 300 it. 39,84 (56,78) ; 100 it. 38,54 ; 30 it. 36,19 ; 10 it. 33,71 (47,61) ; RZF 24,50 (36,30) ; **notre précodeur (entraîné en M8K4) 29,00 (36,06)** ; précodeur de la phase 6 (entraîné sur M64K8 + M8K4 mais à puissances égales) 30,18 (35,02).
+- **En massif à puissances réelles, nos précodeurs actuels décrochent** (73–76 % du WMMSE convergé à 20 dB, sous WMMSE 10 it.) et plafonnent au fort SNR. Ni l'un ni l'autre n'a vu ce cas : le premier n'a vu que M8K4, le second que des puissances égales. En phase 6 (puissances égales), le même précodeur égalait WMMSE en massif. **À faire avant toute figure massive : entraîner le précodeur sur M64K8 (+ M8K4) à puissances réelles, entrée normalisée.**
+
+### Massif à puissances réelles : précodeur entraîné sur M64K8 + M8K4 — RETENU (`experiments/phase13_train_massive.py`, `results/phase13/train_massive.json`, figure `results/presentation/figA2_massif.png`)
+Seul changement par rapport au banc de la phase 6 : les données (Sionna UMi + UMa + RMa à puissances réelles, 1 SC sur 3 ; 76 800 échantillons M64K8, 313 344 M8K4), entrée normalisée, FFN 32, 60 000 pas (~33 min). CSI parfait, mêmes 64 tirages que `phase13_massive` :
+
+| M64K8, SNR | 0 | 10 | 20 | 25 | 30 |
+|---|---|---|---|---|---|
+| **notre précodeur (puissances réelles)** | 13,50 | 24,67 | **40,62** | 50,19 | **60,67** |
+| WMMSE 300 it. | 13,50 | 24,66 | 39,84 | 48,19 | 56,78 |
+| WMMSE 30 it. | 13,47 | 23,62 | 36,19 | 43,20 | 50,81 |
+| RZF | 10,22 | 16,04 | 24,50 | 29,74 | 36,30 |
+| (avant : entraîné M8K4 seulement) | 12,22 | 20,31 | 29,00 | 32,89 | 36,06 |
+
+- **Avec les bonnes données, un seul précodeur égale WMMSE convergé en massif et le dépasse au fort SNR** (+2 % à 20 dB, +7 % à 30 dB : WMMSE reste dans un optimum local ou converge lentement avec 8 utilisateurs de puissances très inégales). Le même réseau en M8K4 : 17,68 à 20 dB (WMMSE 300 it. : 17,69).
+- L'échec précédent venait bien des données (configuration ou puissances jamais vues), pas de l'architecture.
+
+### Massif depuis les pilotes, puissances réelles (`experiments/phase13_massive_pilots.py`, `results/phase13/massive_pilots.json`, panneau (d) de `figA_sumrate_snr`)
+Encodeur à convolution + précodeur par paires (initialisé par le précodeur CSI parfait massif), appris de bout en bout ; M64K8, 600 SC, UMi + UMa + RMa, puissances réelles, contrôle de puissance montant, SNR pilote U(0, 20) dB, 256 tirages/scénario, 30 000 pas (~28 min). Évaluation : 64 tirages UMi (ceux du panneau CSI parfait), pilote 10 dB :
+
+| SNR | 0 | 10 | 20 | 25 | 30 |
+|---|---|---|---|---|---|
+| **notre modèle** | 13,48 | 24,49 | **39,34** | 47,36 | **55,24** |
+| LMMSE (covariance massif, mélange) + WMMSE robuste 100 it. | 13,43 | 23,97 | 36,76 | 43,31 | 49,83 |
+| Wiener formule fermée + WMMSE 100 it. | 13,45 | 24,13 | 36,44 | 41,83 | 46,61 |
+| LMMSE + RZF | 10,13 | 15,37 | 21,38 | 24,43 | 28,04 |
+
+- **En massif depuis les pilotes : +7 % à 20 dB, +11 % à 30 dB sur la meilleure chaîne classique**, à 1,3 bps/Hz du CSI parfait (40,62) à 20 dB.
+- En massif, LMMSE + WMMSE dépasse Wiener + WMMSE au fort SNR (l'inverse du cas M8K4) : avec 64 antennes, la covariance moyenne suffit mieux, et le Wiener (κ réglé en M8K4) n'a pas été réajusté.
+
+### Interpolation et bords de la bande (`experiments/phase13_interp2.py`, `results/phase13/interp2.json`)
+- **Interpoler mieux n'apporte presque rien** (CSI parfait, 20 dB) : aligner la phase des colonnes de W avant d'interpoler, ou utiliser une spline, gagne +0,05 à 1 SC sur 12 en UMi (16,87 → 16,92–16,98) et +0,4 seulement à 1 sur 48 ; rien sur St-Catherine. La limite est la variation du canal entre ancres, pas la méthode d'interpolation. On garde l'interpolation linéaire.
+- **Les bords de la bande perdent un peu** (depuis les pilotes, pilote 10 dB, UMi, 20 dB) : notre modèle 16,46 sur les 24 SC des bords contre 17,17 au milieu (−0,7) ; Wiener + WMMSE 15,13 contre 16,79 (−1,7). C'est l'effet de bord de l'IFFT sur une bande coupée net, moindre chez nous. Sur toute la bande, l'enjeu est ~0,03 bps/Hz : donner l'indice de SC (ou la distance au bord) ne vaut pas la peine pour l'instant.
+
+### HLS, étape 1 : référence « golden » du précodeur quantifié (`hls/model.py`, `hls/golden.py`)
+- `hls/model.py` (`QuantPairPrecoder`) extrait le modèle ART (St-Catherine, entrée normalisée, produits quantifiés) : poids entiers, échelles LSQ (par canal pour les poids), bits. Convention LSQ du labo : q = round(clamp(x/s, ±(2^b − 1))), donc **b + 1 bits signés en matériel**.
+- `Golden` (flottant, opération par opération) redonne le modèle PyTorch quantifié : 26,643 contre 26,641 bps/Hz (2 000 canaux).
+- `GoldenFixed` (arithmétique du matériel : MAC entiers exacts, échelles = entier 16 bits × 2^e, valeurs intermédiaires à F bits fractionnaires) — 5 000 canaux de St-Catherine, golden flottant 26,627 :
+
+| F (bits fractionnaires) | 16 | 12 | 10 | 8 |
+|---|---|---|---|---|
+| débit | 26,627 | **26,612** | 26,591 | 26,211 |
+
+- **Deux points de conception trouvés en chemin** : (1) la normalisation par utilisateur doit être en **virgule flottante par bloc** (un exposant par utilisateur : les puissances s'étalent sur ~50 dB ; en virgule fixe uniforme, le log de la puissance relative tombe à log 0) ; (2) une table GELU brute (pas 1/32) coûtait 0,18 bps/Hz ; **table de 257 valeurs avec interpolation linéaire** : plus de perte.
+- **Choix : F = 12 bits fractionnaires** (−0,015 bps/Hz), ~11 bits entiers (max |x| intermédiaire ≈ 890), soit des valeurs intermédiaires sur ~24 bits ; les produits quantifiés restent sur b + 1 bits.
+
+### Notre précodeur en plus petit : front de Pareto (St-Catherine, ART λ = 5) (`scripts/queue13_pareto.sh`, `results/stecath/art_pair_h*_L*_lam5_qprod_norm.json`, `energy_v5_ours.json`, `v5_testset_ours.json`)
+Une seule valeur de λ par taille (λ = 5), produits quantifiés, entrée normalisée ; énergie avec `Energy.py` v5, débit sur le jeu de test v5 (200 000 canaux) :
+
+| taille | param. | MAC | débit 32 bits | débit quantifié | énergie (µJ) |
+|---|---|---|---|---|---|
+| 8 couches, FFN 32 | 44 k | 738 k | 27,60 | 26,65 | 0,113 |
+| 4 couches, FFN 32 | ~23 k | 375 k | 27,36 | 25,94 | 0,064 |
+| 4 couches, FFN 16 | ~16 k | 274 k | 27,22 | 25,58 | 0,049 |
+| 2 couches, FFN 16 | 8 k | 143 k | 26,39 | 24,13 | **0,026** |
+
+- **La version à 2 couches passe sous l'énergie de RZF en 32 bits** (0,026 contre 0,052 µJ) avec 24,1 bps/Hz (RZF : 17,0), et fait mieux que WMMSE à 10 itérations (22,8 bps/Hz, 0,51 µJ) pour 20 fois moins d'énergie.
+- La perte de quantification grandit quand le modèle rétrécit (1,0 → 2,3 bps/Hz) : peu de couches laisse peu de marge.
+
+### HLS, étape 2 : générateur C++ et simulation C (`hls/intref.py`, `hls/codegen.py`, `hls/README.md`)
+- `IntPairPrecoder` (référence entière, exactement les calculs du C++) : 26,622 bps/Hz contre 26,627 pour PyTorch quantifié (5 000 canaux).
+- `codegen.py` (classes `ConstantsWriter`, `SourceWriter`, `TestbenchWriter`) écrit `weights.h`, `precoder.cpp`, `vectors.h`, `tb.cpp`, `run_csim.tcl` (projet dans `/export/tmp/sala/hls_work/pair_precoder`).
+- **Simulation C Vitis HLS 2022.2 : PASS, identique bit à bit à la référence entière** (écart 0, cosinus 1,000000, 32 vecteurs St-Catherine).
+- Version 1 : normalisation par utilisateur avant le bloc, racines en double, entiers C++. Avant la synthèse : racines en entiers, largeurs `ap_int`, pragmas, normalisation intégrée.
+- **Première synthèse de la version 1** (srvgrm07, xcu280, 100 MHz, aucune directive : boucles séquentielles, entiers 32/64 bits ; rapport `/users/sala/Documents/test_projet/hls_work/pair_precoder_v1/csynth_v1.rpt`) : **latence 628 951 cycles = 6,3 ms par précodeur** (≈ 1 MAC par cycle pour 738 k MAC), Fmax estimée 137 MHz ; 240 DSP (2,7 %), 331 BRAM 18K (8 %, poids stockés sur 32 bits), 13,5 k FF, 41 k LUT (3 %). C'est la référence avant optimisation.
+- **Ordre de grandeur de la cible** : 612 précodeurs par slot de 0,5 ms (205 avec 1 SC sur 3) → ~0,8 µs (2,4 µs) par précodeur, soit ~3 000 MAC par cycle pour le modèle à 8 couches et ~600 pour celui à 2 couches (143 k MAC) : faisable sur l'U280 (9 024 DSP), à condition de dérouler les boucles et de réduire les largeurs (b + 1 bits par produit, deux à quatre produits par DSP).
+- **Synthèse de la version 2 (tout en entiers, sans directive)** : simulation C identique bit à bit à la référence entière ; latence 633 397 cycles (6,3 ms), 1 405 DSP (15 %), 332 BRAM, 52 k FF, 103 k LUT. Plus aucun flottant, mais les divisions 64 bits (réciproques de la normalisation et de la LayerNorm) coûtent cher en DSP : à remplacer par une inverse de racine par Newton (multiplications seulement). Les boucles à nombre de tours variable (racine, bit de tête) ont dû être réécrites à nombre de tours fixe pour que la latence soit bornée.
+- **Version 2 de la référence entière (tout en entiers)** : entrée en virgule flottante par bloc (mantisses 16 bits, un exposant par utilisateur), racine entière exacte et réciproque entière pour la normalisation par utilisateur, |G|, LayerNorm et W ; log2 par table interpolée. Débit 26,620 (PyTorch quantifié 26,627) : plus aucune opération flottante, sans perte.
+
+- **À confirmer avec Jérôme avant de s'en servir** : la convention des angles (psi_1, psi_2 : azimut et zénith de départ ? ux, uy : direction à l'arrivée ou vitesse ?), le pas de la grille, et le réseau d'antennes utilisé pour les 64 SC × 64 antennes du site.
+
+## Phase 14 — suites de la réunion du 2026-11-25 (zero-shot, CSI imparfait)
+
+### Zero-shot du précodeur entraîné sur 3GPP (`experiments/phase14_zeroshot.py --train existant`, `results/phase14/zeroshot_existant.json`)
+Précodeur par paires entraîné sur M8K4 + M64K8 (UMi + UMa + RMa, puissances réelles), CSI parfait, testé sans réentraîner (mêmes tirages que `phase13_bench`). Débit (bps/Hz), 0 / 10 / 20 / 25 / 30 dB :
+
+| site | notre précodeur | WMMSE 300 it. | WMMSE 30 it. |
+|---|---|---|---|
+| St-Catherine | 5,49 / 12,68 / 22,05 / 27,27 / 32,62 | 5,51 / 12,70 / 22,19 / 27,53 / 33,11 | 5,51 / 12,69 / 21,76 / 26,59 / 31,37 |
+| Décarie | 5,41 / 12,73 / 22,83 / 28,41 / 34,00 | 5,45 / 12,79 / 22,91 / 28,62 / 34,39 | 5,45 / 12,77 / 22,39 / 27,45 / 32,58 |
+| Ericsson | 5,44 / 13,58 / 24,31 / 30,05 / 35,77 | 5,47 / 13,64 / 24,44 / 30,38 / 36,37 | 5,47 / 13,62 / 24,08 / 29,55 / 35,05 |
+| UMi (vu) | 5,16 / 10,35 / 17,68 / 22,09 / 26,93 | 5,17 / 10,36 / 17,69 / 22,05 / 26,60 | |
+
+- Toujours au-dessus de WMMSE 30 it. ; écart à WMMSE convergé de 0,1 à 0,15 jusqu'à 20 dB et de 0,3 à 0,6 bps/Hz à 25–30 dB sur les sites jamais vus : c'est l'écart que le fine-tuning devra combler.
+
+### CSI imparfait : erreur synthétique à l'entraînement, vrai estimateur au déploiement (`experiments/phase14_csi.py`, `results/phase14/csi_imparfait.json`)
+Précodeur M8K4 initialisé par le précodeur CSI parfait, réentraîné 20 000 pas avec h_est = h + e (erreur gaussienne relative à la puissance de chaque utilisateur, de −25 à −5 dB). Déploiement : Sionna UMi, puissances réelles, 192 tirages, estimation LS + interpolation LMMSE (covariance du mélange) ou LS + interpolation linéaire ; tous les précodeurs reçoivent la même estimation. Débit à 20 dB de données (BER 16-QAM non codé entre parenthèses, approximation gaussienne à partir du SINR de chaque flux) :
+
+| estimation, pilote | entraîné CSI parfait | entraîné erreur synthétique | WMMSE 100 it. (robuste pour LMMSE) | RZF |
+|---|---|---|---|---|
+| LMMSE, 0 dB | 13,96 (0,149) | **14,30** (0,168) | 13,98 (0,149) | 7,80 |
+| LMMSE, 10 dB | 16,25 (0,143) | 16,22 (0,162) | 16,23 (0,142) | 9,83 |
+| LMMSE, 20 dB | **17,34** (0,142) | 17,06 (0,162) | 17,28 (0,140) | 11,10 |
+| linéaire, 0 dB | 10,88 (0,168) | **11,63** (0,184) | 10,66 (0,169) | 5,39 |
+| linéaire, 10 dB | 15,29 (0,144) | **15,44** (0,164) | 15,13 (0,143) | 8,83 |
+| linéaire, 20 dB | **17,17** (0,142) | 16,94 (0,162) | 17,06 (0,141) | 10,91 |
+
+- **L'erreur synthétique aide quand l'estimation est mauvaise** (pilote faible, interpolation simple : +0,75 bps/Hz, +7 % avec LS linéaire à pilote 0 dB) **et coûte un peu quand elle est bonne** (−0,2 à −0,3 à pilote 20 dB) : le modèle est réglé pour une erreur moyenne. Piste : lui donner le niveau d'erreur (SNR pilote) en entrée, ou tirer l'erreur sur une plage plus réaliste.
+- **Le précodeur entraîné en CSI parfait égale ou dépasse WMMSE (robuste) avec un vrai estimateur**, sans réentraîner.
+- **BER** : les précodeurs qui maximisent le débit somme ont un BER moyen plus élevé (puissance concentrée sur les bons utilisateurs ; les flux faibles ont un SINR très bas). Le BER moyen sur les flux n'est pas l'objectif optimisé ; pour une figure BER, il faudra fixer la modulation par flux ou viser un autre objectif (débit minimal, MSE).
+
 ## Prochaine étape
 (1) 3 graines pour l'attention en fréquence D64. (2) Réduire le coût. (3) Bootstrap sur les tirages. (4) Faire le point avant d'aller plus loin (pilote 20 dB, vieillissement, M64).
 Cible principale ensuite (phases 2–3) : le régime pilote 10 dB, où il reste 2,7 à 5,9 bps/Hz après LMMSE.

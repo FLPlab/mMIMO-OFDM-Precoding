@@ -46,7 +46,7 @@ from models.per_sc import Block, PerSCPrecoder
 class DelayEstimator(keras.layers.Layer):
     def __init__(self, num_sc, num_users, num_bs_ant, d=32, layers=2, heads=2, guard=4,
                  gain_bias_init=3.0, angle_mask=False, history=False, banded=False, oversample=1,
-                 max_taps=None, **kw):
+                 max_taps=None, mix="softmax", **kw):
         super().__init__(**kw)
         F, K, self.M = num_sc, num_users, num_bs_ant
         self.angle_mask, self.history, self.banded = angle_mask, history, banded
@@ -70,7 +70,11 @@ class DelayEstimator(keras.layers.Layer):
                                tf.complex64)                       # [F, T]
         self.embed = keras.layers.Dense(d)
         self.pos = keras.layers.Embedding(T, d)
-        self.blocks = [Block(d, heads, "attention", attn="softmax") for _ in range(layers)]
+        # mix (phase 12) : "softmax" (base), "linear" (attention lineaire, sans exponentielle),
+        # "conv" (convolution sur 7 retards voisins + moyenne globale)
+        self.mix = mix
+        self.blocks = [Block(d, heads, "conv", attn=None) if mix == "conv" else Block(d, heads, "attention", attn=mix)
+                       for _ in range(layers)]
         if banded:                          # [centre (sigmoide), centre Im, t-1 Re, Im, t+1 Re, Im]
             self.gain = keras.layers.Dense(6, kernel_initializer="zeros",
                                            bias_initializer=keras.initializers.Constant(
@@ -122,10 +126,30 @@ class DelayEstimator(keras.layers.Layer):
         return h_hat
 
 
+class WienerDelayEstimator(DelayEstimator):
+    """(phase 12) Meme grille de retards, masque en FORMULE FERMEE, sans parametre appris :
+    P(t) = puissance par retard (moyenne sur les antennes, lissee sur 3 retards voisins),
+    s2 = niveau du bruit = mediane de P brute sur les retards (la plupart ne sont que du bruit),
+    gain(t) = max(P(t) - kappa s2, 0) / P(t)  (Wiener avec un profil estime sur le tirage)."""
+
+    def __init__(self, num_sc, num_users, num_bs_ant, kappa=1.0, oversample=2, guard=4, **kw):
+        super().__init__(num_sc, num_users, num_bs_ant, layers=0, oversample=oversample, guard=guard, **kw)
+        self.kappa = kappa
+
+    def call(self, h_ls, pdp=None):
+        g = self.delays(h_ls)                                      # [B, K, T, M]
+        p = tf.reduce_mean(tf.abs(g) ** 2, axis=-1)                # [B, K, T]
+        ps = (p + tf.roll(p, 1, axis=2) + tf.roll(p, -1, axis=2)) / 3.0
+        s2 = tf.sort(p, axis=-1)[..., self.T // 2][..., None] / 0.959   # mediane -> moyenne (chi2, 2M ddl)
+        gain = tf.nn.relu(ps - self.kappa * s2) / (ps + 1e-12)
+        self.last_gain = gain[..., None]
+        return tf.einsum("ft,bktm->bfkm", self.dft, g * tf.cast(gain, g.dtype)[..., None])
+
+
 class DelayDomainPrecoder(keras.Model):
     def __init__(self, num_sc, num_users, num_bs_ant, est_d=32, est_layers=2, angle_mask=False,
                  history=False, banded=False, oversample=1, max_taps=None, precoder_arch="persc",
-                 subband_rb=None, anchor_step=None, **precoder_kw):
+                 subband_rb=None, anchor_step=None, wiener_kappa=None, est_mix="softmax", **precoder_kw):
         """subband_rb (phase 7) : l'encodeur ne voit qu'une sous-bande de subband_rb RB a la fois
         (memes poids pour toutes les sous-bandes) ; None = toute la bande."""
         super().__init__()
@@ -145,7 +169,10 @@ class DelayDomainPrecoder(keras.Model):
         guard = min(4, max(1, self.Fs // num_users // 3))           # retards "negatifs" (4 sur toute la bande)
         self.estimator = DelayEstimator(self.Fs, num_users, num_bs_ant, d=est_d, layers=est_layers, guard=guard,
                                         angle_mask=angle_mask, history=history, banded=banded,
-                                        oversample=oversample, max_taps=max_taps)
+                                        oversample=oversample, max_taps=max_taps, mix=est_mix)
+        if wiener_kappa is not None:                                # (phase 12) encodeur en formule fermee
+            self.estimator = WienerDelayEstimator(self.Fs, num_users, num_bs_ant, kappa=wiener_kappa,
+                                                  oversample=oversample, guard=guard)
         if precoder_arch == "persc":                                # tokens par utilisateur (phases 1-4)
             self.precoder = PerSCPrecoder(num_bs_ant, **precoder_kw)
         else:                                                      # etat par paire (phases 5-6)
@@ -189,7 +216,12 @@ class DelayDomainPrecoder(keras.Model):
             fft = int((f_len(O * N) + f_len(O * self.Fs)) * M)
         else:
             fft = 4 * (T * N + self.Fs * T) * M                    # IDFT + DFT en matrices (borne haute)
-        per_tok = (2 * M + 1) * d + L * (3 * d * d + 2 * T * d + d * d + 4 * d * d) + d
+        mixer = {"softmax": 3 * d * d + 2 * T * d,             # q, k, v + scores et somme sur T retards
+                 "linear": 3 * d * d + 2 * d * d,              # sans softmax : q (k^T v), cout lineaire en T
+                 "conv": d * d + 7 * d * d + d}.get(getattr(self.estimator, "mix", "softmax"))
+        per_tok = (2 * M + 1) * d + L * (mixer + d * d + 4 * d * d) + d
+        if isinstance(self.estimator, WienerDelayEstimator):
+            per_tok = 4 * M + 4                                    # puissance, lissage, gain, produit
         est = K * (fft + T * per_tok)                              # par sous-bande
         prec = self.precoder.macs_per_sc(K)
         if self.anchor_step:                                       # ancres + interpolation (2 MK par SC)

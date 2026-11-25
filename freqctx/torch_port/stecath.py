@@ -108,7 +108,7 @@ def batched(fn, H, bs=4096):
 
 def train(a, P):
     torch.manual_seed(0)
-    net = PairPrecoder(d=16, hidden=a.hidden, layers=8, inp=a.inp).to(DEV)
+    net = PairPrecoder(d=16, hidden=a.hidden, layers=a.layers, inp=a.inp).to(DEV)
     opt = torch.optim.Adam(net.parameters(), lr=1e-3)
     sched = torch.optim.lr_scheduler.CosineAnnealingLR(opt, a.steps)
     Htr = draw(P, a.train_samples, seed=1)
@@ -127,7 +127,7 @@ def train(a, P):
             hist.append({"step": s, "obj": -float(loss), "time_s": round(time.time() - t0)})
             print("   ", hist[-1], flush=True)
     os.makedirs(OUT_W, exist_ok=True)
-    wname = f"pair_h{a.hidden}" + ("" if a.inp == "raw" else f"_{a.inp}")
+    wname = f"pair_h{a.hidden}" + ("" if a.layers == 8 else f"_L{a.layers}") + ("" if a.inp == "raw" else f"_{a.inp}")
     torch.save(net.state_dict(), f"{OUT_W}/{wname}.pt")
     json.dump(hist, open(f"{OUT_W}/{wname}_history.json", "w"))
 
@@ -136,6 +136,7 @@ def main():
     ap = argparse.ArgumentParser()
     ap.add_argument("--train", action="store_true")
     ap.add_argument("--hidden", type=int, default=32)
+    ap.add_argument("--layers", type=int, default=8, help="nombre de couches du precodeur (front de Pareto)")
     ap.add_argument("--steps", type=int, default=40000)
     ap.add_argument("--batch", type=int, default=2048)
     ap.add_argument("--train_samples", type=int, default=800000)

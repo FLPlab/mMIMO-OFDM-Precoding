@@ -1,0 +1,41 @@
+{
+ "controle_v5_tiny_8b_uJ": 1.0494688784046955,
+ "notre_precodeur": {
+  "mac": 737792,
+  "sr_fp32": 27.595134735107422,
+  "sr_quant": 26.606443405151367,
+  "energy_uJ_32b": 3.316360630272529,
+  "energy_uJ_8b": 0.31525372116439904,
+  "energy_uJ_quant": 0.11334253385726949
+ },
+ "tailles": {
+  "art_pair_h32_lam5_qprod_norm": {
+   "layers": 8,
+   "hidden": 32,
+   "mac": 737792,
+   "energy_uJ_quant": 0.11334253385726949,
+   "sr_quant_20k": 26.606443405151367
+  },
+  "art_pair_h32_L4_lam5_qprod_norm": {
+   "layers": 4,
+   "hidden": 32,
+   "mac": 375296,
+   "energy_uJ_quant": 0.06424689890233479,
+   "sr_quant_20k": 25.87982940673828
+  },
+  "art_pair_h16_L4_lam5_qprod_norm": {
+   "layers": 4,
+   "hidden": 16,
+   "mac": 273920,
+   "energy_uJ_quant": 0.048634970883688164,
+   "sr_quant_20k": 25.521230697631836
+  },
+  "art_pair_h16_L2_lam5_qprod_norm": {
+   "layers": 2,
+   "hidden": 16,
+   "mac": 143360,
+   "energy_uJ_quant": 0.02575875666721476,
+   "sr_quant_20k": 24.070308685302734
+  }
+ }
+}

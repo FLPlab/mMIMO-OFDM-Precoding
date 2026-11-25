@@ -1,0 +1,338 @@
+[
+ {
+  "config": "base",
+  "lambda": "0.001",
+  "sr": 24.28,
+  "energy_publiee": 3.6638,
+  "energy_recalculee": 3.6931320764256896
+ },
+ {
+  "config": "base",
+  "lambda": "0.003",
+  "sr": 24.25,
+  "energy_publiee": 3.6942,
+  "energy_recalculee": 3.7310415438186344
+ },
+ {
+  "config": "base",
+  "lambda": "0.01",
+  "sr": 24.3,
+  "energy_publiee": 3.4844,
+  "energy_recalculee": 3.5152051397864796
+ },
+ {
+  "config": "base",
+  "lambda": "0.03",
+  "sr": 24.2,
+  "energy_publiee": 2.499,
+  "energy_recalculee": 2.523135835973949
+ },
+ {
+  "config": "base",
+  "lambda": "0.1",
+  "sr": 24.41,
+  "energy_publiee": 1.9332,
+  "energy_recalculee": 1.969231642986068
+ },
+ {
+  "config": "base",
+  "lambda": "0.3",
+  "sr": 24.24,
+  "energy_publiee": 1.3534,
+  "energy_recalculee": 1.3928691037429417
+ },
+ {
+  "config": "base",
+  "lambda": "1.0",
+  "sr": 23.57,
+  "energy_publiee": 1.0154,
+  "energy_recalculee": 1.049399699307822
+ },
+ {
+  "config": "base",
+  "lambda": "5.0",
+  "sr": 22.37,
+  "energy_publiee": 0.8532,
+  "energy_recalculee": 0.8707618673186063
+ },
+ {
+  "config": "large",
+  "lambda": "0.001",
+  "sr": 25.85,
+  "energy_publiee": 7.7318,
+  "energy_recalculee": 7.8184031000547565
+ },
+ {
+  "config": "large",
+  "lambda": "0.003",
+  "sr": 25.86,
+  "energy_publiee": 7.6017,
+  "energy_recalculee": 7.68775706191401
+ },
+ {
+  "config": "large",
+  "lambda": "0.01",
+  "sr": 25.85,
+  "energy_publiee": 7.3358,
+  "energy_recalculee": 7.421890488734377
+ },
+ {
+  "config": "large",
+  "lambda": "0.03",
+  "sr": 25.91,
+  "energy_publiee": 6.3887,
+  "energy_recalculee": 6.495105602680974
+ },
+ {
+  "config": "large",
+  "lambda": "0.1",
+  "sr": 25.88,
+  "energy_publiee": 4.6845,
+  "energy_recalculee": 4.764697512436127
+ },
+ {
+  "config": "large",
+  "lambda": "0.3",
+  "sr": 25.77,
+  "energy_publiee": 2.8464,
+  "energy_recalculee": 2.975713157300941
+ },
+ {
+  "config": "large",
+  "lambda": "1.0",
+  "sr": 25.32,
+  "energy_publiee": 2.1661,
+  "energy_recalculee": 2.2755554648110543
+ },
+ {
+  "config": "large",
+  "lambda": "5.0",
+  "sr": 24.45,
+  "energy_publiee": 1.7638,
+  "energy_recalculee": 1.8069970479652295
+ },
+ {
+  "config": "medium",
+  "lambda": "0.001",
+  "sr": 23.57,
+  "energy_publiee": 2.7652,
+  "energy_recalculee": 2.791407719982829
+ },
+ {
+  "config": "medium",
+  "lambda": "0.003",
+  "sr": 23.28,
+  "energy_publiee": 2.0592,
+  "energy_recalculee": 2.086448914454175
+ },
+ {
+  "config": "medium",
+  "lambda": "0.01",
+  "sr": 22.98,
+  "energy_publiee": 1.1213,
+  "energy_recalculee": 1.1517495595259464
+ },
+ {
+  "config": "medium",
+  "lambda": "0.03",
+  "sr": 22.85,
+  "energy_publiee": 0.9132,
+  "energy_recalculee": 0.9436314982075993
+ },
+ {
+  "config": "medium",
+  "lambda": "0.1",
+  "sr": 22.61,
+  "energy_publiee": 0.6838,
+  "energy_recalculee": 0.6996532202613979
+ },
+ {
+  "config": "medium",
+  "lambda": "0.3",
+  "sr": 22.49,
+  "energy_publiee": 0.6141,
+  "energy_recalculee": 0.6239568779281643
+ },
+ {
+  "config": "medium",
+  "lambda": "1.0",
+  "sr": 22.42,
+  "energy_publiee": 0.5787,
+  "energy_recalculee": 0.5853392423252803
+ },
+ {
+  "config": "medium",
+  "lambda": "5.0",
+  "sr": 21.64,
+  "energy_publiee": 0.5587,
+  "energy_recalculee": 0.561534346160976
+ },
+ {
+  "config": "small",
+  "lambda": "0.001",
+  "sr": 23.59,
+  "energy_publiee": 2.3118,
+  "energy_recalculee": 2.350284616634816
+ },
+ {
+  "config": "small",
+  "lambda": "0.003",
+  "sr": 23.57,
+  "energy_publiee": 2.0174,
+  "energy_recalculee": 2.055954511599359
+ },
+ {
+  "config": "small",
+  "lambda": "0.01",
+  "sr": 23.45,
+  "energy_publiee": 1.5012,
+  "energy_recalculee": 1.5250213287662493
+ },
+ {
+  "config": "small",
+  "lambda": "0.03",
+  "sr": 23.15,
+  "energy_publiee": 1.0516,
+  "energy_recalculee": 1.0840679324794407
+ },
+ {
+  "config": "small",
+  "lambda": "0.1",
+  "sr": 22.89,
+  "energy_publiee": 0.6737,
+  "energy_recalculee": 0.7031905732064394
+ },
+ {
+  "config": "small",
+  "lambda": "0.3",
+  "sr": 22.62,
+  "energy_publiee": 0.4359,
+  "energy_recalculee": 0.4568009211912142
+ },
+ {
+  "config": "small",
+  "lambda": "1.0",
+  "sr": 22.05,
+  "energy_publiee": 0.337,
+  "energy_recalculee": 0.34960514013041544
+ },
+ {
+  "config": "small",
+  "lambda": "5.0",
+  "sr": 21.26,
+  "energy_publiee": 0.3047,
+  "energy_recalculee": 0.3075283266884056
+ },
+ {
+  "config": "tiny",
+  "lambda": "0.001",
+  "sr": 22.87,
+  "energy_publiee": 0.7702,
+  "energy_recalculee": 0.7761150707488179
+ },
+ {
+  "config": "tiny",
+  "lambda": "0.003",
+  "sr": 22.68,
+  "energy_publiee": 0.6439,
+  "energy_recalculee": 0.6497884710427109
+ },
+ {
+  "config": "tiny",
+  "lambda": "0.01",
+  "sr": 22.61,
+  "energy_publiee": 0.5182,
+  "energy_recalculee": 0.5228513396521126
+ },
+ {
+  "config": "tiny",
+  "lambda": "0.03",
+  "sr": 22.13,
+  "energy_publiee": 0.3681,
+  "energy_recalculee": 0.37318161310091863
+ },
+ {
+  "config": "tiny",
+  "lambda": "0.1",
+  "sr": 21.89,
+  "energy_publiee": 0.27,
+  "energy_recalculee": 0.2757385278339723
+ },
+ {
+  "config": "tiny",
+  "lambda": "0.3",
+  "sr": 21.25,
+  "energy_publiee": 0.1604,
+  "energy_recalculee": 0.16537006104331245
+ },
+ {
+  "config": "tiny",
+  "lambda": "1.0",
+  "sr": 20.61,
+  "energy_publiee": 0.1035,
+  "energy_recalculee": 0.10554588235200048
+ },
+ {
+  "config": "tiny",
+  "lambda": "5.0",
+  "sr": 19.06,
+  "energy_publiee": 0.0842,
+  "energy_recalculee": 0.08558767208151194
+ },
+ {
+  "config": "xlarge",
+  "lambda": "0.001",
+  "sr": 26.69,
+  "energy_publiee": 28.1544,
+  "energy_recalculee": 28.04640554922583
+ },
+ {
+  "config": "xlarge",
+  "lambda": "0.003",
+  "sr": 26.65,
+  "energy_publiee": 27.0857,
+  "energy_recalculee": 26.977773808769673
+ },
+ {
+  "config": "xlarge",
+  "lambda": "0.01",
+  "sr": 26.66,
+  "energy_publiee": 24.7353,
+  "energy_recalculee": 24.646277772575274
+ },
+ {
+  "config": "xlarge",
+  "lambda": "0.03",
+  "sr": 26.65,
+  "energy_publiee": 21.6545,
+  "energy_recalculee": 21.52223927971791
+ },
+ {
+  "config": "xlarge",
+  "lambda": "0.1",
+  "sr": 26.67,
+  "energy_publiee": 14.5201,
+  "energy_recalculee": 14.454905479875809
+ },
+ {
+  "config": "xlarge",
+  "lambda": "0.3",
+  "sr": 26.56,
+  "energy_publiee": 10.4569,
+  "energy_recalculee": 10.51455085765033
+ },
+ {
+  "config": "xlarge",
+  "lambda": "1.0",
+  "sr": 26.32,
+  "energy_publiee": 6.2872,
+  "energy_recalculee": 6.410706232973306
+ },
+ {
+  "config": "xlarge",
+  "lambda": "5.0",
+  "sr": 25.52,
+  "energy_publiee": 4.4872,
+  "energy_recalculee": 4.595095459074984
+ }
+]

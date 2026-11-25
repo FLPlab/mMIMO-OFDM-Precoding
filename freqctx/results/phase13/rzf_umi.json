@@ -1,0 +1,15 @@
+{
+ "snrs_db": [
+  0,
+  10,
+  20,
+  25
+ ],
+ "RZF (CSI parfait)": [
+  4.567429065704346,
+  7.775012969970703,
+  11.644195556640625,
+  14.261805534362793
+ ],
+ "note": "memes tirages que checks.json sionna_umi (graine 4026)"
+}

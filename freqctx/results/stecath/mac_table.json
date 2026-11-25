@@ -1,0 +1,57 @@
+{
+ "Transformer labo tiny": {
+  "mac": 1908736,
+  "params": 481728
+ },
+ "Transformer labo small": {
+  "mac": 7487488,
+  "params": 1880832
+ },
+ "Transformer labo medium": {
+  "mac": 13778944,
+  "params": 3461888
+ },
+ "Transformer labo base": {
+  "mac": 20602880,
+  "params": 5176320
+ },
+ "Transformer labo large": {
+  "mac": 44351488,
+  "params": 11114368
+ },
+ "Transformer labo xlarge": {
+  "mac": 109379584,
+  "params": 27412864
+ },
+ "notre precodeur": {
+  "mac": 737792,
+  "params": 44000
+ },
+ "RZF": {
+  "mac": 9010
+ },
+ "WMMSE 1 it. (forme efficace)": {
+  "mac": 18260
+ },
+ "WMMSE 1 it. (article, eq. 12)": {
+  "mac": 2880309
+ },
+ "WMMSE 10 it. (forme efficace)": {
+  "mac": 101510
+ },
+ "WMMSE 10 it. (article, eq. 12)": {
+  "mac": 28803093
+ },
+ "WMMSE 30 it. (forme efficace)": {
+  "mac": 286510
+ },
+ "WMMSE 30 it. (article, eq. 12)": {
+  "mac": 86409279
+ },
+ "WMMSE 100 it. (forme efficace)": {
+  "mac": 934010
+ },
+ "WMMSE 100 it. (article, eq. 12)": {
+  "mac": 288030933
+ }
+}

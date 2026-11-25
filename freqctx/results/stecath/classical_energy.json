@@ -1,0 +1,84 @@
+{
+ "meta": {
+  "note": "Energie de RZF et WMMSE dans le MEME modele d'energie que les reseaux (Moons et al. 2017, constantes",
+  "div_cost_mac": 10
+ },
+ "methods": {
+  "RZF": {
+   "sr": 17.03152084350586,
+   "mac": 9010,
+   "energy_uJ_32b": 0.0522319609375,
+   "energy_uJ_16b": 0.01619594140625
+  },
+  "WMMSE 1 it.": {
+   "sr": 19.01070785522461,
+   "iters": 1,
+   "mac": 18260,
+   "energy_uJ_32b": 0.097868234375,
+   "energy_uJ_16b": 0.029910822265625
+  },
+  "WMMSE 2 it.": {
+   "sr": 20.05984115600586,
+   "iters": 2,
+   "mac": 27510,
+   "energy_uJ_32b": 0.143504515625,
+   "energy_uJ_16b": 0.04362570703125
+  },
+  "WMMSE 3 it.": {
+   "sr": 20.74149513244629,
+   "iters": 3,
+   "mac": 36760,
+   "energy_uJ_32b": 0.18914078125,
+   "energy_uJ_16b": 0.05734058984375
+  },
+  "WMMSE 5 it.": {
+   "sr": 21.617198944091797,
+   "iters": 5,
+   "mac": 55260,
+   "energy_uJ_32b": 0.28041334375,
+   "energy_uJ_16b": 0.084770359375
+  },
+  "WMMSE 10 it.": {
+   "sr": 22.765098571777344,
+   "iters": 10,
+   "mac": 101510,
+   "energy_uJ_32b": 0.50859471875,
+   "energy_uJ_16b": 0.153344765625
+  },
+  "WMMSE 20 it.": {
+   "sr": 23.82895851135254,
+   "iters": 20,
+   "mac": 194010,
+   "energy_uJ_32b": 0.9649574375,
+   "energy_uJ_16b": 0.29049359375
+  },
+  "WMMSE 30 it.": {
+   "sr": 24.414106369018555,
+   "iters": 30,
+   "mac": 286510,
+   "energy_uJ_32b": 1.42132025,
+   "energy_uJ_16b": 0.427642375
+  },
+  "WMMSE 50 it.": {
+   "sr": 25.097314834594727,
+   "iters": 50,
+   "mac": 471510,
+   "energy_uJ_32b": 2.33404575,
+   "energy_uJ_16b": 0.7019400625
+  },
+  "WMMSE 100 it.": {
+   "sr": 25.915267944335938,
+   "iters": 100,
+   "mac": 934010,
+   "energy_uJ_32b": 4.6158595,
+   "energy_uJ_16b": 1.38768425
+  },
+  "WMMSE 300 it.": {
+   "sr": 26.881027221679688,
+   "iters": 300,
+   "mac": 2784010,
+   "energy_uJ_32b": 13.743114,
+   "energy_uJ_16b": 4.1306605
+  }
+ }
+}
