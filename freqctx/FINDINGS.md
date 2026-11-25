@@ -1484,7 +1484,7 @@ Modèle 2 couches h16 (143 k MAC), xcu280, horloge cible 4 ns. Toutes les varian
 - `stream` : couches denses déroulées à poids constants, 4 antennes/cycle, le flot ne se vide pas entre sous-porteuses (~17 cycles/SC en régime établi) ; 4 instances → 256 SC en ~1 080 cycles. Déroulage complet (1 SC/cycle) : ~16× les LUT, impossible sur l'U280.
 - `flow` limité par la profondeur de pipeline (~45 cycles) face à 16 tokens ; dérouler les tokens double les ressources sans gain.
 - Aucune division : inverse de racine par table + 1 tour de Newton, perte 0,004 bps/Hz (2 couches), 0,002 (8 couches).
-- 8 couches (738 k MAC) : banc natif bit à bit en `stream`, synthèse en cours. À faire : cosimulation RTL (profondeurs de FIFO), multiplications par constantes 16 bits en LUT pour une 5e instance.
+- 8 couches (738 k MAC), `stream` : 64 SC en 1 878 cycles (7,5 µs à 250 MHz), II du lot 1 080 ; 7 252 DSP (80 % de l'U280), 1,28 M LUT (98 %), 1 325 BRAM : une seule instance, à la limite (estimation HLS, le placement-routage peut échouer). À faire : cosimulation RTL (profondeurs de FIFO), multiplications par constantes 16 bits en LUT pour une 5e instance.
 
 ### ART avec le coût FPGA (`torch_port/art_stecath.py --cost fpga`)
 Premier essai (poids jusqu'à 8 bits, coût calculé avec b_w borné à 4) : b_w > 4 gratuit → tous les poids à 8 bits, activations à 2 bits, débit 22,3 (λ = 5) contre 24,1 avec l'objectif énergie. Défaut de la perte, pas un résultat : relancé avec b_w ≤ 4 (régime sans DSP), λ = 1 et 5.
