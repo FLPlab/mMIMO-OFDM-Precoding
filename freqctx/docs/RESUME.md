@@ -13,7 +13,7 @@ Feuille de route de François, toute traitée :
 - **ART-FPGA** (`art_stecath.py --cost fpga`, b_w ≤ 4) : λ = 0,3 → 24,56 bps/Hz, mieux que l'objectif énergie (24,07), poids 2–4 bits.
 - **HLS** (`hls/`, Vitis 2022.2, U280) : stream 64 SC en 3,8 µs (4 instances) ; fold S = 8 : 335 DSP, 171 k LUT, une instance tient 1/3 de bande 5G si Fmax ≥ 280 MHz. À faire : placement-routage, cosim RTL, 8 couches.
 Pistes suivantes : intégrer le raffinement WMMSE (coût, HLS), témoin CSI massif, généralisation à K = 16, point d'avancement pour le 1er déc.
-Pratique : ne plus utiliser Fable (coût en tokens) ; sous-agents Sonnet, un seul rapport final court chacun.
+Pratique : répartir les agents selon la difficulté (Sonnet par défaut, Fable seulement si nécessaire), un seul rapport final court chacun.
 
 ## Le sujet
 
