@@ -1428,6 +1428,18 @@ Précodeur M8K4 initialisé par le précodeur CSI parfait, réentraîné 20 000 
 - **Le précodeur entraîné en CSI parfait égale ou dépasse WMMSE (robuste) avec un vrai estimateur**, sans réentraîner.
 - **BER** : les précodeurs qui maximisent le débit somme ont un BER moyen plus élevé (puissance concentrée sur les bons utilisateurs ; les flux faibles ont un SINR très bas). Le BER moyen sur les flux n'est pas l'objectif optimisé ; pour une figure BER, il faudra fixer la modulation par flux ou viser un autre objectif (débit minimal, MSE).
 
+### BER réel par simulation de symboles (`experiments/phase14_ber.py`, `results/phase14/ber.{json,png}`)
+QAM Gray (QPSK à 256-QAM), démodulation dure, gain effectif connu du récepteur ; UMi M8K4, puissances réelles. Modulation adaptative par flux (BER cible 1e-3, sans codage) → débit transmis. Pilote LMMSE 10 dB, débit transmis (BER 16-QAM sur flux actifs) :
+| précodeur | 10 dB | 20 dB | 30 dB |
+|---|---|---|---|
+| entraîné erreur synthétique | **5,53** (0,062) | **9,98** (0,028) | **13,40** (0,014) |
+| entraîné CSI parfait | 5,29 (0,086) | 9,62 (0,052) | 13,28 (0,034) |
+| WMMSE 100 it. robuste | 5,28 (0,084) | 9,56 (0,051) | 13,15 (0,034) |
+| MRT | 3,92 | 5,02 | 5,16 |
+| RZF | 1,71 | 2,73 | 4,94 |
+- L'ancienne figure (BER moyen gaussien) était trompeuse : à modulation réelle, la concentration de puissance des précodeurs somme-débit permet les ordres élevés ; RZF garde des SINR juste au-dessus du seuil QPSK (≈ 1,3 bit par flux actif contre ≈ 3,8).
+- L'erreur synthétique gagne partout en débit transmis (+10 % à pilote 0 dB, +1 % à 20 dB), y compris là où elle perdait en débit de Shannon.
+
 ### Zero-shot : entraînement sur UMa seul ou sur les 3 modèles 3GPP (`phase14_zeroshot.py --train uma|3gpp`, `results/phase14/zeroshot_{uma,3gpp}.json`)
 Débit à 10 / 20 / 25 / 30 dB, CSI parfait (mêmes tirages que `phase13_bench`) :
 
