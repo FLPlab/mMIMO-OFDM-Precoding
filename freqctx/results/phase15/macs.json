@@ -1,0 +1,272 @@
+{
+ "meta": {
+  "created": "2026-11-26",
+  "config_base": "d=16, hidden=32, layers=8, mix=triangular_g, inp=norm"
+ },
+ "breakdown_configs": {
+  "base_M8K4": {
+   "K": 4,
+   "M": 8,
+   "d": 16,
+   "hidden": 32,
+   "layers": 8,
+   "config": "M8K4",
+   "total_macs": 717312,
+   "breakdown": {
+    "G_matrix": 512,
+    "edges_per_pair": 42720,
+    "triangular_products": 32768,
+    "W_matmul": 512
+   },
+   "percentages": {
+    "G_matrix": 0.07137758743754462,
+    "edges": 95.28907922912205,
+    "triangular_products": 4.5681655960028555,
+    "W_matmul": 0.07137758743754462
+   }
+  },
+  "base_M64K4": {
+   "K": 4,
+   "M": 64,
+   "d": 16,
+   "hidden": 32,
+   "layers": 8,
+   "config": "M64K4",
+   "total_macs": 724480,
+   "breakdown": {
+    "G_matrix": 4096,
+    "edges_per_pair": 42720,
+    "triangular_products": 32768,
+    "W_matmul": 4096
+   },
+   "percentages": {
+    "G_matrix": 0.5653710247349824,
+    "edges": 94.34628975265018,
+    "triangular_products": 4.522968197879859,
+    "W_matmul": 0.5653710247349824
+   }
+  },
+  "base_M64K8": {
+   "K": 8,
+   "M": 64,
+   "d": 16,
+   "hidden": 32,
+   "layers": 8,
+   "config": "M64K8",
+   "total_macs": 3028992,
+   "breakdown": {
+    "G_matrix": 16384,
+    "edges_per_pair": 42720,
+    "triangular_products": 262144,
+    "W_matmul": 16384
+   },
+   "percentages": {
+    "G_matrix": 0.5409060175794456,
+    "edges": 90.26369168356997,
+    "triangular_products": 8.654496281271129,
+    "W_matmul": 0.5409060175794456
+   }
+  },
+  "L4_M8K4": {
+   "K": 4,
+   "M": 8,
+   "d": 16,
+   "hidden": 32,
+   "layers": 4,
+   "config": "M8K4",
+   "total_macs": 360960,
+   "breakdown": {
+    "G_matrix": 512,
+    "edges_per_pair": 21472,
+    "triangular_products": 16384,
+    "W_matmul": 512
+   },
+   "percentages": {
+    "G_matrix": 0.14184397163120568,
+    "edges": 95.177304964539,
+    "triangular_products": 4.539007092198582,
+    "W_matmul": 0.14184397163120568
+   }
+  },
+  "L4_M64K4": {
+   "K": 4,
+   "M": 64,
+   "d": 16,
+   "hidden": 32,
+   "layers": 4,
+   "config": "M64K4",
+   "total_macs": 368128,
+   "breakdown": {
+    "G_matrix": 4096,
+    "edges_per_pair": 21472,
+    "triangular_products": 16384,
+    "W_matmul": 4096
+   },
+   "percentages": {
+    "G_matrix": 1.1126564673157162,
+    "edges": 93.3240611961057,
+    "triangular_products": 4.450625869262865,
+    "W_matmul": 1.1126564673157162
+   }
+  },
+  "L2_M8K4": {
+   "K": 4,
+   "M": 8,
+   "d": 16,
+   "hidden": 32,
+   "layers": 2,
+   "config": "M8K4",
+   "total_macs": 182784,
+   "breakdown": {
+    "G_matrix": 512,
+    "edges_per_pair": 10848,
+    "triangular_products": 8192,
+    "W_matmul": 512
+   },
+   "percentages": {
+    "G_matrix": 0.2801120448179272,
+    "edges": 94.95798319327731,
+    "triangular_products": 4.481792717086835,
+    "W_matmul": 0.2801120448179272
+   }
+  },
+  "L2_M64K4": {
+   "K": 4,
+   "M": 64,
+   "d": 16,
+   "hidden": 32,
+   "layers": 2,
+   "config": "M64K4",
+   "total_macs": 189952,
+   "breakdown": {
+    "G_matrix": 4096,
+    "edges_per_pair": 10848,
+    "triangular_products": 8192,
+    "W_matmul": 4096
+   },
+   "percentages": {
+    "G_matrix": 2.1563342318059298,
+    "edges": 91.37466307277629,
+    "triangular_products": 4.3126684636118595,
+    "W_matmul": 2.1563342318059298
+   }
+  },
+  "h16_L4_M8K4": {
+   "K": 4,
+   "M": 8,
+   "d": 16,
+   "hidden": 16,
+   "layers": 4,
+   "config": "M8K4",
+   "total_macs": 262656,
+   "breakdown": {
+    "G_matrix": 512,
+    "edges_per_pair": 15328,
+    "triangular_products": 16384,
+    "W_matmul": 512
+   },
+   "percentages": {
+    "G_matrix": 0.1949317738791423,
+    "edges": 93.37231968810916,
+    "triangular_products": 6.237816764132553,
+    "W_matmul": 0.1949317738791423
+   }
+  },
+  "h16_L4_M64K4": {
+   "K": 4,
+   "M": 64,
+   "d": 16,
+   "hidden": 16,
+   "layers": 4,
+   "config": "M64K4",
+   "total_macs": 269824,
+   "breakdown": {
+    "G_matrix": 4096,
+    "edges_per_pair": 15328,
+    "triangular_products": 16384,
+    "W_matmul": 4096
+   },
+   "percentages": {
+    "G_matrix": 1.5180265654648957,
+    "edges": 90.89184060721063,
+    "triangular_products": 6.072106261859583,
+    "W_matmul": 1.5180265654648957
+   }
+  },
+  "h16_L2_M8K4": {
+   "K": 4,
+   "M": 8,
+   "d": 16,
+   "hidden": 16,
+   "layers": 2,
+   "config": "M8K4",
+   "total_macs": 133632,
+   "breakdown": {
+    "G_matrix": 512,
+    "edges_per_pair": 7776,
+    "triangular_products": 8192,
+    "W_matmul": 512
+   },
+   "percentages": {
+    "G_matrix": 0.3831417624521073,
+    "edges": 93.10344827586206,
+    "triangular_products": 6.130268199233717,
+    "W_matmul": 0.3831417624521073
+   }
+  },
+  "h16_L2_M64K4": {
+   "K": 4,
+   "M": 64,
+   "d": 16,
+   "hidden": 16,
+   "layers": 2,
+   "config": "M64K4",
+   "total_macs": 140800,
+   "breakdown": {
+    "G_matrix": 4096,
+    "edges_per_pair": 7776,
+    "triangular_products": 8192,
+    "W_matmul": 4096
+   },
+   "percentages": {
+    "G_matrix": 2.909090909090909,
+    "edges": 88.36363636363636,
+    "triangular_products": 5.818181818181818,
+    "W_matmul": 2.909090909090909
+   }
+  }
+ },
+ "leviers_no_form": {
+  "interp_1sc_per_12": {
+   "description": "Pas frequentiel 1 SC sur 12 (au lieu de 1 sur 1)",
+   "rate_loss_bps_hz": {
+    "sionna_umi": -1.46,
+    "stecath": -0.46
+   },
+   "mac_reduction_factor": 0.08333333333333333,
+   "mac_per_sc_effective": 60373,
+   "source": "phase13/interp.json (rate interpolee), 1 SC sur 12 divise par 12"
+  },
+  "reduce_L_8to4": {
+   "description": "4 couches au lieu de 8 (hidden=32)",
+   "mac_per_sc": 375296,
+   "rate_loss_bps_hz": 0.7,
+   "mac_reduction_percent": 50,
+   "source": "energy_v5_ours.json + FINDINGS pareto"
+  },
+  "reduce_h_32to16": {
+   "description": "FFN largeur 16 au lieu de 32 (4 couches)",
+   "mac_per_sc": 273920,
+   "rate_loss_bps_hz": 0.36,
+   "mac_reduction_percent": 27,
+   "source": "energy_v5_ours.json art_pair_h16_L4_lam5_qprod_norm"
+  },
+  "reduce_L2_h16": {
+   "description": "2 couches, FFN largeur 16",
+   "mac_per_sc": 143360,
+   "rate_loss_bps_hz": 2.52,
+   "mac_reduction_percent": 81,
+   "source": "energy_v5_ours.json art_pair_h16_L2_lam5_qprod_norm"
+  }
+ }
+}

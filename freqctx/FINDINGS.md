@@ -1574,6 +1574,21 @@ Précodeur 3GPP M8K4 + M64K8 (phase 13), CSI parfait, M8K4 ; UMi (tirages `phase
 - **Structure de Björnson** C = (ΛG + σ²I)⁻¹P^½ ajustée au C du réseau (2K scalaires, Adam 400 pas, 256 échantillons) : erreur relative médiane 1 à 5 % ; à 40 dB, la forme exacte avec ces (λ, p) dépasse le réseau (UMi 37,85 contre 36,04 ; Ericsson 46,26 contre 43,05). Le réseau semble avoir la bonne forme et une inversion imprécise. Réserve : moyennes tirées par des ajustements ratés (Ericsson 20 dB : forme 21,66 < réseau 23,73), donc indicatif seulement.
 - **Newton–Schulz depuis une initialisation générique** (λ, p de WMMSE, X0 = Aᴴ/(‖A‖₁‖A‖∞), 512 MAC/pas) : 15 pas égalent le réseau à 20 dB (~8,7 k MAC/SC contre 717 k), insuffisant à 30 dB (Ericsson 35,13 contre 35,52). Référence seulement : décision du 2026-11-26, le modèle principal reste libre.
 
+### Entraîner jusqu'à 40 dB — ÉCARTÉ (`results/phase15/snr40.json`, code non gardé)
+Seul changement par rapport au précodeur 3GPP de la phase 13 : SNR d'entraînement U(0, 40) au lieu de U(0, 30) (60 000 pas, plateau dès 20 000). Mêmes tirages que le diagnostic. Débit ancien / nouveau / WMMSE 300 :
+
+| SNR | UMi | St-Catherine | Décarie | Ericsson |
+|---|---|---|---|---|
+| 20 dB | 17,65 / 17,62 / 17,66 | 22,35 / 22,21 / 22,36 | 23,27 / 23,09 / 23,22 | 24,08 / 23,59 / 24,03 |
+| 30 dB | 26,89 / 26,87 / 26,56 | 33,32 / 33,17 / 33,58 | 34,80 / 34,65 / 35,00 | 35,26 / 34,74 / 36,15 |
+| 40 dB | 36,28 / 37,28 / 35,61 | 43,00 / 43,95 / 44,68 | 44,51 / 45,72 / 45,88 | 43,71 / 44,40 / 47,84 |
+
+- Critère fixé à l'avance (≥ +0,2 à 30 dB sur les sites, ≥ −0,05 de 0 à 20 dB) : échoue des deux côtés (−0,28 en moyenne à 30 dB ; Ericsson −0,49 à 20 dB).
+- À 40 dB, le plancher descend (fuite médiane −48 à −51 dB contre −43 à −44) et le débit gagne +0,7 à +1,2, mais tout ce qui est en dessous se dégrade : **le réseau (8 couches, état 16) fait un compromis précision / plage de SNR à capacité fixe**. Le plancher n'est pas qu'une question de plage d'entraînement.
+
+### Répartition des MAC du précodeur (`experiments/phase15_macs.py`, `results/phase15/macs.json`)
+Base (8 couches, état 16, FFN 32) : 717 k MAC/SC en M8K4, 724 k en M64K4. **95 % dans les couches denses appliquées à chaque paire** (16 paires × 8 couches), 4,6 % dans le produit triangulaire, 0,1 % pour G et pour W : le coût ne dépend presque pas de M. Leviers sans forme imposée : pas fréquentiel (1 SC sur 12 sur les sites : −0,04 à −0,43 bps/Hz, ÷ 12 ; UMi −0,78), largeur des couches par paire, profondeur (4 couches : 375 k), quantification.
+
 ## Prochaine étape
 (1) 3 graines pour l'attention en fréquence D64. (2) Réduire le coût. (3) Bootstrap sur les tirages. (4) Faire le point avant d'aller plus loin (pilote 20 dB, vieillissement, M64).
 Cible principale ensuite (phases 2–3) : le régime pilote 10 dB, où il reste 2,7 à 5,9 bps/Hz après LMMSE.
