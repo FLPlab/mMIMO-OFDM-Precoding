@@ -1428,6 +1428,19 @@ Précodeur M8K4 initialisé par le précodeur CSI parfait, réentraîné 20 000 
 - **Le précodeur entraîné en CSI parfait égale ou dépasse WMMSE (robuste) avec un vrai estimateur**, sans réentraîner.
 - **BER** : les précodeurs qui maximisent le débit somme ont un BER moyen plus élevé (puissance concentrée sur les bons utilisateurs ; les flux faibles ont un SINR très bas). Le BER moyen sur les flux n'est pas l'objectif optimisé ; pour une figure BER, il faudra fixer la modulation par flux ou viser un autre objectif (débit minimal, MSE).
 
+### CSI imparfait : variance d'erreur par utilisateur en entrée (`experiments/phase14_csi_errin.py`, `GramPrecoder(err_in=True)`, `results/phase14/csi_errin.json`)
+Erreur synthétique tirée par utilisateur, niveau fourni au réseau ; déploiement : variance donnée par l'estimateur Sionna. Débit à 20 dB, LMMSE :
+| taille, pilote | CSI parfait | synth. (M8K4 seul) | **synth. + variance** | WMMSE robuste | RZF |
+|---|---|---|---|---|---|
+| M8K4, 0 dB | 13,96 | 14,30 | **14,32** | 13,98 | 7,80 |
+| M8K4, 10 dB | 16,25 | 16,22 | **16,32** | 16,23 | 9,83 |
+| M8K4, 20 dB | 17,34 | 17,06 | 17,30 | 17,28 | 11,10 |
+| M64K8, 0 dB | 32,98 | 30,31 | **33,09** | 32,92 | 18,06 |
+| M64K8, 10 dB | 37,42 | 33,01 | **37,42** | 36,77 | 21,41 |
+| M64K8, 20 dB | 39,77 | 33,83 | 39,63 | 38,48 | 23,60 |
+- La variance en entrée supprime le compromis (gain à pilote faible sans perte à pilote fort) et égale ou dépasse WMMSE robuste partout, y compris en massif (+0,65 à +1,15 à 10–20 dB) : Ĝ + variance par utilisateur suffit dans ces tests ; la restriction W = Ĥ^H C ne coûte rien de mesurable.
+- Réserve : la colonne « synth. » n'a été entraînée qu'en M8K4 (zero-shot en massif) ; le témoin « synth. sans variance entraîné aussi en M64K8 » manque pour attribuer le gain massif à la seule variance.
+
 ### Énergie à Ericsson et WMMSE en forme Gram (`torch_port/*.py --site ericsson`, `results/stecath/classical_energy_ericsson.json`, `art_pair_*_ericsson.json`)
 WMMSE en forme Gram : itération sur C (K x K) seulement, G une fois, W = H^H C à la fin ; identique à wmmse() (écart ~1e-7), coût par itération indépendant de M (`torch_port.stecath.wmmse_gram`). Énergie (µJ, Moons v5) :
 | méthode | Ericsson débit / énergie | St-Catherine débit / énergie |

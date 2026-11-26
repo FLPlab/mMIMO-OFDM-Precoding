@@ -103,13 +103,20 @@ class GramPrecoder(keras.Model):
     """mix : "gram" (bloc G.E), "triangular", "triangular_g" (G reinjecte).
     tied : un seul bloc repete L fois (True) ou L blocs distincts."""
 
-    def __init__(self, num_bs_ant, d=16, hidden=64, layers=4, mix="gram", tied=True, sym=False, inp="raw", **kw):
+    def __init__(self, num_bs_ant, d=16, hidden=64, layers=4, mix="gram", tied=True, sym=False, inp="raw",
+                 err_in=False, **kw):
         """sym (phase 9, triangulaire seulement) : etat hermitien E[k,j] = conj(E[j,k]) ; le FFN
         ne tourne que sur les K(K+1)/2 paires j <= k ; sortie C = S diag(p), S hermitienne lue
-        sur les paires, p > 0 une puissance par utilisateur lue sur la diagonale (forme de WMMSE)."""
+        sur les paires, p > 0 une puissance par utilisateur lue sur la diagonale (forme de WMMSE).
+        err_in (phase 14, CSI imparfait) : la variance d'erreur relative par utilisateur
+        (10 log10(err_var_k / puissance_k), dB/10 comme pdb) est donnee en plus sur les tokens de
+        paire (j, k), les deux scalaires (utilisateur j et utilisateur k) comme pour pdb. Ĝ=ĤĤ^H ne
+        dit pas quel utilisateur est mal estime : ce canal supplementaire comble ce manque. Par
+        defaut (err_in=False) le comportement est inchange ; `call`/`coeffs` prennent alors un
+        `err_db` optionnel qui est ignore."""
         super().__init__(**kw)
         self.M, self.d, self.hidden, self.L, self.mix = num_bs_ant, d, hidden, layers, mix
-        self.tied, self.sym, self.inp = tied, sym, inp
+        self.tied, self.sym, self.inp, self.err_in = tied, sym, inp, err_in
         # inp="norm" (phase 11, comme torch_port inp="norm") : canal de chaque utilisateur normalise
         # (G = correlations), puissance relative (dB/10) de chaque utilisateur donnee sur les paires,
         # W = h~^H C. Rend le precodeur robuste aux puissances inegales et a la quantification.
@@ -131,12 +138,13 @@ class GramPrecoder(keras.Model):
         pdb = tf.math.log(n2 / tf.reduce_mean(n2, -1, keepdims=True)) / tf.math.log(10.0)  # dB/10
         return hp, pdb
 
-    def call(self, h, snr_db):
-        """h [N, K, M] complex64, snr_db [N] -> W [N, M, K]."""
+    def call(self, h, snr_db, err_db=None):
+        """h [N, K, M] complex64, snr_db [N] -> W [N, M, K]. err_db [N, K] (option, err_in=True
+        seulement) : variance d'erreur relative par utilisateur, 10 log10(err_var_k / puissance_k)."""
         hp = self._norm(h)[0] if self.inp == "norm" else h               # W = h~^H C (inp="norm")
-        return normalize_power(tf.matmul(hp, self.coeffs(h, snr_db), adjoint_a=True))
+        return normalize_power(tf.matmul(hp, self.coeffs(h, snr_db, err_db), adjoint_a=True))
 
-    def coeffs(self, h, snr_db):
+    def coeffs(self, h, snr_db, err_db=None):
         """Les coefficients C [N, K, K] (W = h^H C avant normalisation)."""
         K = tf.shape(h)[1]
         M = tf.cast(tf.shape(h)[2], h.dtype)                 # M lu sur l'entree : un modele pour tout M
@@ -151,6 +159,9 @@ class GramPrecoder(keras.Model):
         parts = [tf.math.real(g), tf.math.imag(g), tf.abs(g), eye, snr]
         if self.inp == "norm":                              # puissance relative des deux utilisateurs
             parts += [tf.broadcast_to(pdb[:, :, None], tf.shape(eye)), tf.broadcast_to(pdb[:, None, :], tf.shape(eye))]
+        if self.err_in:                                     # variance d'erreur relative des deux utilisateurs
+            edb = tf.cast(err_db, tf.float32) / 10.0
+            parts += [tf.broadcast_to(edb[:, :, None], tf.shape(eye)), tf.broadcast_to(edb[:, None, :], tf.shape(eye))]
         f = tf.stack(parts, axis=-1)
         e = _cplx(self.init(f))                             # [N, K, K, d]
         if not self.sym:

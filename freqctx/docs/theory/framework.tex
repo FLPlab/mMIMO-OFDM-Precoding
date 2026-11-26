@@ -101,7 +101,8 @@
   \item \emph{Large $K$}: $K^2$ pair tokens and $O(K^3 d)$ mixing per layer.
   \item \emph{Fixed point}: $\Gm$ squares the dynamic range of $\Hm$; handled by per-user normalisation (mantissa + exponent).
   \item Empirical status: with LS+LMMSE estimation ($M=8$, UMi), the Gram precoder equals robust WMMSE (diagonal $\mathbf{R}_k$).
-        Open: test at $M=64$, and feed $\epsilon_k$ to the network.
+        Feeding $\epsilon_k$ per user ($\hat\Gm$ + error level) matches or beats robust WMMSE at $M=8$ and $M=64$, at all pilot SNRs:
+        in these tests the restriction to $\mathrm{range}(\hat\Hm^H)$ costs nothing measurable.
 \end{itemize}
 
 \section{Channel estimation front end (from pilots)}
