@@ -47,10 +47,15 @@ class Arch:
     unrolled: bool
     ant: int
     nsc: int
+    cmul: str = "dsp"                     # multiplications par les constantes 16 bits (quant, rescale) : dsp | fabric
 
     @property
     def const(self):                       # poids en constantes (couches deroulees) ou en ROM (couche partagee)
         return self.unrolled
+
+    def bind_fabric(self, var):
+        """BIND_OP impl=fabric sur un produit par constante (option --cmul fabric)."""
+        return f"#pragma HLS BIND_OP variable={var} op=mul impl=fabric\n" if self.cmul == "fabric" else ""
 
     def pipe(self):
         return "#pragma HLS PIPELINE II=1\n" if self.unrolled else ""
@@ -155,7 +160,9 @@ class MathGen:
                 + f"static const int LOG10_2 = {LOG10_2};\n")
 
     def source(self, a: Arch):
-        return r"""
+        return self.SRC.replace("{CMUL}", a.bind_fabric("xm"))
+
+    SRC = r"""
 // Arrondi au plus proche (vers le haut) puis decalage : S constant, puis s variable (s <= 0 : decalage a gauche).
 template<int S, int W, bool SG> static inline ap_int<(W + 1 - S > 1 ? W + 1 - S : 1)> rsh(const ap_int_base<W, SG>& x) {
     ap_int<W + 1> t = x; t += (ap_int<W + 1>)1 << (S - 1); return t >> S;
@@ -167,7 +174,8 @@ template<int W, bool SG> static inline ap_int<W + 1> rnd_shift(const ap_int_base
 }
 // Quantification LSQ : q = clamp(rsh<QS>(x * QM), -LIM, LIM), resultat sur b + 1 bits (type T).
 template<int QM, int QS, int LIM, class T, int W, bool SG> static inline T quant(const ap_int_base<W, SG>& x) {
-    ap_int<W + 18 - QS> q = rsh<QS>(x * (ap_int<17>)QM);
+    ap_int<W + 17> xm = x * (ap_int<17>)QM;
+{CMUL}    ap_int<W + 18 - QS> q = rsh<QS>(xm);
     return q > LIM ? (T)LIM : (q < -LIM ? (T)(-LIM) : (T)q);
 }
 template<class T, int W, bool SG> static inline T quant_rt(const ap_int_base<W, SG>& x, int qm, int qs, int lim) {
@@ -201,11 +209,12 @@ template<int W, int S, int RW> static inline ap_uint<RW> irsqrt(ap_uint<W> x0) {
     int i = (t >> 24) - 64;
     ap_uint<24> fr = t(23, 0);
     ap_int<33> d = (ap_int<33>)RS_TAB[i + 1] - (ap_int<33>)RS_TAB[i];
-    ap_int<64> y = (ap_int<64>)RS_TAB[i] + rsh<24>(d * fr);
-    ap_int<64> yy = (y * y) >> 30;
-    ap_int<64> p = ((ap_int<64>)(t >> 2) * yy) >> 30;
-    y = (y * (((ap_int<64>)3 << 30) - p)) >> 31;
-    return rnd_shift(y, 46 + (e2 >> 1) - S);
+    // Largeurs exactes (memes valeurs qu'en 64 bits) : y <= 2^31, yy, p, y2 < 2^32 -> multiplieurs 33 x 34 bits.
+    ap_int<33> y = (ap_int<33>)RS_TAB[i] + rsh<24>(d * fr);
+    ap_int<34> yy = (y * y) >> 30;
+    ap_int<34> p = ((ap_int<34>)(t >> 2) * yy) >> 30;
+    ap_int<34> y2 = (y * (((ap_int<34>)3 << 30) - p)) >> 31;
+    return rnd_shift((ap_int<64>)y2, 46 + (e2 >> 1) - S);
 }
 template<int W> static inline ap_int<24> ilog2_fix(ap_uint<W> x) {   // log2(x), unites 2^-FRAC : bit de tete + table
     int msb = msb_of<W>(x);
@@ -264,7 +273,9 @@ class DenseGen:
     @staticmethod
     def templates(a: Arch):
         """Les deux formes de la couche dense (emises une fois)."""
-        return r"""
+        return DenseGen.TEMPLATES.replace("{CMUL}", a.bind_fabric("am"))
+
+    TEMPLATES = r"""
 // Couche dense deroulee : poids constants (P::W), un token par appel. y = rnd_shift(sum q(x) W, S) + B.
 template<class P> static void dense(const act_t x[P::NIN], act_t y[P::NOUT]) {
 #pragma HLS INLINE
@@ -280,7 +291,8 @@ template<class P> static void dense(const act_t x[P::NIN], act_t y[P::NOUT]) {
 #pragma HLS UNROLL
             acc += xq[i] * (typename P::w_t)P::W[o][i];
         }
-        y[o] = rnd_shift(acc * (ap_int<17>)P::M[o], P::S[o]) + P::B[o];
+        ap_int<P::ACC + 17> am = acc * (ap_int<17>)P::M[o];
+{CMUL}        y[o] = rnd_shift(am, P::S[o]) + P::B[o];
     }
 }
 // Couche dense partagee (arch seq) : poids en ROM, une sortie par cycle, une ligne de W lue par cycle.
@@ -378,6 +390,9 @@ class NormalizeGen:
         self.qh, self.W = qh, W
 
     def source(self, a: Arch):
+        return self.source_acc(a) + self.source_scale(a)
+
+    def source_acc(self, a: Arch):
         W = self.W
         return f"""
 static void normalize_acc(const mant_t mr[NSC][K][M], const mant_t mi[NSC][K][M], const ex_t ex[NSC][K],
@@ -417,7 +432,10 @@ static void normalize_acc(const mant_t mr[NSC][K][M], const mant_t mi[NSC][K][M]
         }}
     }}
 }}
+"""
 
+    def source_scale(self, a: Arch):
+        return f"""
 static void normalize_scale(hls::stream<mgrp_t>& m_in, hls::stream<ri_sc_t>& ri_in, hls::stream<hgrp_t>& h_g,
                             hls::stream<hgrp_t>& h_w) {{
 {a.stage()}    ri_sc_t ri;
@@ -910,19 +928,25 @@ int main() {
 def main():
     ap = argparse.ArgumentParser()
     ap.add_argument("--out", default="/users/sala/Documents/test_projet/hls_work/pair_precoder")
-    ap.add_argument("--arch", default="stream", choices=sorted(ARCHS))
+    ap.add_argument("--arch", default="stream", choices=sorted(ARCHS) + ["fold"])
     ap.add_argument("--nsc", type=int, help="sous-porteuses par appel (defaut : celui de l'architecture)")
     ap.add_argument("--ant", type=int, help="antennes par cycle (defaut : celui de l'architecture)")
     ap.add_argument("--n", type=int, default=64, help="vecteurs de test (arrondi a un multiple de nsc)")
     ap.add_argument("--stats-n", type=int, default=1000, help="canaux pour relever les maxima (largeurs)")
     ap.add_argument("--model", default="art_pair_h16_L2_lam5_qprod_norm")
+    ap.add_argument("--cmul", default="dsp", choices=["dsp", "fabric"],
+                    help="multiplications par les constantes 16 bits (quantification, rescale) en DSP ou en LUT")
+    ap.add_argument("--fold", type=int, default=8, help="arch fold : cycles par token S (puissance de 2)")
     a = ap.parse_args()
-    arch = ARCHS[a.arch]
-    if a.nsc or a.ant:
-        arch = Arch(arch.name, arch.dataflow, arch.unrolled, a.ant or arch.ant, a.nsc or arch.nsc)
+    if a.arch == "fold":
+        from hls.foldgen import FoldArch, FoldProject
+        arch = FoldArch.make(a.fold, a.nsc or 64, a.cmul)
+    else:
+        arch = ARCHS[a.arch]
+        arch = Arch(arch.name, arch.dataflow, arch.unrolled, a.ant or arch.ant, a.nsc or arch.nsc, a.cmul)
     ip = IntPairPrecoder(QuantPairPrecoder.load(a.model)[0])
     vec = Vectors(ip, n=a.n, n_stats=a.stats_n, nsc=arch.nsc)
-    prj = Project(ip, arch, ip.peak)
+    prj = (FoldProject if a.arch == "fold" else Project)(ip, arch, ip.peak)
     prj.write(a.out, vec.header())
     print("maxima :", ", ".join(f"{k} {v}" for k, v in ip.peak.items()))
     print("largeurs :", ", ".join(f"{k} {v}" for k, v in vars(prj.W).items()))

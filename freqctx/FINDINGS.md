@@ -1535,6 +1535,18 @@ Modèle 2 couches h16 (143 k MAC), xcu280, horloge cible 4 ns. Toutes les varian
 - Aucune division : inverse de racine par table + 1 tour de Newton, perte 0,004 bps/Hz (2 couches), 0,002 (8 couches).
 - 8 couches (738 k MAC), `stream` : 64 SC en 1 878 cycles (7,5 µs à 250 MHz), II du lot 1 080 ; 7 252 DSP (80 % de l'U280), 1,28 M LUT (98 %), 1 325 BRAM : une seule instance, à la limite (estimation HLS, le placement-routage peut échouer). À faire : cosimulation RTL (profondeurs de FIFO), multiplications par constantes 16 bits en LUT pour une 5e instance.
 
+### HLS, 2e passe : co-conception ART-FPGA et architecture repliée (`hls/foldgen.py`, `--arch fold --fold S`, `hls/README.md`)
+Modèle 2 couches, toutes variantes bit à bit = `IntPairPrecoder`. Budget 5G : 1 092 SC par créneau de 0,5 ms (1/3 de 100 MHz).
+| variante | poids | 64 SC | DSP | LUT | instances U280 | M SC/s par U280 | 1/3 bande, 1 instance |
+|---|---|---|---|---|---|---|---|
+| stream (réf.) | ART énergie (24,07) | 3,9 µs | 2 147 | 299 k | 4 | 81 | oui (9,3×) |
+| stream | ART-FPGA λ = 0,3 (24,56) | 3,8 µs | 1 788 | 279 k | 4 | 82 | oui (9,4×) |
+| fold S = 4 | λ = 0,3 | 12,8 µs | 502 | 270 k | 4 | 21 | oui (2,4×, ≥ 141 MHz) |
+| **fold S = 8** | λ = 0,3 | 24,7 µs | **335** | **171 k** | 7 | 19 | oui (1,2×, ≥ 280 MHz) |
+- Co-conception seule : gain modeste (−17 % DSP) ; les poids étaient déjà en LUT, les DSP venaient des constantes 16 bits, du produit triangulaire, de W, LN et irsqrt (irsqrt passé de 64 bits à largeurs exactes : 39 → 14 DSP).
+- Repli S = 8 : DSP ÷ 6, LUT ÷ 1,7 ; une instance (13 % LUT, 3,7 % DSP) tient le 1/3 de bande si Fmax ≥ 280 MHz (estimée 344). Les LUT restantes sont structurelles (tokens stockés, FIFO), pas les poids.
+- En SC/s par carte entière, stream reste 4× meilleur (coûts fixes non repliables). Écartés : `--cmul fabric` (plantage Vitis 2022.2), empaquetage DSP (inutile après repli). À faire : placement-routage (Fmax réelle), cosim RTL.
+
 ### ART avec le coût FPGA (`torch_port/art_stecath.py --cost fpga`)
 Premier essai (poids jusqu'à 8 bits, coût calculé avec b_w borné à 4) : b_w > 4 gratuit → tous les poids à 8 bits, activations à 2 bits, débit 22,3 (λ = 5) contre 24,1 avec l'objectif énergie. Défaut de la perte, pas un résultat : relancé avec b_w ≤ 4 (régime sans DSP), λ = 1 et 5.
 Avec b_w ≤ 4 (St-Catherine, 2 couches h16, mêmes options que la référence énergie λ = 5 : 24,07 bps/Hz, poids 2 à 8 bits) :
