@@ -1,6 +1,19 @@
-# freqctx : résumé pour reprendre (état au 1er novembre 2026)
+# freqctx : résumé pour reprendre (mis à jour le 26 novembre 2026)
 
 Le journal complet est dans `FINDINGS.md`, phases 0 à 11, avec un résultat par section et les fichiers associés. La page d'architecture est https://claude.ai/artifact/MY5LBPGqDPuKfhQcL5dYgB (version 11, source `docs/architecture.html`). La page de vulgarisation est https://claude.ai/artifact/Jc2U4UTi2Dh2cbjRPaq7Cg (source `docs/explainer.html`).
+
+## État au 26 novembre 2026 (après la réunion du 25 nov. avec François ; prochaine rencontre mardi 1er déc. 10 h)
+Détails et chiffres : `FINDINGS.md`, phases 12 à 14. Cadre théorique : `docs/theory/framework.tex` (anglais, à mettre à jour). Dépôt : github.com/FLPlab/mMIMO-OFDM-Precoding, main = freqctx.
+Feuille de route de François, toute traitée :
+- **Zero-shot** (entraîné 3GPP, sites du labo jamais vus) : ~99 % de WMMSE convergé jusqu'à 20 dB, 0,2–0,9 bps/Hz en dessous à 30 dB. UMa seul ≈ 3 modèles 3GPP ; 12 couches aident un peu, 16 ≈ 12.
+- **Fine-tuning** (complet, LoRA, valeurs singulières) : peu de gain ; même avec toutes les données du site, l'écart ne se comble qu'à moitié. **Solution : réseau + 1 à 3 itérations WMMSE initialisées par le réseau → dépasse WMMSE 300 it. sur les 3 sites.**
+- **CSI imparfait** : entraînement avec erreur synthétique + variance d'erreur par utilisateur en entrée (`GramPrecoder(err_in=True)`) → égale ou dépasse WMMSE robuste à M8K4 et M64K8 ; Ĝ + variance suffit (témoin massif sans variance manquant).
+- **BER** réel (QAM, modulation adaptative) : notre précodeur et WMMSE dominent RZF en débit transmis ; l'ancienne figure gaussienne était trompeuse.
+- **Énergie** : < RZF 32 bits sur St-Catherine et Ericsson, jamais < RZF 16 bits. WMMSE en **forme Gram** (itération sur C, K x K) est bien moins chère que la forme comptée avant : à Ericsson elle nous domine en 16 bits ; à St-Catherine on reste 3–4× en dessous. Notre avance vient de la précision seule.
+- **ART-FPGA** (`art_stecath.py --cost fpga`, b_w ≤ 4) : λ = 0,3 → 24,56 bps/Hz, mieux que l'objectif énergie (24,07), poids 2–4 bits.
+- **HLS** (`hls/`, Vitis 2022.2, U280) : stream 64 SC en 3,8 µs (4 instances) ; fold S = 8 : 335 DSP, 171 k LUT, une instance tient 1/3 de bande 5G si Fmax ≥ 280 MHz. À faire : placement-routage, cosim RTL, 8 couches.
+Pistes suivantes : intégrer le raffinement WMMSE (coût, HLS), témoin CSI massif, généralisation à K = 16, point d'avancement pour le 1er déc.
+Pratique : ne plus utiliser Fable (coût en tokens) ; sous-agents Sonnet, un seul rapport final court chacun.
 
 ## Le sujet
 
