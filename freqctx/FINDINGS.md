@@ -1589,6 +1589,22 @@ Seul changement par rapport au précodeur 3GPP de la phase 13 : SNR d'entraînem
 ### Répartition des MAC du précodeur (`experiments/phase15_macs.py`, `results/phase15/macs.json`)
 Base (8 couches, état 16, FFN 32) : 717 k MAC/SC en M8K4, 724 k en M64K4. **95 % dans les couches denses appliquées à chaque paire** (16 paires × 8 couches), 4,6 % dans le produit triangulaire, 0,1 % pour G et pour W : le coût ne dépend presque pas de M. Leviers sans forme imposée : pas fréquentiel (1 SC sur 12 sur les sites : −0,04 à −0,43 bps/Hz, ÷ 12 ; UMi −0,78), largeur des couches par paire, profondeur (4 couches : 375 k), quantification.
 
+### CSI estimé sur les sites du labo (`experiments/phase15_lab_csi.py`, `results/phase15/lab_csi.json`)
+Sites convertis en OFDM (`phase13_lab`, convention psi2az), pilotes Sionna, LS + interpolation LMMSE (covariance du mélange), M8K4, puissances réelles, 192 tirages par site (seed 13) ; tous les précodeurs reçoivent la même estimation, débit sur le vrai canal. Débit à 30 dB (20 dB entre parenthèses pour le pilote 10 dB) :
+
+| site, pilote | réseau CSI parfait | réseau erreur synth. | WMMSE robuste 300 it. | RZF |
+|---|---|---|---|---|
+| St-Catherine, 0 dB | 19,83 | **20,15** | 19,84 | 13,19 |
+| St-Catherine, 10 dB | 25,78 (20,31) | 25,87 (20,32) | 25,87 (20,36) | 18,11 |
+| St-Catherine, 20 dB | 30,11 | 29,93 | **30,49** | 22,39 |
+| Décarie, 0 / 10 / 20 dB | — / 26,92 / 31,33 | 21,17 / 26,99 / 31,14 | 20,87 / 27,01 / **31,67** | — / 21,21 / 25,62 |
+| Ericsson, 0 / 10 / 20 dB | — / 27,99 / 32,95 | 21,63 / 28,03 / 32,67 | 21,41 / 28,05 / **33,35** | — / 24,70 / 29,83 |
+
+- **Généralisation de l'entraînement avec erreur synthétique à des sites jamais vus : oui** jusqu'à pilote 10 dB (égal ou devant WMMSE robuste ; +0,2 à +0,3 à pilote 0 dB).
+- **Le plancher du réseau réapparaît à pilote 20 dB** (−0,4 à −0,7 à 30 dB) : à bon SNR pilote, l'erreur d'estimation ne le masque plus. À pilote 10 dB, égalité (≤ 0,06). Le plancher n'est donc pas qu'une curiosité du CSI parfait.
+- À pilote 20 dB, le modèle entraîné avec erreur synthétique perd en plus 0,2-0,3 sur le modèle CSI parfait (réglé pour une erreur moyenne, cf. phase 14) ; la variante « + variance » (poids non sauvés en phase 14, réentraînement en cours) devrait supprimer cette part.
+- Réserves : une graine, une convention d'angles.
+
 ## Prochaine étape
 (1) 3 graines pour l'attention en fréquence D64. (2) Réduire le coût. (3) Bootstrap sur les tirages. (4) Faire le point avant d'aller plus loin (pilote 20 dB, vieillissement, M64).
 Cible principale ensuite (phases 2–3) : le régime pilote 10 dB, où il reste 2,7 à 5,9 bps/Hz après LMMSE.
