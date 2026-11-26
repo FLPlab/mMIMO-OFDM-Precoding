@@ -1558,6 +1558,22 @@ Avec b_w ≤ 4 (St-Catherine, 2 couches h16, mêmes options que la référence �
 - L'objectif FPGA pousse les poids vers 1-2 bits (multiplication par constante sans DSP) et garde des activations plus larges : l'inverse de Moons, qui pénalise max(b_w, b_a). λ = 0,3 : 24,56 bps/Hz, AU-DESSUS de la référence énergie (24,07) avec des poids ≤ 3 bits dans les blocs (aucun DSP pour les poids sur FPGA) ; énergie Moons 23,7 nJ contre 24,5.
 - Limite : G, W et le produit triangulaire (variable × variable, 8 bits) ne sont pas dans le coût FPGA.
 
+## Phase 15 — comprendre l'écart au fort SNR (2026-11-26, évaluation seule)
+
+### Plancher d'interférence et structure du précodeur (`experiments/phase15_diag.py`, `results/phase15/diag.json`)
+Précodeur 3GPP M8K4 + M64K8 (phase 13), CSI parfait, M8K4 ; UMi (tirages `phase13_bench`) et les 3 sites (tirages seed 77). Fuite = Σ_{j≠k}|h_k w_j|² / |h_k w_k|² par flux, médiane en dB.
+
+| SNR | UMi : réseau / WMMSE 300 (fuite) | Ericsson : réseau / WMMSE 300 (fuite) |
+|---|---|---|
+| 20 dB | 17,65 / 17,66 (−31 / −31) | 24,08 / 24,03 (−41 / −42) |
+| 30 dB | 26,89 / 26,56 (−43 / −49) | 35,26 / 36,15 (−46 / −61) |
+| 40 dB | 36,28 / 35,61 (−42 / −70) | 43,71 / 47,84 (−43 / −79) |
+
+- **Plancher confirmé** : la fuite du réseau sature vers −42 à −47 dB partout (UMi, 3 sites, et SC UMi les mieux conditionnées), celle de WMMSE continue de baisser. Réseau + 1 it. WMMSE dépasse toujours WMMSE 300 (Ericsson 40 dB : 47,92).
+- **Effet de régime, pas de site** : le plancher ne pénalise que lorsque le SINR visé le dépasse (Ericsson à fort SNR) ; c'est pourquoi le fine-tuning sur le site ne le comble pas et la profondeur seulement un peu.
+- **Structure de Björnson** C = (ΛG + σ²I)⁻¹P^½ ajustée au C du réseau (2K scalaires, Adam 400 pas, 256 échantillons) : erreur relative médiane 1 à 5 % ; à 40 dB, la forme exacte avec ces (λ, p) dépasse le réseau (UMi 37,85 contre 36,04 ; Ericsson 46,26 contre 43,05). Le réseau semble avoir la bonne forme et une inversion imprécise. Réserve : moyennes tirées par des ajustements ratés (Ericsson 20 dB : forme 21,66 < réseau 23,73), donc indicatif seulement.
+- **Newton–Schulz depuis une initialisation générique** (λ, p de WMMSE, X0 = Aᴴ/(‖A‖₁‖A‖∞), 512 MAC/pas) : 15 pas égalent le réseau à 20 dB (~8,7 k MAC/SC contre 717 k), insuffisant à 30 dB (Ericsson 35,13 contre 35,52). Référence seulement : décision du 2026-11-26, le modèle principal reste libre.
+
 ## Prochaine étape
 (1) 3 graines pour l'attention en fréquence D64. (2) Réduire le coût. (3) Bootstrap sur les tirages. (4) Faire le point avant d'aller plus loin (pilote 20 dB, vieillissement, M64).
 Cible principale ensuite (phases 2–3) : le régime pilote 10 dB, où il reste 2,7 à 5,9 bps/Hz après LMMSE.

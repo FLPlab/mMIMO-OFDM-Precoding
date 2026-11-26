@@ -1,0 +1,62 @@
+2026-11-26 15:16:22.365725: I tensorflow/core/util/port.cc:153] oneDNN custom operations are on. You may see slightly different numerical results due to floating-point round-off errors from different computation orders. To turn them off, set the environment variable `TF_ENABLE_ONEDNN_OPTS=0`.
+2026-11-26 15:16:22.415154: I tensorflow/core/platform/cpu_feature_guard.cc:210] This TensorFlow binary is optimized to use available CPU instructions in performance-critical operations.
+To enable the following instructions: AVX2 AVX512F AVX512_VNNI AVX512_BF16 FMA, in other operations, rebuild TensorFlow with the appropriate compiler flags.
+/export/tmp/sala/miniconda/envs/tf-gpu/lib/python3.11/site-packages/requests/__init__.py:86: RequestsDependencyWarning: Unable to find acceptable character detection dependency (chardet or charset_normalizer).
+  warnings.warn(
+2026-11-26 15:16:23.547783: I tensorflow/core/util/port.cc:153] oneDNN custom operations are on. You may see slightly different numerical results due to floating-point round-off errors from different computation orders. To turn them off, set the environment variable `TF_ENABLE_ONEDNN_OPTS=0`.
+2026-11-26 15:16:25.277008: W tensorflow/core/common_runtime/gpu/gpu_bfc_allocator.cc:47] Overriding orig_value setting because the TF_FORCE_GPU_ALLOW_GROWTH environment variable is set. Original config value was 0.
+WARNING: All log messages before absl::InitializeLog() is called are written to STDERR
+I0000 00:00:1795724185.278627  294535 gpu_device.cc:2020] Created device /job:localhost/replica:0/task:0/device:GPU:0 with 43473 MB memory:  -> device: 0, name: NVIDIA L40S, pci bus id: 0000:61:00.0, compute capability: 8.9
+I0000 00:00:1795724189.756570  294535 cuda_solvers.cc:175] Creating GpuSolver handles for stream 0x8d64d90
+floor umi                      10dB : reseau  10.33 (fuite med  -12.6 dB)  wmmse300  10.34 (fuite med  -12.6 dB)  reseau+1it  10.34
+floor umi                      20dB : reseau  17.65 (fuite med  -31.2 dB)  wmmse300  17.66 (fuite med  -30.6 dB)  reseau+1it  17.66
+floor umi                      25dB : reseau  22.06 (fuite med  -38.2 dB)  wmmse300  22.01 (fuite med  -39.3 dB)  reseau+1it  22.10
+floor umi                      30dB : reseau  26.89 (fuite med  -42.8 dB)  wmmse300  26.56 (fuite med  -49.4 dB)  reseau+1it  27.01
+floor umi                      35dB : reseau  31.86 (fuite med  -43.6 dB)  wmmse300  31.10 (fuite med  -60.3 dB)  reseau+1it  32.34
+floor umi                      40dB : reseau  36.28 (fuite med  -42.0 dB)  wmmse300  35.61 (fuite med  -69.5 dB)  reseau+1it  38.03
+floor stecath                  10dB : reseau  12.64 (fuite med  -26.4 dB)  wmmse300  12.69 (fuite med  -26.4 dB)  reseau+1it  12.67
+floor stecath                  20dB : reseau  22.35 (fuite med  -40.3 dB)  wmmse300  22.36 (fuite med  -42.0 dB)  reseau+1it  22.42
+floor stecath                  25dB : reseau  27.74 (fuite med  -45.0 dB)  wmmse300  27.91 (fuite med  -51.5 dB)  reseau+1it  27.95
+floor stecath                  30dB : reseau  33.32 (fuite med  -46.8 dB)  wmmse300  33.58 (fuite med  -61.0 dB)  reseau+1it  33.85
+floor stecath                  35dB : reseau  38.75 (fuite med  -46.5 dB)  wmmse300  39.16 (fuite med  -69.6 dB)  reseau+1it  39.91
+floor stecath                  40dB : reseau  43.00 (fuite med  -43.9 dB)  wmmse300  44.68 (fuite med  -77.6 dB)  reseau+1it  45.94
+floor decarie                  10dB : reseau  12.92 (fuite med  -29.1 dB)  wmmse300  12.95 (fuite med  -28.5 dB)  reseau+1it  12.93
+floor decarie                  20dB : reseau  23.27 (fuite med  -41.3 dB)  wmmse300  23.22 (fuite med  -43.5 dB)  reseau+1it  23.33
+floor decarie                  25dB : reseau  28.98 (fuite med  -44.8 dB)  wmmse300  29.03 (fuite med  -51.1 dB)  reseau+1it  29.19
+floor decarie                  30dB : reseau  34.80 (fuite med  -47.3 dB)  wmmse300  35.00 (fuite med  -60.1 dB)  reseau+1it  35.40
+floor decarie                  35dB : reseau  40.32 (fuite med  -46.3 dB)  wmmse300  40.64 (fuite med  -68.9 dB)  reseau+1it  41.73
+floor decarie                  40dB : reseau  44.51 (fuite med  -43.6 dB)  wmmse300  45.88 (fuite med  -77.7 dB)  reseau+1it  47.91
+floor ericsson                 10dB : reseau  13.45 (fuite med  -27.8 dB)  wmmse300  13.49 (fuite med  -28.2 dB)  reseau+1it  13.50
+floor ericsson                 20dB : reseau  24.08 (fuite med  -41.1 dB)  wmmse300  24.03 (fuite med  -42.3 dB)  reseau+1it  24.22
+floor ericsson                 25dB : reseau  29.72 (fuite med  -44.3 dB)  wmmse300  29.98 (fuite med  -51.0 dB)  reseau+1it  30.13
+floor ericsson                 30dB : reseau  35.26 (fuite med  -45.8 dB)  wmmse300  36.15 (fuite med  -61.0 dB)  reseau+1it  36.18
+floor ericsson                 35dB : reseau  40.38 (fuite med  -45.1 dB)  wmmse300  42.09 (fuite med  -70.4 dB)  reseau+1it  42.29
+floor ericsson                 40dB : reseau  43.71 (fuite med  -42.9 dB)  wmmse300  47.84 (fuite med  -79.1 dB)  reseau+1it  47.92
+floor umi_quartile_bas_condG   10dB : reseau  11.87 (fuite med  -24.4 dB)  wmmse300  11.90 (fuite med  -24.3 dB)  reseau+1it  11.89
+floor umi_quartile_bas_condG   20dB : reseau  22.10 (fuite med  -38.1 dB)  wmmse300  22.13 (fuite med  -38.7 dB)  reseau+1it  22.13
+floor umi_quartile_bas_condG   25dB : reseau  28.24 (fuite med  -43.4 dB)  wmmse300  28.24 (fuite med  -47.9 dB)  reseau+1it  28.30
+floor umi_quartile_bas_condG   30dB : reseau  34.61 (fuite med  -47.2 dB)  wmmse300  34.33 (fuite med  -58.5 dB)  reseau+1it  34.79
+floor umi_quartile_bas_condG   35dB : reseau  40.75 (fuite med  -47.5 dB)  wmmse300  39.97 (fuite med  -67.8 dB)  reseau+1it  41.38
+floor umi_quartile_bas_condG   40dB : reseau  45.65 (fuite med  -44.9 dB)  wmmse300  45.21 (fuite med  -76.1 dB)  reseau+1it  47.99
+structure umi        20dB : erreur rel 0.037 (med 0.035)  debit reseau 17.70  struct(exact) 17.65
+structure umi        30dB : erreur rel 0.054 (med 0.031)  debit reseau 26.92  struct(exact) 26.94
+structure umi        40dB : erreur rel 0.063 (med 0.025)  debit reseau 36.04  struct(exact) 37.85
+structure stecath    20dB : erreur rel 0.065 (med 0.043)  debit reseau 22.32  struct(exact) 22.08
+structure stecath    30dB : erreur rel 0.108 (med 0.029)  debit reseau 33.14  struct(exact) 33.17
+structure stecath    40dB : erreur rel 0.167 (med 0.008)  debit reseau 42.71  struct(exact) 44.89
+structure decarie    20dB : erreur rel 0.104 (med 0.038)  debit reseau 23.50  struct(exact) 22.58
+structure decarie    30dB : erreur rel 0.099 (med 0.007)  debit reseau 34.94  struct(exact) 35.10
+structure decarie    40dB : erreur rel 0.101 (med 0.006)  debit reseau 44.71  struct(exact) 47.70
+structure ericsson   20dB : erreur rel 0.151 (med 0.028)  debit reseau 23.73  struct(exact) 21.66
+structure ericsson   30dB : erreur rel 0.178 (med 0.007)  debit reseau 34.76  struct(exact) 34.05
+structure ericsson   40dB : erreur rel 0.256 (med 0.011)  debit reseau 43.05  struct(exact) 46.26
+freedom umi        20dB : reseau 17.53  wmmse300 17.54  NS(T) 2:7.64 4:9.35 6:11.56 8:13.96 10:16.14 15:17.48
+freedom umi        30dB : reseau 26.76  wmmse300 26.43  NS(T) 2:7.86 4:9.38 6:11.34 8:13.76 10:16.93 15:25.18
+freedom stecath    20dB : reseau 22.40  wmmse300 22.41  NS(T) 2:7.38 4:10.63 6:14.56 8:18.09 10:20.66 15:22.23
+freedom stecath    30dB : reseau 33.36  wmmse300 33.67  NS(T) 2:7.50 4:10.56 6:14.62 8:19.95 10:25.03 15:32.44
+freedom decarie    20dB : reseau 23.32  wmmse300 23.26  NS(T) 2:7.95 4:11.14 6:15.22 8:18.96 10:21.40 15:22.72
+freedom decarie    30dB : reseau 34.75  wmmse300 34.96  NS(T) 2:7.52 4:10.32 6:14.22 8:19.16 10:24.53 15:33.58
+freedom ericsson   20dB : reseau 24.24  wmmse300 24.15  NS(T) 2:8.04 4:11.65 6:15.87 8:19.36 10:21.57 15:23.59
+freedom ericsson   30dB : reseau 35.52  wmmse300 36.24  NS(T) 2:7.72 4:11.26 6:16.38 8:22.22 10:27.39 15:35.13
+macs/SC : {'reseau_macs_par_sc': 717312, 'rzf_macs_par_sc_approx': 1194, 'G_macs': 512, 'W_macs': 512, 'NS_T2_macs_par_sc': 2048, 'NS_T4_macs_par_sc': 3072, 'NS_T6_macs_par_sc': 4096, 'NS_T8_macs_par_sc': 5120, 'NS_T10_macs_par_sc': 6144, 'NS_T15_macs_par_sc': 8704}
+-> /users/sala/Documents/test_projet/Trans/freq/Sionna/freqctx/results/phase15/diag.json (214 s)

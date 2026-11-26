@@ -1,0 +1,831 @@
+{
+ "meta": {
+  "git_commit": "12958f4",
+  "created": "2026-11-26 15:16"
+ },
+ "floor": {
+  "umi": {
+   "n": 16384,
+   "10": {
+    "reseau": {
+     "debit": 10.327457427978516,
+     "sinr_moyen_lin": 45.06547190626005,
+     "fuite_db_moyenne": -2.0441060379016807,
+     "fuite_db_mediane": -12.574300002990771
+    },
+    "wmmse300": {
+     "debit": 10.342544555664062,
+     "sinr_moyen_lin": 44.21971038431982,
+     "fuite_db_moyenne": 81.68629707923529,
+     "fuite_db_mediane": -12.645239809329162
+    },
+    "reseau+1it": {
+     "debit": 10.337248802185059,
+     "sinr_moyen_lin": 44.96147948240909,
+     "fuite_db_moyenne": 4.861997535988142,
+     "fuite_db_mediane": -12.292408338233829
+    }
+   },
+   "20": {
+    "reseau": {
+     "debit": 17.645444869995117,
+     "sinr_moyen_lin": 316.96616867399683,
+     "fuite_db_moyenne": -15.758023178766754,
+     "fuite_db_mediane": -31.191371477896006
+    },
+    "wmmse300": {
+     "debit": 17.662784576416016,
+     "sinr_moyen_lin": 305.7873720786779,
+     "fuite_db_moyenne": 39.85585866126501,
+     "fuite_db_mediane": -30.594835587926987
+    },
+    "reseau+1it": {
+     "debit": 17.66391372680664,
+     "sinr_moyen_lin": 317.42711935841794,
+     "fuite_db_moyenne": -14.897132665099251,
+     "fuite_db_mediane": -30.590466955307544
+    }
+   },
+   "25": {
+    "reseau": {
+     "debit": 22.058460235595703,
+     "sinr_moyen_lin": 837.40238236502,
+     "fuite_db_moyenne": -22.522827427457656,
+     "fuite_db_mediane": -38.17801230244356
+    },
+    "wmmse300": {
+     "debit": 22.012235641479492,
+     "sinr_moyen_lin": 732.164054271441,
+     "fuite_db_moyenne": 17.722307706069003,
+     "fuite_db_mediane": -39.27904559323634
+    },
+    "reseau+1it": {
+     "debit": 22.09695053100586,
+     "sinr_moyen_lin": 842.7547605281486,
+     "fuite_db_moyenne": -25.643663683804995,
+     "fuite_db_mediane": -39.15956830650677
+    }
+   },
+   "30": {
+    "reseau": {
+     "debit": 26.88518524169922,
+     "sinr_moyen_lin": 2191.753812862821,
+     "fuite_db_moyenne": -28.320429556969643,
+     "fuite_db_mediane": -42.753527357479484
+    },
+    "wmmse300": {
+     "debit": 26.559736251831055,
+     "sinr_moyen_lin": 1541.0477202122456,
+     "fuite_db_moyenne": -4.761076874919683,
+     "fuite_db_mediane": -49.39991277247418
+    },
+    "reseau+1it": {
+     "debit": 27.005939483642578,
+     "sinr_moyen_lin": 2258.7205904527823,
+     "fuite_db_moyenne": -36.397196992151095,
+     "fuite_db_mediane": -48.13068012338769
+    }
+   },
+   "35": {
+    "reseau": {
+     "debit": 31.863037109375,
+     "sinr_moyen_lin": 5353.101047075032,
+     "fuite_db_moyenne": -32.01474696934,
+     "fuite_db_mediane": -43.55431156755283
+    },
+    "wmmse300": {
+     "debit": 31.100204467773438,
+     "sinr_moyen_lin": 2928.371866339378,
+     "fuite_db_moyenne": -24.391066311059078,
+     "fuite_db_mediane": -60.308229785773264
+    },
+    "reseau+1it": {
+     "debit": 32.34416198730469,
+     "sinr_moyen_lin": 6129.235393261112,
+     "fuite_db_moyenne": -47.046949456424635,
+     "fuite_db_mediane": -57.335023086970544
+    }
+   },
+   "40": {
+    "reseau": {
+     "debit": 36.277095794677734,
+     "sinr_moyen_lin": 10110.678507514474,
+     "fuite_db_moyenne": -33.34219278698739,
+     "fuite_db_mediane": -41.96067729495907
+    },
+    "wmmse300": {
+     "debit": 35.61333465576172,
+     "sinr_moyen_lin": 5408.491945879277,
+     "fuite_db_moyenne": -41.44581127740286,
+     "fuite_db_mediane": -69.50536414655744
+    },
+    "reseau+1it": {
+     "debit": 38.02643966674805,
+     "sinr_moyen_lin": 16990.517629250236,
+     "fuite_db_moyenne": -57.04628692216814,
+     "fuite_db_mediane": -66.91789265735352
+    }
+   }
+  },
+  "stecath": {
+   "n": 16384,
+   "10": {
+    "reseau": {
+     "debit": 12.636831283569336,
+     "sinr_moyen_lin": 23.810163041527304,
+     "fuite_db_moyenne": -12.97801495852601,
+     "fuite_db_mediane": -26.379362096448922
+    },
+    "wmmse300": {
+     "debit": 12.688322067260742,
+     "sinr_moyen_lin": 23.074513862592255,
+     "fuite_db_moyenne": 44.822249282615694,
+     "fuite_db_mediane": -26.429489259730488
+    },
+    "reseau+1it": {
+     "debit": 12.672234535217285,
+     "sinr_moyen_lin": 23.736366089698294,
+     "fuite_db_moyenne": -10.633447701969454,
+     "fuite_db_mediane": -26.90000863427352
+    }
+   },
+   "20": {
+    "reseau": {
+     "debit": 22.346067428588867,
+     "sinr_moyen_lin": 176.6333255534421,
+     "fuite_db_moyenne": -29.904225539614874,
+     "fuite_db_mediane": -40.265015693772284
+    },
+    "wmmse300": {
+     "debit": 22.36495590209961,
+     "sinr_moyen_lin": 160.41457669635855,
+     "fuite_db_moyenne": -8.672306208343077,
+     "fuite_db_mediane": -41.99204749928329
+    },
+    "reseau+1it": {
+     "debit": 22.418193817138672,
+     "sinr_moyen_lin": 178.63327136531507,
+     "fuite_db_moyenne": -32.294892809900816,
+     "fuite_db_mediane": -43.062324269702636
+    }
+   },
+   "25": {
+    "reseau": {
+     "debit": 27.735755920410156,
+     "sinr_moyen_lin": 485.32879914195985,
+     "fuite_db_moyenne": -36.41189552857184,
+     "fuite_db_mediane": -45.01847524138762
+    },
+    "wmmse300": {
+     "debit": 27.907562255859375,
+     "sinr_moyen_lin": 397.3082216626542,
+     "fuite_db_moyenne": -29.913240982020927,
+     "fuite_db_mediane": -51.46092523210554
+    },
+    "reseau+1it": {
+     "debit": 27.948755264282227,
+     "sinr_moyen_lin": 500.6478642954612,
+     "fuite_db_moyenne": -43.15957719615281,
+     "fuite_db_mediane": -51.96083001060939
+    }
+   },
+   "30": {
+    "reseau": {
+     "debit": 33.32073211669922,
+     "sinr_moyen_lin": 1339.5636046528039,
+     "fuite_db_moyenne": -39.90106049717842,
+     "fuite_db_mediane": -46.77820954630468
+    },
+    "wmmse300": {
+     "debit": 33.57757568359375,
+     "sinr_moyen_lin": 930.225907048254,
+     "fuite_db_moyenne": -47.37383820303495,
+     "fuite_db_mediane": -61.01520821929131
+    },
+    "reseau+1it": {
+     "debit": 33.8522834777832,
+     "sinr_moyen_lin": 1439.808348428087,
+     "fuite_db_moyenne": -53.091136217951174,
+     "fuite_db_mediane": -61.16660395701676
+    }
+   },
+   "35": {
+    "reseau": {
+     "debit": 38.75004577636719,
+     "sinr_moyen_lin": 3687.7304008043334,
+     "fuite_db_moyenne": -40.19839746345099,
+     "fuite_db_mediane": -46.46907712512318
+    },
+    "wmmse300": {
+     "debit": 39.155845642089844,
+     "sinr_moyen_lin": 2093.1540734164296,
+     "fuite_db_moyenne": -59.596647784940075,
+     "fuite_db_mediane": -69.56523831967903
+    },
+    "reseau+1it": {
+     "debit": 39.91484069824219,
+     "sinr_moyen_lin": 4423.064801633868,
+     "fuite_db_moyenne": -62.371347890531794,
+     "fuite_db_mediane": -70.60848965969979
+    }
+   },
+   "40": {
+    "reseau": {
+     "debit": 43.00306701660156,
+     "sinr_moyen_lin": 8317.69772456284,
+     "fuite_db_moyenne": -38.43217230292956,
+     "fuite_db_mediane": -43.88703235076681
+    },
+    "wmmse300": {
+     "debit": 44.680763244628906,
+     "sinr_moyen_lin": 5047.709013696824,
+     "fuite_db_moyenne": -71.14712903184729,
+     "fuite_db_mediane": -77.60293730173797
+    },
+    "reseau+1it": {
+     "debit": 45.9395751953125,
+     "sinr_moyen_lin": 13787.095711598387,
+     "fuite_db_moyenne": -71.11741610024151,
+     "fuite_db_mediane": -79.67651547478448
+    }
+   }
+  },
+  "decarie": {
+   "n": 16384,
+   "10": {
+    "reseau": {
+     "debit": 12.919876098632812,
+     "sinr_moyen_lin": 22.456267409796357,
+     "fuite_db_moyenne": -16.34234356168067,
+     "fuite_db_mediane": -29.071618060127307
+    },
+    "wmmse300": {
+     "debit": 12.945293426513672,
+     "sinr_moyen_lin": 21.430232579774053,
+     "fuite_db_moyenne": 25.442157737508044,
+     "fuite_db_mediane": -28.51438580975605
+    },
+    "reseau+1it": {
+     "debit": 12.932722091674805,
+     "sinr_moyen_lin": 22.391615832602596,
+     "fuite_db_moyenne": -15.561502977391797,
+     "fuite_db_mediane": -29.369140091969502
+    }
+   },
+   "20": {
+    "reseau": {
+     "debit": 23.27431869506836,
+     "sinr_moyen_lin": 167.5288732322782,
+     "fuite_db_moyenne": -32.636595025963125,
+     "fuite_db_mediane": -41.30578167666455
+    },
+    "wmmse300": {
+     "debit": 23.222991943359375,
+     "sinr_moyen_lin": 147.16712349631857,
+     "fuite_db_moyenne": -20.854175156461736,
+     "fuite_db_mediane": -43.48749616409397
+    },
+    "reseau+1it": {
+     "debit": 23.333351135253906,
+     "sinr_moyen_lin": 169.12874897034425,
+     "fuite_db_moyenne": -35.38408237433641,
+     "fuite_db_mediane": -45.22658123134349
+    }
+   },
+   "25": {
+    "reseau": {
+     "debit": 28.979450225830078,
+     "sinr_moyen_lin": 444.63517574330393,
+     "fuite_db_moyenne": -39.07713103220947,
+     "fuite_db_mediane": -44.78957546124964
+    },
+    "wmmse300": {
+     "debit": 29.025020599365234,
+     "sinr_moyen_lin": 360.7820343440237,
+     "fuite_db_moyenne": -39.96893426269464,
+     "fuite_db_mediane": -51.082237269361954
+    },
+    "reseau+1it": {
+     "debit": 29.18695068359375,
+     "sinr_moyen_lin": 457.8055252798448,
+     "fuite_db_moyenne": -45.9937509383796,
+     "fuite_db_mediane": -52.633303310579805
+    }
+   },
+   "30": {
+    "reseau": {
+     "debit": 34.79957580566406,
+     "sinr_moyen_lin": 1238.3446215126978,
+     "fuite_db_moyenne": -42.4391731986753,
+     "fuite_db_mediane": -47.31862140778463
+    },
+    "wmmse300": {
+     "debit": 35.00104522705078,
+     "sinr_moyen_lin": 835.1835259261602,
+     "fuite_db_moyenne": -54.49709556458416,
+     "fuite_db_mediane": -60.11349545233651
+    },
+    "reseau+1it": {
+     "debit": 35.40247344970703,
+     "sinr_moyen_lin": 1336.111689708117,
+     "fuite_db_moyenne": -56.08744918082381,
+     "fuite_db_mediane": -61.3964615710223
+    }
+   },
+   "35": {
+    "reseau": {
+     "debit": 40.32382583618164,
+     "sinr_moyen_lin": 3438.979483362325,
+     "fuite_db_moyenne": -42.457403698988756,
+     "fuite_db_mediane": -46.2849975596701
+    },
+    "wmmse300": {
+     "debit": 40.63935852050781,
+     "sinr_moyen_lin": 1796.3209395391304,
+     "fuite_db_moyenne": -66.00777192626528,
+     "fuite_db_mediane": -68.89515240656524
+    },
+    "reseau+1it": {
+     "debit": 41.727970123291016,
+     "sinr_moyen_lin": 4103.163231349837,
+     "fuite_db_moyenne": -65.74278815062952,
+     "fuite_db_mediane": -70.61742087152922
+    }
+   },
+   "40": {
+    "reseau": {
+     "debit": 44.506507873535156,
+     "sinr_moyen_lin": 8143.897467773841,
+     "fuite_db_moyenne": -39.96855893941674,
+     "fuite_db_mediane": -43.58382352665855
+    },
+    "wmmse300": {
+     "debit": 45.88055419921875,
+     "sinr_moyen_lin": 3956.35810346656,
+     "fuite_db_moyenne": -75.60867024589515,
+     "fuite_db_mediane": -77.72952409311254
+    },
+    "reseau+1it": {
+     "debit": 47.908084869384766,
+     "sinr_moyen_lin": 12899.157373980377,
+     "fuite_db_moyenne": -74.67654889856456,
+     "fuite_db_mediane": -79.15885529009522
+    }
+   }
+  },
+  "ericsson": {
+   "n": 16384,
+   "10": {
+    "reseau": {
+     "debit": 13.45341682434082,
+     "sinr_moyen_lin": 19.115949367313224,
+     "fuite_db_moyenne": -17.48859873383819,
+     "fuite_db_mediane": -27.79261565557251
+    },
+    "wmmse300": {
+     "debit": 13.486349105834961,
+     "sinr_moyen_lin": 17.739096839215584,
+     "fuite_db_moyenne": 17.19523841716341,
+     "fuite_db_mediane": -28.176525487971702
+    },
+    "reseau+1it": {
+     "debit": 13.496377944946289,
+     "sinr_moyen_lin": 19.09296846248946,
+     "fuite_db_moyenne": -17.204909073299415,
+     "fuite_db_mediane": -29.17178866463111
+    }
+   },
+   "20": {
+    "reseau": {
+     "debit": 24.077075958251953,
+     "sinr_moyen_lin": 145.35240664983502,
+     "fuite_db_moyenne": -32.978777490151906,
+     "fuite_db_mediane": -41.09933646641767
+    },
+    "wmmse300": {
+     "debit": 24.026668548583984,
+     "sinr_moyen_lin": 124.57007092971999,
+     "fuite_db_moyenne": -28.641682704609273,
+     "fuite_db_mediane": -42.25396552575525
+    },
+    "reseau+1it": {
+     "debit": 24.21629524230957,
+     "sinr_moyen_lin": 148.2622338715522,
+     "fuite_db_moyenne": -36.71696267894504,
+     "fuite_db_mediane": -45.693839665255176
+    }
+   },
+   "25": {
+    "reseau": {
+     "debit": 29.718345642089844,
+     "sinr_moyen_lin": 415.36368067103535,
+     "fuite_db_moyenne": -37.99721471945416,
+     "fuite_db_mediane": -44.273738093724916
+    },
+    "wmmse300": {
+     "debit": 29.97527313232422,
+     "sinr_moyen_lin": 328.1075909855059,
+     "fuite_db_moyenne": -45.797590190590334,
+     "fuite_db_mediane": -51.0263493521158
+    },
+    "reseau+1it": {
+     "debit": 30.130319595336914,
+     "sinr_moyen_lin": 433.5381065290442,
+     "fuite_db_moyenne": -46.496383783435626,
+     "fuite_db_mediane": -54.77200188988597
+    }
+   },
+   "30": {
+    "reseau": {
+     "debit": 35.258846282958984,
+     "sinr_moyen_lin": 1189.5142920433723,
+     "fuite_db_moyenne": -39.72246420916169,
+     "fuite_db_mediane": -45.7819210732208
+    },
+    "wmmse300": {
+     "debit": 36.154754638671875,
+     "sinr_moyen_lin": 865.9674096476878,
+     "fuite_db_moyenne": -56.52610527994278,
+     "fuite_db_mediane": -61.03002378860711
+    },
+    "reseau+1it": {
+     "debit": 36.18395233154297,
+     "sinr_moyen_lin": 1319.94563069521,
+     "fuite_db_moyenne": -55.83240789451614,
+     "fuite_db_mediane": -64.15902100254661
+    }
+   },
+   "35": {
+    "reseau": {
+     "debit": 40.38147735595703,
+     "sinr_moyen_lin": 3345.6799342606246,
+     "fuite_db_moyenne": -38.793496509048666,
+     "fuite_db_mediane": -45.13330818802656
+    },
+    "wmmse300": {
+     "debit": 42.093265533447266,
+     "sinr_moyen_lin": 2157.125048231925,
+     "fuite_db_moyenne": -66.72021698090427,
+     "fuite_db_mediane": -70.39467959430036
+    },
+    "reseau+1it": {
+     "debit": 42.29317855834961,
+     "sinr_moyen_lin": 4182.096032857156,
+     "fuite_db_moyenne": -64.76567866632452,
+     "fuite_db_mediane": -74.17672180796394
+    }
+   },
+   "40": {
+    "reseau": {
+     "debit": 43.71421432495117,
+     "sinr_moyen_lin": 7896.6665188898,
+     "fuite_db_moyenne": -35.93474222744038,
+     "fuite_db_mediane": -42.93746672952547
+    },
+    "wmmse300": {
+     "debit": 47.83553695678711,
+     "sinr_moyen_lin": 5696.208075687364,
+     "fuite_db_moyenne": -76.5805803393577,
+     "fuite_db_mediane": -79.07469603403906
+    },
+    "reseau+1it": {
+     "debit": 47.92285919189453,
+     "sinr_moyen_lin": 13430.602223873986,
+     "fuite_db_moyenne": -72.70376962908817,
+     "fuite_db_mediane": -84.27626983445447
+    }
+   }
+  },
+  "umi_quartile_bas_condG": {
+   "n": 4096,
+   "10": {
+    "reseau": {
+     "debit": 11.86898422241211,
+     "sinr_moyen_lin": 23.462747452176316,
+     "fuite_db_moyenne": -15.22473800560828,
+     "fuite_db_mediane": -24.415969759501493
+    },
+    "wmmse300": {
+     "debit": 11.896479606628418,
+     "sinr_moyen_lin": 22.831112224565693,
+     "fuite_db_moyenne": 32.8392359755691,
+     "fuite_db_mediane": -24.295987632728576
+    },
+    "reseau+1it": {
+     "debit": 11.88846492767334,
+     "sinr_moyen_lin": 23.43569253397641,
+     "fuite_db_moyenne": -14.261276574405079,
+     "fuite_db_mediane": -24.308382482408938
+    }
+   },
+   "20": {
+    "reseau": {
+     "debit": 22.096586227416992,
+     "sinr_moyen_lin": 144.87698426596543,
+     "fuite_db_moyenne": -35.134906047719454,
+     "fuite_db_mediane": -38.059282731676745
+    },
+    "wmmse300": {
+     "debit": 22.134014129638672,
+     "sinr_moyen_lin": 137.1608618522581,
+     "fuite_db_moyenne": -31.092818601862724,
+     "fuite_db_mediane": -38.72864192091902
+    },
+    "reseau+1it": {
+     "debit": 22.132875442504883,
+     "sinr_moyen_lin": 145.38094904334474,
+     "fuite_db_moyenne": -36.79326371230633,
+     "fuite_db_mediane": -38.93882470821001
+    }
+   },
+   "25": {
+    "reseau": {
+     "debit": 28.235755920410156,
+     "sinr_moyen_lin": 396.7534661945506,
+     "fuite_db_moyenne": -42.09305840909413,
+     "fuite_db_mediane": -43.361028673490196
+    },
+    "wmmse300": {
+     "debit": 28.24302101135254,
+     "sinr_moyen_lin": 336.8210348374498,
+     "fuite_db_moyenne": -46.528830380501574,
+     "fuite_db_mediane": -47.90490026108752
+    },
+    "reseau+1it": {
+     "debit": 28.302043914794922,
+     "sinr_moyen_lin": 401.11449561425707,
+     "fuite_db_moyenne": -46.83549924354429,
+     "fuite_db_mediane": -47.57058236997647
+    }
+   },
+   "30": {
+    "reseau": {
+     "debit": 34.61259841918945,
+     "sinr_moyen_lin": 1169.6453801051402,
+     "fuite_db_moyenne": -46.41150464454215,
+     "fuite_db_mediane": -47.24808458008893
+    },
+    "wmmse300": {
+     "debit": 34.327857971191406,
+     "sinr_moyen_lin": 735.4627614964061,
+     "fuite_db_moyenne": -56.5157012238916,
+     "fuite_db_mediane": -58.464616684118354
+    },
+    "reseau+1it": {
+     "debit": 34.79133605957031,
+     "sinr_moyen_lin": 1210.7139148535862,
+     "fuite_db_moyenne": -56.71006096094937,
+     "fuite_db_mediane": -57.08255707867503
+    }
+   },
+   "35": {
+    "reseau": {
+     "debit": 40.74790573120117,
+     "sinr_moyen_lin": 3306.715893819484,
+     "fuite_db_moyenne": -46.89406689567271,
+     "fuite_db_mediane": -47.542388596844496
+    },
+    "wmmse300": {
+     "debit": 39.9705924987793,
+     "sinr_moyen_lin": 1517.920541117947,
+     "fuite_db_moyenne": -65.89564477976788,
+     "fuite_db_mediane": -67.7832531426389
+    },
+    "reseau+1it": {
+     "debit": 41.384971618652344,
+     "sinr_moyen_lin": 3761.10290697821,
+     "fuite_db_moyenne": -66.55812524246278,
+     "fuite_db_mediane": -66.67961291005955
+    }
+   },
+   "40": {
+    "reseau": {
+     "debit": 45.64957046508789,
+     "sinr_moyen_lin": 7359.061135508438,
+     "fuite_db_moyenne": -44.15727126461446,
+     "fuite_db_mediane": -44.91086761984695
+    },
+    "wmmse300": {
+     "debit": 45.2061767578125,
+     "sinr_moyen_lin": 3250.450213553619,
+     "fuite_db_moyenne": -75.10862291914299,
+     "fuite_db_mediane": -76.07087754346642
+    },
+    "reseau+1it": {
+     "debit": 47.9852294921875,
+     "sinr_moyen_lin": 11792.060876181093,
+     "fuite_db_moyenne": -75.93950600143035,
+     "fuite_db_mediane": -75.88751139585868
+    }
+   }
+  }
+ },
+ "structure": {
+  "umi": {
+   "20": {
+    "erreur_rel_moyenne": 0.036776888944204764,
+    "erreur_rel_mediane": 0.03514319588861603,
+    "debit_reseau": 17.696399688720703,
+    "debit_struct": 17.652183532714844
+   },
+   "30": {
+    "erreur_rel_moyenne": 0.05445763241290054,
+    "erreur_rel_mediane": 0.030688592706904678,
+    "debit_reseau": 26.918827056884766,
+    "debit_struct": 26.940582275390625
+   },
+   "40": {
+    "erreur_rel_moyenne": 0.06296320364584959,
+    "erreur_rel_mediane": 0.02512926129283233,
+    "debit_reseau": 36.038230895996094,
+    "debit_struct": 37.84709930419922
+   }
+  },
+  "stecath": {
+   "20": {
+    "erreur_rel_moyenne": 0.06506321091629558,
+    "erreur_rel_mediane": 0.042586497174791335,
+    "debit_reseau": 22.32192611694336,
+    "debit_struct": 22.080322265625
+   },
+   "30": {
+    "erreur_rel_moyenne": 0.1078321192917406,
+    "erreur_rel_mediane": 0.028982456959220942,
+    "debit_reseau": 33.136985778808594,
+    "debit_struct": 33.171913146972656
+   },
+   "40": {
+    "erreur_rel_moyenne": 0.16724958297433032,
+    "erreur_rel_mediane": 0.007875433057388645,
+    "debit_reseau": 42.707305908203125,
+    "debit_struct": 44.890037536621094
+   }
+  },
+  "decarie": {
+   "20": {
+    "erreur_rel_moyenne": 0.10398400545821124,
+    "erreur_rel_mediane": 0.03773424017028935,
+    "debit_reseau": 23.49886131286621,
+    "debit_struct": 22.580141067504883
+   },
+   "30": {
+    "erreur_rel_moyenne": 0.09947126911476106,
+    "erreur_rel_mediane": 0.00738174204310654,
+    "debit_reseau": 34.94386291503906,
+    "debit_struct": 35.09762954711914
+   },
+   "40": {
+    "erreur_rel_moyenne": 0.10058265002856477,
+    "erreur_rel_mediane": 0.006137741694239682,
+    "debit_reseau": 44.71306228637695,
+    "debit_struct": 47.704044342041016
+   }
+  },
+  "ericsson": {
+   "20": {
+    "erreur_rel_moyenne": 0.1510550438718794,
+    "erreur_rel_mediane": 0.02813395809355493,
+    "debit_reseau": 23.73456573486328,
+    "debit_struct": 21.66363525390625
+   },
+   "30": {
+    "erreur_rel_moyenne": 0.1776384528707325,
+    "erreur_rel_mediane": 0.0069949331128469315,
+    "debit_reseau": 34.75654602050781,
+    "debit_struct": 34.04621124267578
+   },
+   "40": {
+    "erreur_rel_moyenne": 0.25611848899149803,
+    "erreur_rel_mediane": 0.011330888758341484,
+    "debit_reseau": 43.04803466796875,
+    "debit_struct": 46.264705657958984
+   }
+  }
+ },
+ "freedom": {
+  "umi": {
+   "20": {
+    "debit_reseau": 17.527673721313477,
+    "debit_wmmse300": 17.54303741455078,
+    "erreur_fit_structwmmse": 0.04012525058861552,
+    "T": {
+     "2": 7.643589496612549,
+     "4": 9.35158634185791,
+     "6": 11.56021499633789,
+     "8": 13.96360969543457,
+     "10": 16.13532257080078,
+     "15": 17.476078033447266
+    }
+   },
+   "30": {
+    "debit_reseau": 26.7562255859375,
+    "debit_wmmse300": 26.432437896728516,
+    "erreur_fit_structwmmse": 0.03488477618274405,
+    "T": {
+     "2": 7.8638458251953125,
+     "4": 9.383748054504395,
+     "6": 11.341512680053711,
+     "8": 13.759910583496094,
+     "10": 16.92560577392578,
+     "15": 25.181615829467773
+    }
+   }
+  },
+  "stecath": {
+   "20": {
+    "debit_reseau": 22.404417037963867,
+    "debit_wmmse300": 22.410663604736328,
+    "erreur_fit_structwmmse": 0.04795344661790809,
+    "T": {
+     "2": 7.384852886199951,
+     "4": 10.629938125610352,
+     "6": 14.564315795898438,
+     "8": 18.093273162841797,
+     "10": 20.657331466674805,
+     "15": 22.233062744140625
+    }
+   },
+   "30": {
+    "debit_reseau": 33.35968780517578,
+    "debit_wmmse300": 33.66554641723633,
+    "erreur_fit_structwmmse": 0.024914877652479905,
+    "T": {
+     "2": 7.504729747772217,
+     "4": 10.557584762573242,
+     "6": 14.622197151184082,
+     "8": 19.954988479614258,
+     "10": 25.02625846862793,
+     "15": 32.44070816040039
+    }
+   }
+  },
+  "decarie": {
+   "20": {
+    "debit_reseau": 23.315719604492188,
+    "debit_wmmse300": 23.255935668945312,
+    "erreur_fit_structwmmse": 0.05353768085861622,
+    "T": {
+     "2": 7.952610015869141,
+     "4": 11.137934684753418,
+     "6": 15.222744941711426,
+     "8": 18.96143913269043,
+     "10": 21.399253845214844,
+     "15": 22.719097137451172
+    }
+   },
+   "30": {
+    "debit_reseau": 34.74635696411133,
+    "debit_wmmse300": 34.95585632324219,
+    "erreur_fit_structwmmse": 0.03186600044221356,
+    "T": {
+     "2": 7.51519250869751,
+     "4": 10.322962760925293,
+     "6": 14.219499588012695,
+     "8": 19.158395767211914,
+     "10": 24.52552032470703,
+     "15": 33.581119537353516
+    }
+   }
+  },
+  "ericsson": {
+   "20": {
+    "debit_reseau": 24.242969512939453,
+    "debit_wmmse300": 24.148880004882812,
+    "erreur_fit_structwmmse": 0.051513110061942535,
+    "T": {
+     "2": 8.035541534423828,
+     "4": 11.648868560791016,
+     "6": 15.873397827148438,
+     "8": 19.363258361816406,
+     "10": 21.569868087768555,
+     "15": 23.586790084838867
+    }
+   },
+   "30": {
+    "debit_reseau": 35.52228927612305,
+    "debit_wmmse300": 36.23651885986328,
+    "erreur_fit_structwmmse": 0.014016523595523182,
+    "T": {
+     "2": 7.723134517669678,
+     "4": 11.256779670715332,
+     "6": 16.37686538696289,
+     "8": 22.215255737304688,
+     "10": 27.387807846069336,
+     "15": 35.13068771362305
+    }
+   }
+  }
+ },
+ "macs": {
+  "reseau_macs_par_sc": 717312,
+  "rzf_macs_par_sc_approx": 1194,
+  "G_macs": 512,
+  "W_macs": 512,
+  "NS_T2_macs_par_sc": 2048,
+  "NS_T4_macs_par_sc": 3072,
+  "NS_T6_macs_par_sc": 4096,
+  "NS_T8_macs_par_sc": 5120,
+  "NS_T10_macs_par_sc": 6144,
+  "NS_T15_macs_par_sc": 8704
+ }
+}
