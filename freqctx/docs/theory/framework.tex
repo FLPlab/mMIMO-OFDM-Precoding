@@ -1,0 +1,210 @@
+% Theoretical framework of the freqctx precoder. Living document: update with each validated result.
+% Build: latexmk -pdf framework.tex
+\documentclass[10pt,a4paper]{article}
+\usepackage[margin=2.2cm]{geometry}
+\usepackage{amsmath,amssymb,amsthm,bm}
+\usepackage{booktabs,enumitem,hyperref}
+\setlist{itemsep=1pt,topsep=3pt}
+\newtheorem{proposition}{Proposition}
+\newcommand{\Hm}{\mathbf{H}}
+\newcommand{\Gm}{\mathbf{G}}
+\newcommand{\Wm}{\mathbf{W}}
+\newcommand{\Cm}{\mathbf{C}}
+\newcommand{\I}{\mathbf{I}}
+\newcommand{\h}{\mathbf{h}}
+\newcommand{\w}{\mathbf{w}}
+\newcommand{\E}{\mathbb{E}}
+\newcommand{\tr}{\operatorname{tr}}
+\newcommand{\diag}{\operatorname{diag}}
+
+\title{Learned multi-user precoding for MIMO-OFDM:\\ theoretical framework and architecture}
+\author{freqctx project -- working document}
+\date{\today}
+
+\begin{document}
+\maketitle
+
+\section{System model}
+\begin{itemize}
+  \item Downlink MU-MISO OFDM: one base station with $M$ antennas, $K$ single-antenna users, $F$ subcarriers.
+  \item Per subcarrier $f$: channel $\Hm_f = [\h_{1,f}^T,\dots,\h_{K,f}^T]^T \in \mathbb{C}^{K\times M}$, precoder $\Wm_f = [\w_{1,f},\dots,\w_{K,f}] \in \mathbb{C}^{M\times K}$.
+  \item Received signal and SINR (index $f$ dropped):
+  \begin{equation}
+    y_k = \h_k \w_k s_k + \sum_{j\neq k} \h_k \w_j s_j + n_k, \qquad
+    \mathrm{SINR}_k = \frac{|\h_k\w_k|^2}{\sum_{j\neq k}|\h_k\w_j|^2 + \sigma^2}.
+  \end{equation}
+  \item Objective: sum rate under a total power constraint per subcarrier,
+  \begin{equation}
+    \max_{\Wm}\; R(\Wm) = \sum_{k=1}^K \log_2(1+\mathrm{SINR}_k) \quad \text{s.t.}\quad \|\Wm\|_F^2 = P .
+  \end{equation}
+  \item SNR $= P/\sigma^2$. Channels: 3GPP TR~38.901 UMi/UMa/RMa (Sionna), with real path loss and uplink power control
+        (unequal user powers); lab ray-tracing sites (St-Catherine, D\'ecarie, Ericsson) for zero-shot tests.
+\end{itemize}
+
+\section{Classical precoders}
+\begin{itemize}
+  \item MRT: $\Wm \propto \Hm^H$. \quad ZF: $\Wm \propto \Hm^H(\Hm\Hm^H)^{-1}$.
+  \item RZF: $\Wm \propto \Hm^H(\Hm\Hm^H + \alpha\I_K)^{-1}$, $\alpha = K\sigma^2/P$.
+  \item WMMSE (Shi et al., 2011), iteration $t$, with $\Wm$ initialised by RZF:
+  \begin{align}
+    \tau_k &= \textstyle\sum_j |\h_k\w_j|^2 + \sigma^2, &
+    g_k &= \frac{(\h_k\w_k)^*}{\tau_k}, &
+    \omega_k &= \frac{\tau_k}{\tau_k - |\h_k\w_k|^2}, &
+    a_k &= \omega_k |g_k|^2, \\
+    \Wm &\leftarrow \nu\,\big(\Hm^H \mathbf{A}\Hm + \mu\I_M\big)^{-1}\Hm^H \mathbf{B}, &
+    \mathbf{A} &= \diag(a_k), &
+    \mathbf{B} &= \diag(\omega_k g_k^*), &
+    \mu &= \sigma^2 \textstyle\sum_k a_k,
+  \end{align}
+  with $\nu$ a scalar restoring $\|\Wm\|_F^2 = P$ (closed-form $\mu$, Christensen et al., 2008).
+  Converges to a stationary point of $R$; typically needs 30--300 iterations at high SNR.
+\end{itemize}
+
+\section{Why the network reads the Gram matrix}
+\begin{proposition}[Range of the optimal precoder]\label{prop:range}
+  For the problem above, an optimal $\Wm$ can be written $\Wm = \Hm^H\Cm$ with $\Cm\in\mathbb{C}^{K\times K}$.
+\end{proposition}
+\begin{itemize}
+  \item Proof sketch: write $\Wm = \Hm^H\Cm + \Wm_\perp$ with $\Hm\Wm_\perp = 0$. The SINRs depend only on $\Hm\Wm$, so $\Wm_\perp$
+        spends power without changing any SINR; removing it and rescaling strictly increases every SINR.
+\end{itemize}
+\begin{proposition}[Sufficient statistic]\label{prop:gram}
+  With $\Wm = \Hm^H\Cm$ and $\Gm = \Hm\Hm^H$: $\;\Hm\Wm = \Gm\Cm$ and $\|\Wm\|_F^2 = \tr(\Cm^H\Gm\Cm)$.
+  Hence $R$ and the constraint depend on $(\Gm,\Cm,\sigma^2)$ only, and an optimal $\Cm$ is a function of $(\Gm, \sigma^2)$.
+\end{proposition}
+\begin{itemize}
+  \item RZF and every WMMSE iterate are of this form. Push-through identity:
+  \begin{equation}
+    (\Hm^H\mathbf{A}\Hm + \mu\I_M)^{-1}\Hm^H = \Hm^H(\mathbf{A}\Gm + \mu\I_K)^{-1}
+    \;\Rightarrow\; \Cm \leftarrow \nu\,(\mathbf{A}\Gm + \mu\I_K)^{-1}\mathbf{B},
+  \end{equation}
+  and $\tau_k, g_k, \omega_k$ only need $\Hm\Wm = \Gm\Cm$. WMMSE is therefore an iteration on $K\times K$ matrices.
+  \item Consequences for the network:
+  \begin{itemize}
+    \item it predicts $\Cm$ from $\Gm$ ($K^2$ inputs instead of $KM$): \textbf{no information is lost} under perfect CSI;
+    \item its cost does not depend on $M$; the \textbf{same weights} serve $M=8$ and $M=64$;
+    \item antenna geometry disappears from the input (helps zero-shot on unseen sites);
+    \item no matrix inversion; $\Wm = \Hm^H\Cm$ is a single matrix product.
+  \end{itemize}
+  \item History: a per-user-token network reading $\Hm$ plateaued at $\approx 50\%$ of RZF for $M=64$, $K=8$; the Gram version matches converged WMMSE.
+\end{itemize}
+
+\paragraph{Limits of the Gram restriction.}
+\begin{itemize}
+  \item \emph{Imperfect CSI.} With estimate $\hat\Hm$ and error $\mathbf{e}_k$ of covariance $\mathbf{R}_k$, the robust (expected-SINR) WMMSE update is
+  \begin{equation}
+    \Wm \leftarrow \nu\Big(\hat\Hm^H\mathbf{A}\hat\Hm + \textstyle\sum_k a_k\mathbf{R}_k + \mu\I_M\Big)^{-1}\hat\Hm^H\mathbf{B}.
+  \end{equation}
+  If $\mathbf{R}_k = \epsilon_k\I_M$, the extra term is a multiple of $\I_M$: the optimum stays in $\mathrm{range}(\hat\Hm^H)$ and depends on $(\hat\Gm, \{\epsilon_k\})$.
+  If $\mathbf{R}_k$ is not isotropic (LMMSE with spatial correlation, massive arrays), it leaves $\mathrm{range}(\hat\Hm^H)$ and $\hat\Gm$ is no longer sufficient.
+  \item \emph{Per-antenna power constraints}, non-linear PAs, low-resolution DACs: the optimum is not of the form $\Hm^H\Cm$.
+  \item \emph{Large $K$}: $K^2$ pair tokens and $O(K^3 d)$ mixing per layer.
+  \item \emph{Fixed point}: $\Gm$ squares the dynamic range of $\Hm$; handled by per-user normalisation (mantissa + exponent).
+  \item Empirical status: with LS+LMMSE estimation ($M=8$, UMi), the Gram precoder equals robust WMMSE (diagonal $\mathbf{R}_k$).
+        Open: test at $M=64$, and feed $\epsilon_k$ to the network.
+\end{itemize}
+
+\section{Channel estimation front end (from pilots)}
+\begin{itemize}
+  \item Kronecker comb pilots: user $k$ on subcarriers $k, k+K, \dots$ ($N = F/K$ per user), boosted by $+6$~dB; LS estimate $\mathbf{y}_k \in \mathbb{C}^{N\times M}$.
+  \item Delay domain on a $2\times$ oversampled grid ($T = 2N$ taps): $\mathbf{g}_k = \mathbf{D}^{\dagger}\mathbf{y}_k$ (fixed IDFT).
+  \item Filtering per tap, common to all antennas (a path has the same delay on every antenna):
+  \begin{equation}
+    \hat{\mathbf{g}}_k[t] = c_{-1}[t]\,\mathbf{g}_k[t-1] + c_0[t]\,\mathbf{g}_k[t] + c_{+1}[t]\,\mathbf{g}_k[t+1],
+    \qquad \hat\h_{k,f} = \text{DFT}(\hat{\mathbf{g}}_k)[f].
+  \end{equation}
+  \item Closed-form reference (Wiener on the estimated power-delay profile):
+        $c_0[t] = \max(P[t]-\kappa\hat\sigma^2, 0)/P[t]$, $c_{\pm1} = 0$, $\hat\sigma^2$ from the median tap power, $\kappa = 4$.
+  \item Learned encoder: the coefficients $c[t]$ are produced by 2 blocks over delay tokens (Conv1D over 7 taps + global mean),
+        input = tap powers and SNR. Linear in the pilots once $c$ is chosen (a data-adaptive banded Wiener filter).
+\end{itemize}
+
+\section{Precoder architecture (pair transformer)}
+\begin{itemize}
+  \item Normalisation: $\tilde\h_k = \h_k/\|\h_k\|$, $p_k = \log_{10}\big(\|\h_k\|^2/\tfrac1K\sum_j\|\h_j\|^2\big)$, $\tilde\Gm = \tilde{\Hm}\tilde{\Hm}^H$ ($|\tilde G_{jk}|\le 1$).
+  \item One token per ordered user pair $(j,k)$, state $\mathbf{e}_{jk}\in\mathbb{C}^d$, initialised from
+  \begin{equation}
+    \mathbf{f}_{jk} = \big[\Re\tilde G_{jk},\ \Im\tilde G_{jk},\ |\tilde G_{jk}|,\ \delta_{jk},\ \mathrm{SNR_{dB}}/10,\ p_j,\ p_k\big],
+    \qquad \mathbf{e}^{(0)}_{jk} = \mathbf{W}_0\mathbf{f}_{jk}.
+  \end{equation}
+  \item Layer $\ell = 1..L$ (triangular linear attention, Edge Transformer / AlphaFold style, no softmax):
+  \begin{align}
+    \mathbf{x}_{jk} &= \mathrm{LN}\big([\Re\mathbf{e}_{jk},\Im\mathbf{e}_{jk}]\big) \oplus [\Re\tilde G_{jk},\Im\tilde G_{jk},|\tilde G_{jk}|], \\
+    \mathbf{m}_{jk} &= \tfrac1K \textstyle\sum_{l=1}^{K} \mathbf{a}(\mathbf{x}_{jl}) \odot \mathbf{b}(\mathbf{x}_{lk})
+      \quad (\text{complex, per channel}), \\
+    \mathbf{e}_{jk} &\leftarrow \mathbf{e}_{jk} + \mathrm{FFN}\big([\mathbf{x}_{jk}, \mathbf{m}_{jk}]\big), \qquad
+      \mathrm{FFN} = \mathbf{W}_2\,\mathrm{GELU}(\mathbf{W}_1\,\cdot\,).
+  \end{align}
+  \item Output: $C_{jk} = \mathbf{w}_r^T\mathbf{e}^{(L)}_{jk}$ (complex), $\;\Wm = \nu\,\tilde\Hm^H\Cm$, $\|\Wm\|_F^2 = P$.
+  \item Interpretation: $\mathbf{m} = \mathbf{a}\cdot\mathbf{b}$ is a matrix product over users; with one channel carrying $\tilde\Gm$ it
+        reproduces $\Gm\mathbf{E}$ (Neumann / Richardson steps), and $\mathbf{E}\mathbf{E}$ (Newton--Schulz, degree doubling).
+        Each layer $\approx$ one step of an iterative inversion, without division.
+  \item Equivariance: permuting users permutes rows and columns of $\tilde\Gm$, $\mathbf{E}$ and $\Cm$.
+  \item Cost per subcarrier (real MAC): $4K^2M$ (Gram) $+\;K^2\,c_{\text{token}}(d,h,L) + 4LK^3d$ (mixing) $+\;4MK^2$ ($\Hm^H\Cm$).
+        Default $d=16$, $h=32$, $L=8$: 44.6\,k parameters, 0.72\,M MAC ($K=4$, $M=8$).
+        Hardware model ($h=16$, $L=2$): 0.14\,M MAC.
+  \item Same network for all subcarriers (no frequency embedding). Option: compute $\Wm$ on 1 subcarrier out of $s$ and interpolate
+        $\Wm$ linearly ($s=3$ is lossless on 3GPP channels; 12--24 on the nearly flat lab channels).
+\end{itemize}
+
+\section{Training}
+\begin{itemize}
+  \item Loss: $\mathcal{L} = -\E\big[R(\Wm_\theta)/R(\Wm_{\text{RZF}})\big]$ (normalisation balances SNRs and channels), SNR $\sim\mathcal{U}(0,30)$~dB.
+  \item Data: UMi + UMa + RMa, real powers, both $M=8,K=4$ and $M=64,K=8$ (one network). Adam, cosine decay, 60\,k steps.
+  \item From pilots: end-to-end (encoder + precoder), loss on the true channel.
+  \item Imperfect CSI variant: $\hat\h_k = \h_k + \mathbf{e}_k$, $\mathbf{e}_k\sim\mathcal{CN}(0,\epsilon_k\|\h_k\|^2/M\,\I)$, $\epsilon_k\in[-25,-5]$~dB;
+        deployed with a real Sionna estimator (LS + LMMSE or linear interpolation).
+\end{itemize}
+
+\section{Quantisation and cost models}
+\begin{itemize}
+  \item ART (lab): LSQ quantisers, learned bit widths per layer $(b_w,b_a)\in[1,8]$, values in $\pm(2^b-1)$;
+        loss $\mathcal{L} = -R/R_{\text{ref}} + \lambda\,\mathrm{Cost}(\mathbf{b})/\mathrm{Cost}_{\text{ref}}$.
+  \item ASIC energy (Moons et al., 2017, Horowitz constants; lab \texttt{Energy.py} v5):
+        $E_{\text{MAC}}(b) \propto (b/16)^{\beta}$ plus memory accesses, $b=\max(b_w,b_a)$.
+  \item FPGA cost (fitted on 68 Vitis HLS syntheses, constant weights, $b_w\le4$, no DSP):
+  \begin{equation}
+    \mathrm{LUT/MAC} \approx 0.80\,b_wb_a - 1.76\,b_a + 11.6 \quad (b_w = 2..4),\qquad 0.36\,b_a + 3.9 \quad (b_w=1).
+  \end{equation}
+  The FPGA objective favours 1--2 bit weights and wider activations (the opposite of $\max(b_w,b_a)$).
+\end{itemize}
+
+\section{Complexity of the classical baselines}
+Real MAC per subcarrier; a complex product = 4 real MAC; $n$ = WMMSE iterations; divisions counted separately.
+\begin{center}
+\begin{tabular}{lll}
+\toprule
+Method & MAC & $K=4$, $M=64$ \\
+\midrule
+RZF & $4K^2M + 4K^3 + 4MK^2$ & 8.4\,k \\
+WMMSE, $M$-domain (SiPS eq.~12) & $O(nM^3)$ & --- \\
+WMMSE, push-through, $\Hm\Wm$ and $\Hm^H\Cm$ each iteration & $4K^2M + n(8MK^2 + 4K^3)$ & 262\,k ($n=30$) \\
+WMMSE, Gram domain (iterate on $\Cm$ only) & $4K^2M + n\cdot 12K^3 + 4MK^2$ & 37\,k ($n=30$) \\
+Pair transformer, $L=2$, $h=16$ & see Sec.~5 & 141\,k \\
+\bottomrule
+\end{tabular}
+\end{center}
+\begin{itemize}
+  \item Gram-domain WMMSE: $\Gm$ once, then per iteration $\Gm\Cm$, $K\times K$ inverse and power $\tr(\Cm^H\Gm\Cm)$; exactly the same precoder, cost independent of $M$.
+  \item This is the fair (energy-optimal) baseline formulation. In MAC count it is cheaper than our 2-layer network;
+        the comparison then rests on precision (2--8 bit learned vs.\ 16/32 bit with divisions) and on latency (one pass vs.\ $n$ sequential iterations).
+\end{itemize}
+
+\section{Hardware mapping}
+\begin{itemize}
+  \item Chain: quantised PyTorch model $\to$ integer reference (no division: table + one Newton step for $1/\sqrt{x}$, GELU and $\log_2$ tables,
+        16-bit dyadic scales) $\to$ generated Vitis HLS C++, bit-exact with the integer reference.
+  \item \texttt{stream} architecture: dataflow of 13 processes linked by FIFOs; dense layers unrolled with constant weights;
+        subcarriers streamed without draining the pipeline.
+  \item Budget: 5G NR 100\,MHz at 30\,kHz: 3276 subcarriers per 0.5\,ms slot (1092 with $s=3$ interpolation)
+        $\Rightarrow\approx 137$ cycles per subcarrier at 300\,MHz for one instance.
+\end{itemize}
+
+\section{Open questions}
+\begin{itemize}
+  \item Imperfect CSI: is $(\hat\Gm,\{\epsilon_k\})$ sufficient at $M=64$ (structured LMMSE error)?
+  \item High-SNR gap on unseen lab sites (0.2--0.9 bps/Hz at 30 dB): data, objective weighting, or expressivity?
+  \item Energy vs.\ Gram-domain WMMSE at equal precision; FPGA resources vs.\ throughput under the slot budget.
+\end{itemize}
+
+\end{document}
