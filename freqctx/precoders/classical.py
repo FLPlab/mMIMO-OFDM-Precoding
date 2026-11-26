@@ -26,21 +26,24 @@ def zf(h, noise_var=None):
     return rzf(h, None, alpha=0.0)
 
 
-def wmmse(h, noise_var, num_iter=30, err_var=None):
+def wmmse(h, noise_var, num_iter=30, err_var=None, init=None):
     """WMMSE somme-debit, puissance totale par SC (Shi et al. 2011), avec la
     mise a jour a multiplicateur ferme mu = sigma^2 * sum(omega |g|^2)
     (Christensen et al. 2008) suivie d'une renormalisation. Initialise par
-    RZF, calcule en complex128 (conditionnement a haut SNR).
+    RZF par defaut, calcule en complex128 (conditionnement a haut SNR).
 
     err_var [..., K, M] (option) : WMMSE ROBUSTE a erreur moyenne. h est alors
     l'estimation, et l'erreur e_k (covariance diagonale C_k = diag(err_var_k))
     est moyennee : E|h_k w_j|^2 = |h^_k w_j|^2 + w_j^H C_k w_j, et
-    A recoit en plus sum_k a_k C_k."""
+    A recoit en plus sum_k a_k C_k.
+
+    init [..., M, K] (option) : precodeur de depart (ex. sortie d'un reseau),
+    a la place de RZF ; renormalise en puissance par securite."""
     h64 = tf.cast(h, tf.complex128)
     nv = tf.cast(noise_var, tf.float64)
     M = h.shape[-1]
     ev = None if err_var is None else tf.cast(err_var, tf.float64)
-    w = tf.cast(rzf(h, noise_var), tf.complex128)
+    w = tf.cast(rzf(h, noise_var), tf.complex128) if init is None else tf.cast(normalize_power(init), tf.complex128)
     eye = tf.eye(M, dtype=tf.complex128)
     for _ in range(num_iter):
         hw = tf.matmul(h64, w)                                   # [..., K, K]

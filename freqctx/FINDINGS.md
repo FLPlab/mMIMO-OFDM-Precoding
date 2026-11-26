@@ -1428,6 +1428,16 @@ Précodeur M8K4 initialisé par le précodeur CSI parfait, réentraîné 20 000 
 - **Le précodeur entraîné en CSI parfait égale ou dépasse WMMSE (robuste) avec un vrai estimateur**, sans réentraîner.
 - **BER** : les précodeurs qui maximisent le débit somme ont un BER moyen plus élevé (puissance concentrée sur les bons utilisateurs ; les flux faibles ont un SINR très bas). Le BER moyen sur les flux n'est pas l'objectif optimisé ; pour une figure BER, il faudra fixer la modulation par flux ou viser un autre objectif (débit minimal, MSE).
 
+### Diagnostic du fine-tuning et raffinement WMMSE (`experiments/phase14_ft_diag.py`, `results/phase14/ft_diag_<site>.json`)
+Débit à 30 dB (protocole du fine-tuning, M8K4) :
+| site | zero-shot | oracle (toutes les données, 20 k pas) | oracle, SNR U(20,30) | de zéro, même budget | **réseau + 3 it. WMMSE** | WMMSE 300 it. |
+|---|---|---|---|---|---|---|
+| Ericsson | 35,32 | 35,77 | 35,85 | 29,85 | **36,33** | 36,19 |
+| Décarie | 34,86 | — | — | — | **35,48** | 35,04 |
+| St-Catherine | 33,28 | — | — | — | **33,87** | 33,56 |
+- Pas un manque de données : l'oracle ne comble que la moitié de l'écart. Le départ 3GPP est essentiel (de zéro : 29,85). Pondérer le fort SNR aide peu (+0,05 à +0,2). Écart peu corrélé au conditionnement de G : limite diffuse du nombre d'« itérations » à fort SNR.
+- **1 à 3 itérations de WMMSE initialisées par le réseau dépassent WMMSE 300 it.** (initialisé par RZF) sur les 3 sites : le réseau mène à un meilleur point stationnaire. Coût : ~3 itérations en forme Gram (O(K³) chacune). Recommandation : réseau + 1-2 it. WMMSE plutôt que fine-tuner ou agrandir.
+
 ### CSI imparfait : variance d'erreur par utilisateur en entrée (`experiments/phase14_csi_errin.py`, `GramPrecoder(err_in=True)`, `results/phase14/csi_errin.json`)
 Erreur synthétique tirée par utilisateur, niveau fourni au réseau ; déploiement : variance donnée par l'estimateur Sionna. Débit à 20 dB, LMMSE :
 | taille, pilote | CSI parfait | synth. (M8K4 seul) | **synth. + variance** | WMMSE robuste | RZF |
