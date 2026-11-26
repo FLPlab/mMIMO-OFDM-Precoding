@@ -1464,6 +1464,7 @@ Un seul changement par rapport au précodeur de référence (8 couches, M8K4 + M
 
 - **La profondeur est le levier** : 12 couches comblent un tiers à la moitié de l'écart à WMMSE convergé à 30 dB sur les sites jamais vus (Ericsson : 35,77 → 36,08 ; à 20 dB, au-dessus de WMMSE), sans aucune donnée du site, mieux que le fine-tuning avec 4 000 échantillons. Coût : ×1,5 en calcul (12 couches au lieu de 8).
 - **Déplacer l'entraînement vers le fort SNR dégrade partout** (−0,3 à −0,4 à 30 dB, −0,2 à −0,3 à 0 dB) : ÉCARTÉ.
+- **16 couches ≈ 12 couches** (30 dB : St-Catherine 32,88, Décarie 34,27, Ericsson 36,10 ; 3GPP au-dessus de WMMSE300) : la profondeur sature, l'écart résiduel aux sites (0,1 à 0,3) ne se comble pas par la capacité seule.
 - Cohérent avec la lecture « itérations » du précodeur (chaque couche ≈ une étape d'inversion) : les canaux très bien conditionnés à fort SNR demandent plus d'étapes.
 
 ### Modèle de coût FPGA pour ART (agent, `/users/sala/Documents/test_projet/hls_work/cost_model/` : `RAPPORT.md`, `cost_table.csv`, `fpga_cost.py`)
@@ -1488,6 +1489,13 @@ Modèle 2 couches h16 (143 k MAC), xcu280, horloge cible 4 ns. Toutes les varian
 
 ### ART avec le coût FPGA (`torch_port/art_stecath.py --cost fpga`)
 Premier essai (poids jusqu'à 8 bits, coût calculé avec b_w borné à 4) : b_w > 4 gratuit → tous les poids à 8 bits, activations à 2 bits, débit 22,3 (λ = 5) contre 24,1 avec l'objectif énergie. Défaut de la perte, pas un résultat : relancé avec b_w ≤ 4 (régime sans DSP), λ = 1 et 5.
+Avec b_w ≤ 4 (St-Catherine, 2 couches h16, mêmes options que la référence énergie λ = 5 : 24,07 bps/Hz, poids 2 à 8 bits) :
+| objectif | débit | poids des couches denses | activations | coût FPGA (LUT-éq.) |
+|---|---|---|---|---|
+| FPGA λ = 1 | 23,21 | 1-2 bits (entrée/sortie 4) | 3-8 | 125 k |
+| FPGA λ = 5 | 21,74 | 1 bit (entrée/sortie 3) | 3-6 | 37 k |
+- L'objectif FPGA pousse les poids vers 1-2 bits (multiplication par constante sans DSP) et garde des activations plus larges : l'inverse de Moons, qui pénalise max(b_w, b_a). λ = 0,3 en cours pour rejoindre ~24.
+- Limite : G, W et le produit triangulaire (variable × variable, 8 bits) ne sont pas dans le coût FPGA.
 
 ## Prochaine étape
 (1) 3 graines pour l'attention en fréquence D64. (2) Réduire le coût. (3) Bootstrap sur les tirages. (4) Faire le point avant d'aller plus loin (pilote 20 dB, vieillissement, M64).
