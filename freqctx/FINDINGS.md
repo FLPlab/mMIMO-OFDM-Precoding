@@ -1492,9 +1492,10 @@ Premier essai (poids jusqu'à 8 bits, coût calculé avec b_w borné à 4) : b_w
 Avec b_w ≤ 4 (St-Catherine, 2 couches h16, mêmes options que la référence énergie λ = 5 : 24,07 bps/Hz, poids 2 à 8 bits) :
 | objectif | débit | poids des couches denses | activations | coût FPGA (LUT-éq.) |
 |---|---|---|---|---|
+| **FPGA λ = 0,3** | **24,56** | 2-3 bits (entrée/sortie 4) | 4-8 | 181 k |
 | FPGA λ = 1 | 23,21 | 1-2 bits (entrée/sortie 4) | 3-8 | 125 k |
 | FPGA λ = 5 | 21,74 | 1 bit (entrée/sortie 3) | 3-6 | 37 k |
-- L'objectif FPGA pousse les poids vers 1-2 bits (multiplication par constante sans DSP) et garde des activations plus larges : l'inverse de Moons, qui pénalise max(b_w, b_a). λ = 0,3 en cours pour rejoindre ~24.
+- L'objectif FPGA pousse les poids vers 1-2 bits (multiplication par constante sans DSP) et garde des activations plus larges : l'inverse de Moons, qui pénalise max(b_w, b_a). λ = 0,3 : 24,56 bps/Hz, AU-DESSUS de la référence énergie (24,07) avec des poids ≤ 3 bits dans les blocs (aucun DSP pour les poids sur FPGA) ; énergie Moons 23,7 nJ contre 24,5.
 - Limite : G, W et le produit triangulaire (variable × variable, 8 bits) ne sont pas dans le coût FPGA.
 
 ## Prochaine étape
