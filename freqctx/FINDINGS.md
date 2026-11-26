@@ -1604,6 +1604,8 @@ Sites convertis en OFDM (`phase13_lab`, convention psi2az), pilotes Sionna, LS +
 - **Le plancher du réseau réapparaît à pilote 20 dB** (−0,4 à −0,7 à 30 dB) : à bon SNR pilote, l'erreur d'estimation ne le masque plus. À pilote 10 dB, égalité (≤ 0,06). Le plancher n'est donc pas qu'une curiosité du CSI parfait.
 - À pilote 20 dB, le modèle entraîné avec erreur synthétique perd en plus 0,2-0,3 sur le modèle CSI parfait (réglé pour une erreur moyenne, cf. phase 14) ; la variante « + variance » (poids non sauvés en phase 14, réentraînement en cours) devrait supprimer cette part.
 - Réserves : une graine, une convention d'angles.
+- **Variante « erreur synthétique + variance » (réentraînée à l'identique, UMi reproduit à 0,03 près ; `--errin-only`)** : à 30 dB, St-Catherine 20,14 / 25,73 / 29,44, Décarie 21,19 / 26,80 / 30,56, Ericsson 21,53 / 27,80 / 32,21 (pilote 0 / 10 / 20 dB). Elle bat WMMSE robuste à pilote 0 dB mais fait MOINS bien que le modèle sans variance à pilote 10-20 dB (jusqu'à −1,1 contre WMMSE à pilote 20 dB). Le gain de la variance vu sur UMi ne se transfère pas aux sites : probablement parce que la variance d'erreur fournie par l'estimateur est calculée avec la covariance du mélange 3GPP, fausse sur des canaux presque plats (variance surestimée → précodeur trop prudent). À vérifier avant de montrer la variante.
+
 
 ## Prochaine étape
 (1) 3 graines pour l'attention en fréquence D64. (2) Réduire le coût. (3) Bootstrap sur les tirages. (4) Faire le point avant d'aller plus loin (pilote 20 dB, vieillissement, M64).
