@@ -1,0 +1,152 @@
+{
+ "lambda": 1.0,
+ "hidden": 16,
+ "qprod": true,
+ "inp": "norm",
+ "cost": "energy",
+ "site": "ericsson",
+ "sr_fp32": 36.85873031616211,
+ "sr_quant": 34.90553665161133,
+ "energy_pJ": {
+  "fp32_corrige": 667462.9375,
+  "fp32_labo": 719468.3125,
+  "quant_corrige": 46378.17578125,
+  "quant_labo": 39595.7109375
+ },
+ "fpga_cost_lut": {
+  "ref_bw4_ba8": 291102.8675821973,
+  "quant": 284068.6541365945
+ },
+ "bits": {
+  "init": [
+   7.0,
+   8.0
+  ],
+  "read": [
+   8.0,
+   8.0
+  ],
+  "blocks.0.a": [
+   5.0,
+   7.0
+  ],
+  "blocks.0.b": [
+   5.0,
+   7.0
+  ],
+  "blocks.0.f1": [
+   6.0,
+   8.0
+  ],
+  "blocks.0.f2": [
+   7.0,
+   8.0
+  ],
+  "blocks.1.a": [
+   6.0,
+   8.0
+  ],
+  "blocks.1.b": [
+   6.0,
+   8.0
+  ],
+  "blocks.1.f1": [
+   7.0,
+   8.0
+  ],
+  "blocks.1.f2": [
+   6.0,
+   8.0
+  ],
+  "G": [
+   7.0,
+   7.0
+  ],
+  "W": [
+   8.0,
+   7.0
+  ],
+  "tri0": [
+   7.0,
+   8.0
+  ],
+  "tri1": [
+   8.0,
+   8.0
+  ]
+ },
+ "mean_bits_w": 6.642857142857143,
+ "mean_bits_a": 7.714285714285714,
+ "history": [
+  {
+   "step": 2500,
+   "sr_train": 34.20048522949219,
+   "energy_corr_pJ": 58566.65625,
+   "fpga_cost_lut": 301900.53125,
+   "time_s": 141
+  },
+  {
+   "step": 5000,
+   "sr_train": 34.44365692138672,
+   "energy_corr_pJ": 56205.08984375,
+   "fpga_cost_lut": 301900.53125,
+   "time_s": 284
+  },
+  {
+   "step": 7500,
+   "sr_train": 34.328086853027344,
+   "energy_corr_pJ": 54155.03515625,
+   "fpga_cost_lut": 301900.53125,
+   "time_s": 427
+  },
+  {
+   "step": 10000,
+   "sr_train": 34.98438262939453,
+   "energy_corr_pJ": 53589.3203125,
+   "fpga_cost_lut": 301699.875,
+   "time_s": 569
+  },
+  {
+   "step": 12500,
+   "sr_train": 34.40387725830078,
+   "energy_corr_pJ": 50368.87109375,
+   "fpga_cost_lut": 300122.6875,
+   "time_s": 711
+  },
+  {
+   "step": 15000,
+   "sr_train": 33.815711975097656,
+   "energy_corr_pJ": 49631.33984375,
+   "fpga_cost_lut": 293213.375,
+   "time_s": 856
+  },
+  {
+   "step": 17500,
+   "sr_train": 34.44574737548828,
+   "energy_corr_pJ": 48515.890625,
+   "fpga_cost_lut": 293088.46875,
+   "time_s": 1004
+  },
+  {
+   "step": 20000,
+   "sr_train": 34.90605926513672,
+   "energy_corr_pJ": 47399.9296875,
+   "fpga_cost_lut": 293088.46875,
+   "time_s": 1151
+  },
+  {
+   "step": 22500,
+   "sr_train": 34.88677215576172,
+   "energy_corr_pJ": 46378.17578125,
+   "fpga_cost_lut": 284068.65625,
+   "time_s": 1222
+  },
+  {
+   "step": 25000,
+   "sr_train": 35.643768310546875,
+   "energy_corr_pJ": 46378.17578125,
+   "fpga_cost_lut": 284068.65625,
+   "time_s": 1297
+  }
+ ]
+}

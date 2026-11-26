@@ -25,7 +25,7 @@ import torch.nn.functional as Fn
 from hls.cost_model.fpga_cost import CASEA_BW_MAX_VALID, layer_cost_torch
 from torch_port.energy import pair_precoder_fixed, pair_precoder_layers, pair_precoder_products, total_energy
 from torch_port.models import PairPrecoder, _cplx, _real, normalize_power
-from torch_port.stecath import DEV, LAB, OUT_W, RESULTS, K, batched, draw, lab_rate, ours_input, pool
+from torch_port.stecath import DEV, LAB, OUT_W, RESULTS, SITES, K, batched, draw, lab_rate, ours_input, pool, site_tag
 
 sys.path.insert(0, LAB)
 from quan.func import QuanLinear                               # noqa: E402  (code du labo)
@@ -160,13 +160,15 @@ def main():
     ap.add_argument("--cost", default="energy", choices=["energy", "fpga"],
                      help="objectif de cout (phase 2) : energie Moons corrigee (defaut, inchange) ou "
                           "cout FPGA LUT-equivalent (cas A, poids constants, calibre HLS)")
+    ap.add_argument("--site", default="stecath", choices=SITES,
+                     help="site du labo (comportement et noms de fichiers inchanges pour stecath, le defaut)")
     a = ap.parse_args()
     torch.manual_seed(0)
-    P = pool()
+    P = pool(a.site)
     Htr, Hte = draw(P, 800000, seed=1), draw(P, 20000, seed=2026)
     net = PairPrecoder(d=D, hidden=a.hidden, layers=a.layers, inp=a.inp).to(DEV)
     lt = "" if a.layers == LAYERS else f"_L{a.layers}"
-    wname = f"pair_h{a.hidden}" + lt + ("" if a.inp == "raw" else f"_{a.inp}")
+    wname = f"pair_h{a.hidden}" + lt + ("" if a.inp == "raw" else f"_{a.inp}") + site_tag(a.site)
     net.load_state_dict(torch.load(f"{OUT_W}/{wname}.pt", map_location=DEV, weights_only=True))
     layers = pair_precoder_layers(net, K)                      # comptes avant le remplacement
     fixed = pair_precoder_fixed(K, M, D, a.layers)
@@ -233,7 +235,7 @@ def main():
             print("   ", hist[-1], flush=True)
     b = {n: (float(v[0]), float(v[1])) for n, v in all_bits(True).items()}
     fpga_final = float(fpga_cost(dense_layers, {n: b[n] for n in dense_layers}, K))
-    out = {"lambda": a.lam, "hidden": a.hidden, "qprod": a.qprod, "inp": a.inp, "cost": a.cost,
+    out = {"lambda": a.lam, "hidden": a.hidden, "qprod": a.qprod, "inp": a.inp, "cost": a.cost, "site": a.site,
            "sr_fp32": sr_fp32, "sr_quant": test_rate(net),
            "energy_pJ": {"fp32_corrige": e32[True], "fp32_labo": e32[False],
                          "quant_corrige": float(total_energy(layers, b, True, fixed)),
@@ -244,7 +246,8 @@ def main():
     print(json.dumps({k: v for k, v in out.items() if k not in ("bits", "history")}, indent=1), flush=True)
     os.makedirs(RESULTS, exist_ok=True)
     cost_tag = "" if a.cost == "energy" else f"_cost{a.cost}"
-    tag = f"art_pair_h{a.hidden}{lt}_lam{a.lam:g}{cost_tag}" + ("_qprod" if a.qprod else "") + ("" if a.inp == "raw" else f"_{a.inp}")
+    tag = (f"art_pair_h{a.hidden}{lt}_lam{a.lam:g}{cost_tag}" + ("_qprod" if a.qprod else "")
+           + ("" if a.inp == "raw" else f"_{a.inp}") + site_tag(a.site))
     json.dump(out, open(f"{RESULTS}/{tag}.json", "w"), indent=1)
     torch.save(net.state_dict(), f"{OUT_W}/{tag}.pt")
 

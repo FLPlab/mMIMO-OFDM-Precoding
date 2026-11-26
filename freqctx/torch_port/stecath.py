@@ -34,9 +34,17 @@ NOISE, K = 1e-13, 4
 DEV = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
 
-def pool():
-    H = [loadmat(f"{DATA}dataset_stecath_{l}_raytracing.mat")[f"CSIs_{l}"] for l in ("LOS", "NLOS")]
-    return np.concatenate(H, 0).astype(np.complex64)                      # [9032, 64]
+SITES = ("stecath", "decarie", "ericsson")
+
+
+def site_tag(site):
+    """Suffixe de fichier : vide pour stecath (site par defaut, noms inchanges), '_<site>' sinon."""
+    return "" if site in (None, "stecath") else f"_{site}"
+
+
+def pool(site="stecath"):
+    H = [loadmat(f"{DATA}dataset_{site}_{l}_raytracing.mat")[f"CSIs_{l}"] for l in ("LOS", "NLOS")]
+    return np.concatenate(H, 0).astype(np.complex64)                      # [9032, 64] (meme format pour les 3 sites)
 
 
 def draw(P, n, seed):
@@ -83,6 +91,32 @@ def wmmse(H, iters=30):
     return w.to(torch.complex64)
 
 
+def wmmse_gram(H, iters=30):
+    """Meme precodeur que wmmse(), mais l'iteration se fait entierement en forme de Gram K x K
+    (W = H^H C partout, identite push-through H W = G C, G = H H^H calcule une fois) : verifie le
+    compte d'operations de energy_classical.counts_wmmse_gram (independant de M par iteration).
+    Initialisation par RZF directement en C ; normalisation de C a chaque iteration (comme w dans
+    wmmse(), sinon hw/T divergerait de wmmse() a partir de la 2e iteration)."""
+    h = torch.conj(H).to(torch.complex128)
+    Kd = h.shape[1]
+    G = h @ h.conj().transpose(-1, -2)                                     # [n, K, K], une fois
+    eye = torch.eye(Kd, dtype=h.dtype, device=h.device)
+    C = torch.linalg.inv(G + Kd * NOISE * eye)                             # init RZF, directement en C
+    C = C / torch.sqrt((C.conj() * (G @ C)).sum(dim=(-2, -1)).real)[:, None, None]  # normalise comme rzf()
+    for _ in range(iters):
+        T = G @ C                                                          # = H W
+        sig = torch.diagonal(T, dim1=-2, dim2=-1)
+        tot = (T.abs() ** 2).sum(-1) + NOISE
+        g = sig.conj() / tot
+        omega = tot / (tot - sig.abs() ** 2)
+        a = omega * g.abs() ** 2
+        A = a[:, :, None] * G + (NOISE * a.sum(-1))[:, None, None] * eye   # diag(a) G + mu I, K x K
+        C = torch.linalg.solve(A, torch.diag_embed(omega * g.conj()))
+        p = (C.conj() * (G @ C)).sum(dim=(-2, -1)).real                    # tr(C^H G C) = ||H^H C||_F^2
+        C = C / torch.sqrt(p)[:, None, None]
+    return (h.conj().transpose(-1, -2) @ C).to(torch.complex64)            # deja de puissance 1
+
+
 def lab_model(cfg):
     sys.path.insert(0, LAB)
     from Pipeline.Transformer_FPGA import StackedTransformer
@@ -127,7 +161,8 @@ def train(a, P):
             hist.append({"step": s, "obj": -float(loss), "time_s": round(time.time() - t0)})
             print("   ", hist[-1], flush=True)
     os.makedirs(OUT_W, exist_ok=True)
-    wname = f"pair_h{a.hidden}" + ("" if a.layers == 8 else f"_L{a.layers}") + ("" if a.inp == "raw" else f"_{a.inp}")
+    wname = (f"pair_h{a.hidden}" + ("" if a.layers == 8 else f"_L{a.layers}")
+             + ("" if a.inp == "raw" else f"_{a.inp}") + site_tag(a.site))
     torch.save(net.state_dict(), f"{OUT_W}/{wname}.pt")
     json.dump(hist, open(f"{OUT_W}/{wname}_history.json", "w"))
 
@@ -142,8 +177,10 @@ def main():
     ap.add_argument("--train_samples", type=int, default=800000)
     ap.add_argument("--test_samples", type=int, default=20000)
     ap.add_argument("--inp", default="raw", choices=["raw", "log", "norm"])
+    ap.add_argument("--site", default="stecath", choices=SITES,
+                     help="site du labo (comportement et noms de fichiers inchanges pour stecath, le defaut)")
     a = ap.parse_args()
-    P = pool()
+    P = pool(a.site)
     if a.train:
         train(a, P)
         return
@@ -154,16 +191,17 @@ def main():
         res["WMMSE (30 it.)"] = batched(lambda H: lab_rate(wmmse(H), H), Hte, bs=2048)
         # avec un affaiblissement de parcours tres inegal, WMMSE converge lentement : 30 it. ne suffisent pas
         res["WMMSE (300 it.)"] = batched(lambda H: lab_rate(wmmse(H, 300), H), Hte, bs=2048)
-        for cfg in ("tiny", "small", "medium"):
-            m = lab_model(cfg)
-            n = sum(p.numel() for p in m.parameters())
+        if a.site == "stecath":                                # checkpoints BitAdapt du labo : stecath seulement
+            for cfg in ("tiny", "small", "medium"):
+                m = lab_model(cfg)
+                n = sum(p.numel() for p in m.parameters())
 
-            def f(H, m=m):
-                Fp = m(lab_input(H))
-                return lab_rate(Fp / torch.linalg.norm(Fp, dim=(1, 2), keepdim=True), H)
-            res[f"BitAdapt {cfg} FP32 ({n // 1000} k params)"] = batched(f, Hte)
+                def f(H, m=m):
+                    Fp = m(lab_input(H))
+                    return lab_rate(Fp / torch.linalg.norm(Fp, dim=(1, 2), keepdim=True), H)
+                res[f"BitAdapt {cfg} FP32 ({n // 1000} k params)"] = batched(f, Hte)
         for inp in ("raw", "log", "norm"):
-            wpath = f"{OUT_W}/pair_h{a.hidden}" + ("" if inp == "raw" else f"_{inp}") + ".pt"
+            wpath = f"{OUT_W}/pair_h{a.hidden}" + ("" if inp == "raw" else f"_{inp}") + site_tag(a.site) + ".pt"
             if not os.path.exists(wpath):
                 continue
             net = PairPrecoder(d=16, hidden=a.hidden, layers=8, inp=inp).to(DEV)
@@ -179,8 +217,8 @@ def main():
     for k, v in out.items():
         print(f"{k:50s} debit moyen {v['sum_rate_mean']:6.2f} | 5e centile {v['p5']:6.2f}", flush=True)
     os.makedirs(RESULTS, exist_ok=True)
-    json.dump({"test_samples": a.test_samples, "seed": 2026, "noise_pwr": NOISE, "results": out},
-              open(f"{RESULTS}/fp32_comparison.json", "w"), indent=1)
+    json.dump({"test_samples": a.test_samples, "seed": 2026, "noise_pwr": NOISE, "site": a.site, "results": out},
+              open(f"{RESULTS}/fp32_comparison{site_tag(a.site)}.json", "w"), indent=1)
 
 
 if __name__ == "__main__":

@@ -1428,6 +1428,19 @@ Précodeur M8K4 initialisé par le précodeur CSI parfait, réentraîné 20 000 
 - **Le précodeur entraîné en CSI parfait égale ou dépasse WMMSE (robuste) avec un vrai estimateur**, sans réentraîner.
 - **BER** : les précodeurs qui maximisent le débit somme ont un BER moyen plus élevé (puissance concentrée sur les bons utilisateurs ; les flux faibles ont un SINR très bas). Le BER moyen sur les flux n'est pas l'objectif optimisé ; pour une figure BER, il faudra fixer la modulation par flux ou viser un autre objectif (débit minimal, MSE).
 
+### Énergie à Ericsson et WMMSE en forme Gram (`torch_port/*.py --site ericsson`, `results/stecath/classical_energy_ericsson.json`, `art_pair_*_ericsson.json`)
+WMMSE en forme Gram : itération sur C (K x K) seulement, G une fois, W = H^H C à la fin ; identique à wmmse() (écart ~1e-7), coût par itération indépendant de M (`torch_port.stecath.wmmse_gram`). Énergie (µJ, Moons v5) :
+| méthode | Ericsson débit / énergie | St-Catherine débit / énergie |
+|---|---|---|
+| RZF 32 / 16 bits | 33,44 / 0,052 / 0,016 | 17,03 / 0,052 / 0,016 |
+| WMMSE 5 it. Gram, 32 / 16 bits | 35,45 / 0,088 / 0,028 | 21,62 / 0,088 / 0,028 |
+| WMMSE 30 it. Gram, 32 / 16 bits | 37,31 / 0,267 / 0,084 | 24,41 / 0,267 / 0,084 |
+| ART 2 couches λ = 1 | 34,91 / 0,046 | — |
+| ART 2 couches λ = 5 | 34,35 / 0,031 | 24,07 / 0,025 |
+| ART 4 couches λ = 5 | 35,96 / 0,057 | — |
+- Débit ≥ RZF et énergie < RZF 32 bits : oui sur les deux sites ; < RZF 16 bits : non.
+- **À Ericsson, WMMSE Gram 16 bits domine nos points** (5 it. : 35,45 à 0,028 µJ). Sur St-Catherine, nos points restent 3 à 4× sous WMMSE Gram 16 bits à débit égal. Notre avance en énergie vient uniquement de la précision ; elle disparaît sur les canaux bien conditionnés où WMMSE converge en peu d'itérations.
+
 ### BER réel par simulation de symboles (`experiments/phase14_ber.py`, `results/phase14/ber.{json,png}`)
 QAM Gray (QPSK à 256-QAM), démodulation dure, gain effectif connu du récepteur ; UMi M8K4, puissances réelles. Modulation adaptative par flux (BER cible 1e-3, sans codage) → débit transmis. Pilote LMMSE 10 dB, débit transmis (BER 16-QAM sur flux actifs) :
 | précodeur | 10 dB | 20 dB | 30 dB |
