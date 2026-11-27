@@ -7,7 +7,7 @@ Memes donnees (3GPP M8K4+M64K8, puissances reelles, import SPLIT/pool depuis
 experiments.phase13_train_massive SANS MODIFIER), meme perte (-moyenne(debit/debit RZF)), meme SNR
 d'entrainement U(0, 30) dB, meme budget (60 000 pas, batch 2048) que experiments/phase13_train_massive.py.
 
-    python -u -m experiments.phase16_structured --ns T [--steps 60000] [--lam_max X]
+    python -u -m experiments.phase16_structured --ns T [--steps 60000] [--lam_max X] [--seed S]
 """
 import argparse
 import json
@@ -33,8 +33,9 @@ OUT_DIR = os.path.join(RESULTS, "phase16")
 STEPS, BATCH = 60000, 2048
 
 
-def main(ns_steps, steps=STEPS, lam_max=None):
-    keras.utils.set_random_seed(0)
+def main(ns_steps, steps=STEPS, lam_max=None, seed=0):
+    keras.utils.set_random_seed(seed)
+    sfx = "" if seed == 0 else f"_s{seed}"                            # graine 0 : noms inchanges
     t0 = time.time()
     pools = {k: pool(*k, seed0=1) for k in SPLIT}
     print({f"M{m}K{k}": int(p.shape[0]) for (m, k), p in pools.items()}, f"donnees {time.time() - t0:.0f} s", flush=True)
@@ -80,7 +81,7 @@ def main(ns_steps, steps=STEPS, lam_max=None):
             print("   ", hist[-1], flush=True)
 
     os.makedirs(W16, exist_ok=True)
-    wpath = os.path.join(W16, f"structured_T{ns_steps}.weights.h5")
+    wpath = os.path.join(W16, f"structured_T{ns_steps}{sfx}.weights.h5")
     net.save_weights(wpath)
 
     sionna_config.seed = 4026                                           # memes tirages que phase13_train_massive
@@ -93,13 +94,13 @@ def main(ns_steps, steps=STEPS, lam_max=None):
 
     os.makedirs(OUT_DIR, exist_ok=True)
     out = {"meta": {"git_commit": git_commit(), "created": time.strftime("%Y-%m-%d %H:%M"), "steps": steps,
-                    "ns_steps": ns_steps, "lam_max": lam_max},
+                    "ns_steps": ns_steps, "lam_max": lam_max, "seed": seed},
            "snrs_db": SNRS, "history": hist, "params": int(net.count_params()),
            "macs_M8K4": int(net.macs_per_sc(4, 8)),
            "M64K8": rates(lambda x, nv, s: net(x, tf.fill([x.shape[0]], float(s))), hm),
            "M8K4": rates(lambda x, nv, s: net(x, tf.fill([x.shape[0]], float(s))), h4)}
     print({k: [round(v, 2) for v in out[k]] for k in ("M64K8", "M8K4")}, flush=True)
-    json.dump(out, open(os.path.join(OUT_DIR, f"train_T{ns_steps}.json"), "w"), indent=1)
+    json.dump(out, open(os.path.join(OUT_DIR, f"train_T{ns_steps}{sfx}.json"), "w"), indent=1)
     print(f"-> poids {wpath}", flush=True)
     print(f"-> termine en {time.time() - t0:.0f} s", flush=True)
 
@@ -109,5 +110,6 @@ if __name__ == "__main__":
     ap.add_argument("--ns", type=int, required=True)
     ap.add_argument("--steps", type=int, default=STEPS)
     ap.add_argument("--lam_max", type=float, default=None)
+    ap.add_argument("--seed", type=int, default=0)
     a = ap.parse_args()
-    main(a.ns, steps=a.steps, lam_max=a.lam_max)
+    main(a.ns, steps=a.steps, lam_max=a.lam_max, seed=a.seed)

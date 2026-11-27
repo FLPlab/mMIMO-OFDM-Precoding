@@ -1676,6 +1676,15 @@ CSI estimé, pilote 20 dB, 30 dB (T20 / libre / libre + 2e passe / WMMSE robuste
 ### Encodeur angle × retard en massif — ÉCARTÉ (code non gardé)
 BS 1×32 au pas λ/2, deux polarisations : DFT unitaire de 32 points par polarisation avant le traitement par retard, filtre complexe 3×3 (retard × angle) par faisceau, log de la puissance par angle en entrée (départ = référence exacte) ; reste identique à `phase13_massive_pilots` (30 000 pas). 64 tirages UMi, pilote 10 dB : 13,47 / 24,47 / **39,27** / 47,26 / 55,15 à 0 / 10 / 20 / 25 / 30 dB contre 13,48 / 24,49 / 39,34 / 47,36 / 55,24 pour la référence. À 20 dB : pilote 0 dB 36,49 contre 36,19, pilote 20 dB 40,05 contre 40,23. Encodeur +56 % de MAC (FFT comptées). Critère (+0,3) non atteint : l'angle n'apporte rien de mesurable, en massif comme en M8K4. Non testé : jetons par couple (retard, faisceau), ~64× plus cher.
 
+### Retour du canal effectif intégré à l'architecture — ÉCARTÉ (`results/phase16/feedback.json`, code non gardé)
+B blocs de 4 couches, canal effectif E du C courant injecté entre les blocs, entraîné de zéro (60 000 pas). CSI parfait, 30 / 40 dB (base / B2 / base + 2e passe / B3) : St-Catherine 33,32 / 33,25 / 33,69 / 33,47 et 43,00 / 42,52 / 45,29 / 43,60 ; Ericsson 35,26 / 34,70 / 35,88 / 35,40 et 43,71 / 42,37 / 46,43 / 44,02 ; fuite de B2-B3 ≈ base (−45 dB). B2 (754 k MAC) : −0,23 à 30 dB, −0,26 au pire de 0 à 20 dB ; B3 (1,15 M) : nettement sous base + 2e passe. **Entraîné d'un bloc, le retour d'erreur n'abaisse pas le plancher** : la 2e passe marche parce qu'elle corrige une solution déjà bonne et figée, pas par le seul fait de voir E.
+
+### Forme structurée : 2e graine et virgule fixe (`experiments/phase16_check.py`, `results/phase16/structured_check.json`)
+- **Graine** : graine 1 = graine 0 à 0,08 bps/Hz près partout (CSI parfait et estimé) ; l'avance sur WMMSE 300 à 40 dB (+1,5 à +2,4) se retrouve.
+- **Virgule fixe de Newton–Schulz** (transformer flottant, conventions de `fixedpoint_classical.py`) : bits pour perte ≤ 0,1 bps/Hz : UMi 12 / 15 / 17 (20 / 30 / 40 dB), Ericsson 10 / 13 / 14 ; toute la chaîne quantifiée : +1 bit. NS ne converge pas à ≤ 10 bits. **NS déroulé n'économise pas de bits face à LDL** (13-15 bits pour les classiques) ; un NS avec équilibrage de Jacobi en gagnerait sans doute (non testé, demande un réentraînement).
+- Transformer en entier 8 bits sans entraînement adapté : −0,4 à −1,4 bps/Hz ; il faudrait ART.
+- Conséquence : le gain de la forme structurée est en MAC (193 k contre 717 k) et en débit au fort SNR ; l'inversion reste une opération 13-17 bits, comme pour WMMSE.
+
 ## Prochaine étape
 (1) 3 graines pour l'attention en fréquence D64. (2) Réduire le coût. (3) Bootstrap sur les tirages. (4) Faire le point avant d'aller plus loin (pilote 20 dB, vieillissement, M64).
 Cible principale ensuite (phases 2–3) : le régime pilote 10 dB, où il reste 2,7 à 5,9 bps/Hz après LMMSE.

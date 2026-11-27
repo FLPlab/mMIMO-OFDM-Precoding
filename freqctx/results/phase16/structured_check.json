@@ -1,0 +1,3145 @@
+{
+ "fixed": {
+  "bits": [
+   8,
+   9,
+   10,
+   11,
+   12,
+   13,
+   14,
+   15,
+   16,
+   17,
+   18,
+   19,
+   20
+  ],
+  "snrs_db": [
+   20,
+   30,
+   40
+  ],
+  "n": 16384,
+  "table_bits": 8,
+  "doc": "Phase 16 -- deux verifications du precodeur STRUCTURE T = 20 (models/structured_precoder.py) :\n\n  --part seed  : 2e graine (weights/phase16/structured_T20_s1.weights.h5, entrainee par\n                 experiments.phase16_structured --ns 20 --seed 1) evaluee EXACTEMENT comme\n                 experiments.phase16_eval (memes fonctions run_parfait / run_estime importees), a cote de\n                 la graine 0 (structured_T20.weights.h5).\n  --part fixed : VIRGULE FIXE emulee (CPU) de la partie Newton-Schulz + C + W, le petit transformer\n                 restant flottant (puis, option, transformer en entier 8 bits). Conventions de\n                 torch_port/fixedpoint_classical.py : arrondi au plus proche + saturation sur b bits\n                 (signe compris, Re/Im separees), exposant de bloc choisi apres calcul (accumulateurs\n                 exacts, arrondi a l'ecriture), exposant par LIGNE pour H (par utilisateur), par COLONNE\n                 pour les matrices K x K et W, par element pour les scalaires par utilisateur (lambda_k,\n                 sqrt(p_k)) ; reciproque scalaire (X0 = A^H / (||A||_1 ||A||_inf)) par table 256 entrees\n                 + Newton (1 tour si b <= 16, 2 sinon) ; sortie F = W rsqrt(||W||^2) a exposant commun.\n                 Etapes : in (H), gram (G = H H^H), scal (lambda, sqrt p, sigma^2, normes, reciproque),\n                 inv (A, X0, iterees NS : A X, 2I - A X, X(2I - A X)), out (C, W, F).\n                 FIDELE au modele entraine : NS sur A physique (pas d'equilibrage de Jacobi, qui changerait\n                 la fonction apprise a T fini). Le transformer voit G QUANTIFIE quand l'etape gram l'est.\n                 Divergence : residu ||I - A X_T||_F (A, X_T quantifiees) > 1, ou precodeur non fini\n                 (compte comme debit nul).\n\n    CUDA_VISIBLE_DEVICES=\"\" python -u -m experiments.phase16_check --part fixed\n    python -u -m experiments.phase16_check --part seed\nResultats fusionnes dans results/phase16/structured_check.json.\n",
+  "float_transformer": {
+   "umi": {
+    "20": {
+     "flottant_modele": 17.652599334716797,
+     "flottant_emule": {
+      "debit": 17.652599334716797,
+      "non_fini": 0,
+      "residu_ns_median": 0.02992437094716132,
+      "frac_residu_gt1": 0.000244140625
+     },
+     "tout": {
+      "8": {
+       "debit": 14.560491561889648,
+       "non_fini": 1040,
+       "residu_ns_median": 1.7592777724531459,
+       "frac_residu_gt1": 0.73309326171875
+      },
+      "9": {
+       "debit": 16.106632232666016,
+       "non_fini": 468,
+       "residu_ns_median": 1.018971825696518,
+       "frac_residu_gt1": 0.5238037109375
+      },
+      "10": {
+       "debit": 16.966392517089844,
+       "non_fini": 195,
+       "residu_ns_median": 0.5709425828056005,
+       "frac_residu_gt1": 0.13360595703125
+      },
+      "11": {
+       "debit": 17.441585540771484,
+       "non_fini": 24,
+       "residu_ns_median": 0.31866199991507094,
+       "frac_residu_gt1": 0.00421142578125
+      },
+      "12": {
+       "debit": 17.597484588623047,
+       "non_fini": 0,
+       "residu_ns_median": 0.16993383481062024,
+       "frac_residu_gt1": 0.0003662109375
+      },
+      "13": {
+       "debit": 17.637550354003906,
+       "non_fini": 0,
+       "residu_ns_median": 0.09584417124468064,
+       "frac_residu_gt1": 0.00030517578125
+      },
+      "14": {
+       "debit": 17.648723602294922,
+       "non_fini": 0,
+       "residu_ns_median": 0.056057777090396346,
+       "frac_residu_gt1": 0.000244140625
+      },
+      "15": {
+       "debit": 17.651613235473633,
+       "non_fini": 0,
+       "residu_ns_median": 0.03787242530725468,
+       "frac_residu_gt1": 0.000244140625
+      },
+      "16": {
+       "debit": 17.65234375,
+       "non_fini": 0,
+       "residu_ns_median": 0.031978852171858745,
+       "frac_residu_gt1": 0.000244140625
+      },
+      "17": {
+       "debit": 17.652538299560547,
+       "non_fini": 0,
+       "residu_ns_median": 0.03044915896525235,
+       "frac_residu_gt1": 0.000244140625
+      },
+      "18": {
+       "debit": 17.652587890625,
+       "non_fini": 0,
+       "residu_ns_median": 0.03007299243992808,
+       "frac_residu_gt1": 0.000244140625
+      },
+      "19": {
+       "debit": 17.652597427368164,
+       "non_fini": 0,
+       "residu_ns_median": 0.02993934680623959,
+       "frac_residu_gt1": 0.000244140625
+      },
+      "20": {
+       "debit": 17.652599334716797,
+       "non_fini": 0,
+       "residu_ns_median": 0.02993396701187765,
+       "frac_residu_gt1": 0.000244140625
+      }
+     },
+     "ns_seul": {
+      "8": {
+       "debit": 15.790162086486816,
+       "non_fini": 0,
+       "residu_ns_median": 1.6969905683705915,
+       "frac_residu_gt1": 0.7071533203125
+      },
+      "9": {
+       "debit": 16.771320343017578,
+       "non_fini": 0,
+       "residu_ns_median": 1.0043323168370553,
+       "frac_residu_gt1": 0.50213623046875
+      },
+      "10": {
+       "debit": 17.305788040161133,
+       "non_fini": 0,
+       "residu_ns_median": 0.5670256831564355,
+       "frac_residu_gt1": 0.11724853515625
+      },
+      "11": {
+       "debit": 17.54181671142578,
+       "non_fini": 0,
+       "residu_ns_median": 0.31704053142710703,
+       "frac_residu_gt1": 0.0023193359375
+      },
+      "12": {
+       "debit": 17.621498107910156,
+       "non_fini": 0,
+       "residu_ns_median": 0.17027715134295024,
+       "frac_residu_gt1": 0.00030517578125
+      },
+      "13": {
+       "debit": 17.644638061523438,
+       "non_fini": 0,
+       "residu_ns_median": 0.09577367816080583,
+       "frac_residu_gt1": 0.000244140625
+      },
+      "14": {
+       "debit": 17.65056610107422,
+       "non_fini": 0,
+       "residu_ns_median": 0.05605406292032239,
+       "frac_residu_gt1": 0.000244140625
+      },
+      "15": {
+       "debit": 17.6521053314209,
+       "non_fini": 0,
+       "residu_ns_median": 0.03796682445363021,
+       "frac_residu_gt1": 0.000244140625
+      },
+      "16": {
+       "debit": 17.652469635009766,
+       "non_fini": 0,
+       "residu_ns_median": 0.031952031674784276,
+       "frac_residu_gt1": 0.000244140625
+      },
+      "17": {
+       "debit": 17.65256690979004,
+       "non_fini": 0,
+       "residu_ns_median": 0.03043997826982516,
+       "frac_residu_gt1": 0.000244140625
+      },
+      "18": {
+       "debit": 17.652589797973633,
+       "non_fini": 0,
+       "residu_ns_median": 0.030050048864322464,
+       "frac_residu_gt1": 0.000244140625
+      },
+      "19": {
+       "debit": 17.65259552001953,
+       "non_fini": 0,
+       "residu_ns_median": 0.029965486959107265,
+       "frac_residu_gt1": 0.000244140625
+      },
+      "20": {
+       "debit": 17.652597427368164,
+       "non_fini": 0,
+       "residu_ns_median": 0.029931427395330498,
+       "frac_residu_gt1": 0.000244140625
+      }
+     },
+     "ns+C+W": {
+      "8": {
+       "debit": 15.358660697937012,
+       "non_fini": 0,
+       "residu_ns_median": 1.6982144671759987,
+       "frac_residu_gt1": 0.70758056640625
+      },
+      "9": {
+       "debit": 16.469696044921875,
+       "non_fini": 0,
+       "residu_ns_median": 1.0086023280211545,
+       "frac_residu_gt1": 0.50518798828125
+      },
+      "10": {
+       "debit": 17.138195037841797,
+       "non_fini": 0,
+       "residu_ns_median": 0.5651890076020609,
+       "frac_residu_gt1": 0.1170654296875
+      },
+      "11": {
+       "debit": 17.467679977416992,
+       "non_fini": 0,
+       "residu_ns_median": 0.31691826427981495,
+       "frac_residu_gt1": 0.00250244140625
+      },
+      "12": {
+       "debit": 17.597698211669922,
+       "non_fini": 0,
+       "residu_ns_median": 0.17042679117631598,
+       "frac_residu_gt1": 0.00030517578125
+      },
+      "13": {
+       "debit": 17.637527465820312,
+       "non_fini": 0,
+       "residu_ns_median": 0.09587526628213613,
+       "frac_residu_gt1": 0.000244140625
+      },
+      "14": {
+       "debit": 17.648822784423828,
+       "non_fini": 0,
+       "residu_ns_median": 0.05610062417302211,
+       "frac_residu_gt1": 0.000244140625
+      },
+      "15": {
+       "debit": 17.651622772216797,
+       "non_fini": 0,
+       "residu_ns_median": 0.03796250958659991,
+       "frac_residu_gt1": 0.000244140625
+      },
+      "16": {
+       "debit": 17.652341842651367,
+       "non_fini": 0,
+       "residu_ns_median": 0.03190500139463606,
+       "frac_residu_gt1": 0.000244140625
+      },
+      "17": {
+       "debit": 17.65254020690918,
+       "non_fini": 0,
+       "residu_ns_median": 0.03043974271456048,
+       "frac_residu_gt1": 0.000244140625
+      },
+      "18": {
+       "debit": 17.6525821685791,
+       "non_fini": 0,
+       "residu_ns_median": 0.030049288222255825,
+       "frac_residu_gt1": 0.000244140625
+      },
+      "19": {
+       "debit": 17.652597427368164,
+       "non_fini": 0,
+       "residu_ns_median": 0.029959429402096508,
+       "frac_residu_gt1": 0.000244140625
+      },
+      "20": {
+       "debit": 17.652599334716797,
+       "non_fini": 0,
+       "residu_ns_median": 0.02993134536453953,
+       "frac_residu_gt1": 0.000244140625
+      }
+     },
+     "in+gram": {
+      "8": {
+       "debit": 16.71969223022461,
+       "non_fini": 1040,
+       "residu_ns_median": 0.031024440516574006,
+       "frac_residu_gt1": 0.06378173828125
+      },
+      "9": {
+       "debit": 17.25445556640625,
+       "non_fini": 468,
+       "residu_ns_median": 0.032031898686765745,
+       "frac_residu_gt1": 0.02874755859375
+      },
+      "10": {
+       "debit": 17.481674194335938,
+       "non_fini": 195,
+       "residu_ns_median": 0.030740472776862166,
+       "frac_residu_gt1": 0.01214599609375
+      },
+      "11": {
+       "debit": 17.62801170349121,
+       "non_fini": 24,
+       "residu_ns_median": 0.030765371062550045,
+       "frac_residu_gt1": 0.00177001953125
+      },
+      "12": {
+       "debit": 17.652088165283203,
+       "non_fini": 0,
+       "residu_ns_median": 0.030051467389482278,
+       "frac_residu_gt1": 0.000244140625
+      },
+      "13": {
+       "debit": 17.65250015258789,
+       "non_fini": 0,
+       "residu_ns_median": 0.03008603101508189,
+       "frac_residu_gt1": 0.000244140625
+      },
+      "14": {
+       "debit": 17.652545928955078,
+       "non_fini": 0,
+       "residu_ns_median": 0.02998072124227661,
+       "frac_residu_gt1": 0.000244140625
+      },
+      "15": {
+       "debit": 17.65259552001953,
+       "non_fini": 0,
+       "residu_ns_median": 0.029943529505622565,
+       "frac_residu_gt1": 0.000244140625
+      },
+      "16": {
+       "debit": 17.652599334716797,
+       "non_fini": 0,
+       "residu_ns_median": 0.029936948593924546,
+       "frac_residu_gt1": 0.000244140625
+      },
+      "17": {
+       "debit": 17.652599334716797,
+       "non_fini": 0,
+       "residu_ns_median": 0.029919509318536014,
+       "frac_residu_gt1": 0.000244140625
+      },
+      "18": {
+       "debit": 17.652599334716797,
+       "non_fini": 0,
+       "residu_ns_median": 0.029926099074691834,
+       "frac_residu_gt1": 0.000244140625
+      },
+      "19": {
+       "debit": 17.652597427368164,
+       "non_fini": 0,
+       "residu_ns_median": 0.029920263187872123,
+       "frac_residu_gt1": 0.000244140625
+      },
+      "20": {
+       "debit": 17.652599334716797,
+       "non_fini": 0,
+       "residu_ns_median": 0.02992482007863255,
+       "frac_residu_gt1": 0.000244140625
+      }
+     },
+     "min_bits_0.1bps": {
+      "tout": 12,
+      "ns_seul": 12,
+      "ns+C+W": 12,
+      "in+gram": 11
+     }
+    },
+    "30": {
+     "flottant_modele": 26.982749938964844,
+     "flottant_emule": {
+      "debit": 26.98274803161621,
+      "non_fini": 0,
+      "residu_ns_median": 0.10749225965732578,
+      "frac_residu_gt1": 0.0177001953125
+     },
+     "tout": {
+      "8": {
+       "debit": 17.212772369384766,
+       "non_fini": 1040,
+       "residu_ns_median": 1.2688772058390048,
+       "frac_residu_gt1": 0.63836669921875
+      },
+      "9": {
+       "debit": 20.52043914794922,
+       "non_fini": 468,
+       "residu_ns_median": 0.9476770455956425,
+       "frac_residu_gt1": 0.47320556640625
+      },
+      "10": {
+       "debit": 22.968544006347656,
+       "non_fini": 195,
+       "residu_ns_median": 0.6220655628127632,
+       "frac_residu_gt1": 0.21600341796875
+      },
+      "11": {
+       "debit": 24.75054931640625,
+       "non_fini": 24,
+       "residu_ns_median": 0.36474807648110585,
+       "frac_residu_gt1": 0.04620361328125
+      },
+      "12": {
+       "debit": 25.854286193847656,
+       "non_fini": 0,
+       "residu_ns_median": 0.21413190912722835,
+       "frac_residu_gt1": 0.02362060546875
+      },
+      "13": {
+       "debit": 26.4927978515625,
+       "non_fini": 0,
+       "residu_ns_median": 0.14124947717462738,
+       "frac_residu_gt1": 0.01898193359375
+      },
+      "14": {
+       "debit": 26.807552337646484,
+       "non_fini": 0,
+       "residu_ns_median": 0.11680281781728846,
+       "frac_residu_gt1": 0.01763916015625
+      },
+      "15": {
+       "debit": 26.93084144592285,
+       "non_fini": 0,
+       "residu_ns_median": 0.10934003958618069,
+       "frac_residu_gt1": 0.017578125
+      },
+      "16": {
+       "debit": 26.968612670898438,
+       "non_fini": 0,
+       "residu_ns_median": 0.10825033972796785,
+       "frac_residu_gt1": 0.0177001953125
+      },
+      "17": {
+       "debit": 26.9791202545166,
+       "non_fini": 0,
+       "residu_ns_median": 0.1076255929494728,
+       "frac_residu_gt1": 0.017822265625
+      },
+      "18": {
+       "debit": 26.981861114501953,
+       "non_fini": 0,
+       "residu_ns_median": 0.10751148510583795,
+       "frac_residu_gt1": 0.0177001953125
+      },
+      "19": {
+       "debit": 26.982526779174805,
+       "non_fini": 0,
+       "residu_ns_median": 0.10752754293120698,
+       "frac_residu_gt1": 0.0177001953125
+      },
+      "20": {
+       "debit": 26.982685089111328,
+       "non_fini": 0,
+       "residu_ns_median": 0.10745494782971099,
+       "frac_residu_gt1": 0.0177001953125
+      }
+     },
+     "ns_seul": {
+      "8": {
+       "debit": 19.437114715576172,
+       "non_fini": 0,
+       "residu_ns_median": 1.275111113810381,
+       "frac_residu_gt1": 0.6229248046875
+      },
+      "9": {
+       "debit": 21.97960662841797,
+       "non_fini": 0,
+       "residu_ns_median": 0.9525172187628492,
+       "frac_residu_gt1": 0.460693359375
+      },
+      "10": {
+       "debit": 23.91944122314453,
+       "non_fini": 0,
+       "residu_ns_median": 0.6271382387649589,
+       "frac_residu_gt1": 0.203857421875
+      },
+      "11": {
+       "debit": 25.304075241088867,
+       "non_fini": 0,
+       "residu_ns_median": 0.36321113806178323,
+       "frac_residu_gt1": 0.04095458984375
+      },
+      "12": {
+       "debit": 26.188560485839844,
+       "non_fini": 0,
+       "residu_ns_median": 0.21263219151102303,
+       "frac_residu_gt1": 0.0225830078125
+      },
+      "13": {
+       "debit": 26.67422103881836,
+       "non_fini": 0,
+       "residu_ns_median": 0.14140276163764645,
+       "frac_residu_gt1": 0.018798828125
+      },
+      "14": {
+       "debit": 26.881099700927734,
+       "non_fini": 0,
+       "residu_ns_median": 0.11745088915388673,
+       "frac_residu_gt1": 0.01788330078125
+      },
+      "15": {
+       "debit": 26.954753875732422,
+       "non_fini": 0,
+       "residu_ns_median": 0.10959246578225804,
+       "frac_residu_gt1": 0.0177001953125
+      },
+      "16": {
+       "debit": 26.975540161132812,
+       "non_fini": 0,
+       "residu_ns_median": 0.10847404915464351,
+       "frac_residu_gt1": 0.0177001953125
+      },
+      "17": {
+       "debit": 26.980945587158203,
+       "non_fini": 0,
+       "residu_ns_median": 0.10768027511203124,
+       "frac_residu_gt1": 0.0177001953125
+      },
+      "18": {
+       "debit": 26.982280731201172,
+       "non_fini": 0,
+       "residu_ns_median": 0.10751084215722831,
+       "frac_residu_gt1": 0.0177001953125
+      },
+      "19": {
+       "debit": 26.982616424560547,
+       "non_fini": 0,
+       "residu_ns_median": 0.10749876894532448,
+       "frac_residu_gt1": 0.0177001953125
+      },
+      "20": {
+       "debit": 26.98272132873535,
+       "non_fini": 0,
+       "residu_ns_median": 0.10749267316967055,
+       "frac_residu_gt1": 0.0177001953125
+      }
+     },
+     "ns+C+W": {
+      "8": {
+       "debit": 18.517799377441406,
+       "non_fini": 0,
+       "residu_ns_median": 1.27765227836814,
+       "frac_residu_gt1": 0.6239013671875
+      },
+      "9": {
+       "debit": 21.141101837158203,
+       "non_fini": 0,
+       "residu_ns_median": 0.952482249621369,
+       "frac_residu_gt1": 0.4610595703125
+      },
+      "10": {
+       "debit": 23.232303619384766,
+       "non_fini": 0,
+       "residu_ns_median": 0.624072895912072,
+       "frac_residu_gt1": 0.20355224609375
+      },
+      "11": {
+       "debit": 24.796478271484375,
+       "non_fini": 0,
+       "residu_ns_median": 0.36558456934835704,
+       "frac_residu_gt1": 0.04150390625
+      },
+      "12": {
+       "debit": 25.854793548583984,
+       "non_fini": 0,
+       "residu_ns_median": 0.21282426375242414,
+       "frac_residu_gt1": 0.02264404296875
+      },
+      "13": {
+       "debit": 26.494224548339844,
+       "non_fini": 0,
+       "residu_ns_median": 0.14101394946845608,
+       "frac_residu_gt1": 0.01885986328125
+      },
+      "14": {
+       "debit": 26.807453155517578,
+       "non_fini": 0,
+       "residu_ns_median": 0.11733961829120115,
+       "frac_residu_gt1": 0.01788330078125
+      },
+      "15": {
+       "debit": 26.93092155456543,
+       "non_fini": 0,
+       "residu_ns_median": 0.10963855888718614,
+       "frac_residu_gt1": 0.0177001953125
+      },
+      "16": {
+       "debit": 26.968494415283203,
+       "non_fini": 0,
+       "residu_ns_median": 0.1085002382682048,
+       "frac_residu_gt1": 0.0177001953125
+      },
+      "17": {
+       "debit": 26.979103088378906,
+       "non_fini": 0,
+       "residu_ns_median": 0.10767861604848634,
+       "frac_residu_gt1": 0.0177001953125
+      },
+      "18": {
+       "debit": 26.9818058013916,
+       "non_fini": 0,
+       "residu_ns_median": 0.10751718365922242,
+       "frac_residu_gt1": 0.0177001953125
+      },
+      "19": {
+       "debit": 26.982521057128906,
+       "non_fini": 0,
+       "residu_ns_median": 0.10750274904583747,
+       "frac_residu_gt1": 0.0177001953125
+      },
+      "20": {
+       "debit": 26.982688903808594,
+       "non_fini": 0,
+       "residu_ns_median": 0.10749062448978569,
+       "frac_residu_gt1": 0.0177001953125
+      }
+     },
+     "in+gram": {
+      "8": {
+       "debit": 24.591014862060547,
+       "non_fini": 1040,
+       "residu_ns_median": 0.06562343928836636,
+       "frac_residu_gt1": 0.07659912109375
+      },
+      "9": {
+       "debit": 26.08539390563965,
+       "non_fini": 468,
+       "residu_ns_median": 0.09087108481255612,
+       "frac_residu_gt1": 0.04620361328125
+      },
+      "10": {
+       "debit": 26.65345573425293,
+       "non_fini": 195,
+       "residu_ns_median": 0.10249085388075414,
+       "frac_residu_gt1": 0.028564453125
+      },
+      "11": {
+       "debit": 26.924097061157227,
+       "non_fini": 24,
+       "residu_ns_median": 0.10701328410347925,
+       "frac_residu_gt1": 0.02142333984375
+      },
+      "12": {
+       "debit": 26.975561141967773,
+       "non_fini": 0,
+       "residu_ns_median": 0.10790367452903765,
+       "frac_residu_gt1": 0.019287109375
+      },
+      "13": {
+       "debit": 26.98086166381836,
+       "non_fini": 0,
+       "residu_ns_median": 0.10766676465982251,
+       "frac_residu_gt1": 0.0179443359375
+      },
+      "14": {
+       "debit": 26.982315063476562,
+       "non_fini": 0,
+       "residu_ns_median": 0.10715279691102973,
+       "frac_residu_gt1": 0.0174560546875
+      },
+      "15": {
+       "debit": 26.982601165771484,
+       "non_fini": 0,
+       "residu_ns_median": 0.10731326820279295,
+       "frac_residu_gt1": 0.01751708984375
+      },
+      "16": {
+       "debit": 26.982707977294922,
+       "non_fini": 0,
+       "residu_ns_median": 0.10735941902716345,
+       "frac_residu_gt1": 0.0177001953125
+      },
+      "17": {
+       "debit": 26.982736587524414,
+       "non_fini": 0,
+       "residu_ns_median": 0.10748201682297098,
+       "frac_residu_gt1": 0.017822265625
+      },
+      "18": {
+       "debit": 26.982749938964844,
+       "non_fini": 0,
+       "residu_ns_median": 0.10748569568543263,
+       "frac_residu_gt1": 0.0177001953125
+      },
+      "19": {
+       "debit": 26.982746124267578,
+       "non_fini": 0,
+       "residu_ns_median": 0.10752186009334365,
+       "frac_residu_gt1": 0.0177001953125
+      },
+      "20": {
+       "debit": 26.98274803161621,
+       "non_fini": 0,
+       "residu_ns_median": 0.10745083446672028,
+       "frac_residu_gt1": 0.0177001953125
+      }
+     },
+     "min_bits_0.1bps": {
+      "tout": 15,
+      "ns_seul": 15,
+      "ns+C+W": 15,
+      "in+gram": 11
+     }
+    },
+    "40": {
+     "flottant_modele": 37.8419189453125,
+     "flottant_emule": {
+      "debit": 37.841915130615234,
+      "non_fini": 0,
+      "residu_ns_median": 6.131721603771365e-08,
+      "frac_residu_gt1": 0.01605224609375
+     },
+     "tout": {
+      "8": {
+       "debit": 17.62704849243164,
+       "non_fini": 1040,
+       "residu_ns_median": 0.6417646809163907,
+       "frac_residu_gt1": 0.3839111328125
+      },
+      "9": {
+       "debit": 22.6810302734375,
+       "non_fini": 468,
+       "residu_ns_median": 0.4031189196334062,
+       "frac_residu_gt1": 0.231201171875
+      },
+      "10": {
+       "debit": 27.069992065429688,
+       "non_fini": 195,
+       "residu_ns_median": 0.21966812186114668,
+       "frac_residu_gt1": 0.10015869140625
+      },
+      "11": {
+       "debit": 30.535402297973633,
+       "non_fini": 24,
+       "residu_ns_median": 0.11407750766327417,
+       "frac_residu_gt1": 0.0284423828125
+      },
+      "12": {
+       "debit": 33.08197021484375,
+       "non_fini": 0,
+       "residu_ns_median": 0.057370882003986066,
+       "frac_residu_gt1": 0.018310546875
+      },
+      "13": {
+       "debit": 34.95059585571289,
+       "non_fini": 0,
+       "residu_ns_median": 0.028525181621047696,
+       "frac_residu_gt1": 0.01629638671875
+      },
+      "14": {
+       "debit": 36.25278091430664,
+       "non_fini": 0,
+       "residu_ns_median": 0.014488035425634014,
+       "frac_residu_gt1": 0.01605224609375
+      },
+      "15": {
+       "debit": 37.08271789550781,
+       "non_fini": 0,
+       "residu_ns_median": 0.007315506242639889,
+       "frac_residu_gt1": 0.0159912109375
+      },
+      "16": {
+       "debit": 37.53650665283203,
+       "non_fini": 0,
+       "residu_ns_median": 0.003681066174222678,
+       "frac_residu_gt1": 0.01593017578125
+      },
+      "17": {
+       "debit": 37.736637115478516,
+       "non_fini": 0,
+       "residu_ns_median": 0.0018381058429953905,
+       "frac_residu_gt1": 0.01605224609375
+      },
+      "18": {
+       "debit": 37.8120231628418,
+       "non_fini": 0,
+       "residu_ns_median": 0.0009386018276135133,
+       "frac_residu_gt1": 0.01605224609375
+      },
+      "19": {
+       "debit": 37.833797454833984,
+       "non_fini": 0,
+       "residu_ns_median": 0.00047418864848223715,
+       "frac_residu_gt1": 0.01605224609375
+      },
+      "20": {
+       "debit": 37.83970642089844,
+       "non_fini": 0,
+       "residu_ns_median": 0.0002393168465696669,
+       "frac_residu_gt1": 0.01605224609375
+      }
+     },
+     "ns_seul": {
+      "8": {
+       "debit": 21.673606872558594,
+       "non_fini": 0,
+       "residu_ns_median": 0.7013553389652956,
+       "frac_residu_gt1": 0.35858154296875
+      },
+      "9": {
+       "debit": 25.675350189208984,
+       "non_fini": 0,
+       "residu_ns_median": 0.41189383716532546,
+       "frac_residu_gt1": 0.212890625
+      },
+      "10": {
+       "debit": 29.05275535583496,
+       "non_fini": 0,
+       "residu_ns_median": 0.2208924182409735,
+       "frac_residu_gt1": 0.0872802734375
+      },
+      "11": {
+       "debit": 31.822364807128906,
+       "non_fini": 0,
+       "residu_ns_median": 0.11274918251451369,
+       "frac_residu_gt1": 0.0264892578125
+      },
+      "12": {
+       "debit": 33.98185348510742,
+       "non_fini": 0,
+       "residu_ns_median": 0.05724404635828477,
+       "frac_residu_gt1": 0.01788330078125
+      },
+      "13": {
+       "debit": 35.59764099121094,
+       "non_fini": 0,
+       "residu_ns_median": 0.028724376344139026,
+       "frac_residu_gt1": 0.01641845703125
+      },
+      "14": {
+       "debit": 36.689369201660156,
+       "non_fini": 0,
+       "residu_ns_median": 0.01425315396866105,
+       "frac_residu_gt1": 0.01617431640625
+      },
+      "15": {
+       "debit": 37.33650588989258,
+       "non_fini": 0,
+       "residu_ns_median": 0.007226760408852924,
+       "frac_residu_gt1": 0.01605224609375
+      },
+      "16": {
+       "debit": 37.65492248535156,
+       "non_fini": 0,
+       "residu_ns_median": 0.0036605870355376127,
+       "frac_residu_gt1": 0.01605224609375
+      },
+      "17": {
+       "debit": 37.782127380371094,
+       "non_fini": 0,
+       "residu_ns_median": 0.0018422472559234313,
+       "frac_residu_gt1": 0.01605224609375
+      },
+      "18": {
+       "debit": 37.82590866088867,
+       "non_fini": 0,
+       "residu_ns_median": 0.0009256978373624659,
+       "frac_residu_gt1": 0.01605224609375
+      },
+      "19": {
+       "debit": 37.837642669677734,
+       "non_fini": 0,
+       "residu_ns_median": 0.0004701120905908343,
+       "frac_residu_gt1": 0.01605224609375
+      },
+      "20": {
+       "debit": 37.84077453613281,
+       "non_fini": 0,
+       "residu_ns_median": 0.00023516195274780297,
+       "frac_residu_gt1": 0.01605224609375
+      }
+     },
+     "ns+C+W": {
+      "8": {
+       "debit": 20.32953643798828,
+       "non_fini": 0,
+       "residu_ns_median": 0.6956702939062891,
+       "frac_residu_gt1": 0.3570556640625
+      },
+      "9": {
+       "debit": 24.33877182006836,
+       "non_fini": 0,
+       "residu_ns_median": 0.412560798956472,
+       "frac_residu_gt1": 0.212646484375
+      },
+      "10": {
+       "debit": 27.829736709594727,
+       "non_fini": 0,
+       "residu_ns_median": 0.22144950467599323,
+       "frac_residu_gt1": 0.08795166015625
+      },
+      "11": {
+       "debit": 30.770870208740234,
+       "non_fini": 0,
+       "residu_ns_median": 0.11285877574795994,
+       "frac_residu_gt1": 0.02642822265625
+      },
+      "12": {
+       "debit": 33.14997100830078,
+       "non_fini": 0,
+       "residu_ns_median": 0.056909494926574385,
+       "frac_residu_gt1": 0.0177001953125
+      },
+      "13": {
+       "debit": 34.96000671386719,
+       "non_fini": 0,
+       "residu_ns_median": 0.028526225634198953,
+       "frac_residu_gt1": 0.01641845703125
+      },
+      "14": {
+       "debit": 36.2607421875,
+       "non_fini": 0,
+       "residu_ns_median": 0.014298344733962885,
+       "frac_residu_gt1": 0.01617431640625
+      },
+      "15": {
+       "debit": 37.083961486816406,
+       "non_fini": 0,
+       "residu_ns_median": 0.0072279288537440605,
+       "frac_residu_gt1": 0.01605224609375
+      },
+      "16": {
+       "debit": 37.53671646118164,
+       "non_fini": 0,
+       "residu_ns_median": 0.00363427600107934,
+       "frac_residu_gt1": 0.01605224609375
+      },
+      "17": {
+       "debit": 37.734886169433594,
+       "non_fini": 0,
+       "residu_ns_median": 0.0018466760628987494,
+       "frac_residu_gt1": 0.01605224609375
+      },
+      "18": {
+       "debit": 37.811683654785156,
+       "non_fini": 0,
+       "residu_ns_median": 0.0009251638725708336,
+       "frac_residu_gt1": 0.01605224609375
+      },
+      "19": {
+       "debit": 37.83361053466797,
+       "non_fini": 0,
+       "residu_ns_median": 0.00047019752181793754,
+       "frac_residu_gt1": 0.01605224609375
+      },
+      "20": {
+       "debit": 37.839874267578125,
+       "non_fini": 0,
+       "residu_ns_median": 0.0002367956577492311,
+       "frac_residu_gt1": 0.01605224609375
+      }
+     },
+     "in+gram": {
+      "8": {
+       "debit": 29.831491470336914,
+       "non_fini": 1040,
+       "residu_ns_median": 2.1135430293191835e-11,
+       "frac_residu_gt1": 0.06756591796875
+      },
+      "9": {
+       "debit": 34.11442947387695,
+       "non_fini": 468,
+       "residu_ns_median": 3.082303764129615e-09,
+       "frac_residu_gt1": 0.04058837890625
+      },
+      "10": {
+       "debit": 36.41160583496094,
+       "non_fini": 195,
+       "residu_ns_median": 2.2050562512451528e-08,
+       "frac_residu_gt1": 0.0286865234375
+      },
+      "11": {
+       "debit": 37.45964431762695,
+       "non_fini": 24,
+       "residu_ns_median": 5.8646259311778754e-08,
+       "frac_residu_gt1": 0.02001953125
+      },
+      "12": {
+       "debit": 37.74565505981445,
+       "non_fini": 0,
+       "residu_ns_median": 6.397001423495713e-08,
+       "frac_residu_gt1": 0.016357421875
+      },
+      "13": {
+       "debit": 37.81842041015625,
+       "non_fini": 0,
+       "residu_ns_median": 5.921315778264593e-08,
+       "frac_residu_gt1": 0.01617431640625
+      },
+      "14": {
+       "debit": 37.835304260253906,
+       "non_fini": 0,
+       "residu_ns_median": 5.997609595057773e-08,
+       "frac_residu_gt1": 0.0159912109375
+      },
+      "15": {
+       "debit": 37.840789794921875,
+       "non_fini": 0,
+       "residu_ns_median": 6.164975824913801e-08,
+       "frac_residu_gt1": 0.01593017578125
+      },
+      "16": {
+       "debit": 37.841365814208984,
+       "non_fini": 0,
+       "residu_ns_median": 6.082428572881263e-08,
+       "frac_residu_gt1": 0.01593017578125
+      },
+      "17": {
+       "debit": 37.84183120727539,
+       "non_fini": 0,
+       "residu_ns_median": 6.149565897829966e-08,
+       "frac_residu_gt1": 0.01605224609375
+      },
+      "18": {
+       "debit": 37.84198760986328,
+       "non_fini": 0,
+       "residu_ns_median": 6.13308513538519e-08,
+       "frac_residu_gt1": 0.01605224609375
+      },
+      "19": {
+       "debit": 37.84190368652344,
+       "non_fini": 0,
+       "residu_ns_median": 6.110511303100903e-08,
+       "frac_residu_gt1": 0.01605224609375
+      },
+      "20": {
+       "debit": 37.84190368652344,
+       "non_fini": 0,
+       "residu_ns_median": 6.144107616822429e-08,
+       "frac_residu_gt1": 0.01605224609375
+      }
+     },
+     "min_bits_0.1bps": {
+      "tout": 18,
+      "ns_seul": 17,
+      "ns+C+W": 18,
+      "in+gram": 12
+     }
+    }
+   },
+   "ericsson": {
+    "20": {
+     "flottant_modele": 23.920202255249023,
+     "flottant_emule": {
+      "debit": 23.920204162597656,
+      "non_fini": 0,
+      "residu_ns_median": 1.1733794767831158e-15,
+      "frac_residu_gt1": 0.0
+     },
+     "tout": {
+      "8": {
+       "debit": 22.23964500427246,
+       "non_fini": 0,
+       "residu_ns_median": 0.21994428232526456,
+       "frac_residu_gt1": 0.21722412109375
+      },
+      "9": {
+       "debit": 23.30679702758789,
+       "non_fini": 0,
+       "residu_ns_median": 0.10900613611219023,
+       "frac_residu_gt1": 0.1302490234375
+      },
+      "10": {
+       "debit": 23.749385833740234,
+       "non_fini": 0,
+       "residu_ns_median": 0.05468928079385839,
+       "frac_residu_gt1": 0.00927734375
+      },
+      "11": {
+       "debit": 23.869123458862305,
+       "non_fini": 0,
+       "residu_ns_median": 0.02726838589502089,
+       "frac_residu_gt1": 0.0
+      },
+      "12": {
+       "debit": 23.907238006591797,
+       "non_fini": 0,
+       "residu_ns_median": 0.013615767867810179,
+       "frac_residu_gt1": 0.0
+      },
+      "13": {
+       "debit": 23.916744232177734,
+       "non_fini": 0,
+       "residu_ns_median": 0.006690310567046876,
+       "frac_residu_gt1": 0.0
+      },
+      "14": {
+       "debit": 23.919475555419922,
+       "non_fini": 0,
+       "residu_ns_median": 0.003427907896739051,
+       "frac_residu_gt1": 0.0
+      },
+      "15": {
+       "debit": 23.920007705688477,
+       "non_fini": 0,
+       "residu_ns_median": 0.0017115134250730787,
+       "frac_residu_gt1": 0.0
+      },
+      "16": {
+       "debit": 23.920127868652344,
+       "non_fini": 0,
+       "residu_ns_median": 0.0008560570898975017,
+       "frac_residu_gt1": 0.0
+      },
+      "17": {
+       "debit": 23.92019271850586,
+       "non_fini": 0,
+       "residu_ns_median": 0.00042799045157473946,
+       "frac_residu_gt1": 0.0
+      },
+      "18": {
+       "debit": 23.92020034790039,
+       "non_fini": 0,
+       "residu_ns_median": 0.00021242473063462605,
+       "frac_residu_gt1": 0.0
+      },
+      "19": {
+       "debit": 23.920204162597656,
+       "non_fini": 0,
+       "residu_ns_median": 0.00010641620840735408,
+       "frac_residu_gt1": 0.0
+      },
+      "20": {
+       "debit": 23.920204162597656,
+       "non_fini": 0,
+       "residu_ns_median": 5.398727463530761e-05,
+       "frac_residu_gt1": 0.0
+      }
+     },
+     "ns_seul": {
+      "8": {
+       "debit": 22.844614028930664,
+       "non_fini": 0,
+       "residu_ns_median": 0.21861398621812225,
+       "frac_residu_gt1": 0.221435546875
+      },
+      "9": {
+       "debit": 23.56958770751953,
+       "non_fini": 0,
+       "residu_ns_median": 0.10964885859732197,
+       "frac_residu_gt1": 0.13397216796875
+      },
+      "10": {
+       "debit": 23.820920944213867,
+       "non_fini": 0,
+       "residu_ns_median": 0.0548051304495116,
+       "frac_residu_gt1": 0.0093994140625
+      },
+      "11": {
+       "debit": 23.890317916870117,
+       "non_fini": 0,
+       "residu_ns_median": 0.02713273456452977,
+       "frac_residu_gt1": 0.0
+      },
+      "12": {
+       "debit": 23.912277221679688,
+       "non_fini": 0,
+       "residu_ns_median": 0.013782051774276364,
+       "frac_residu_gt1": 0.0
+      },
+      "13": {
+       "debit": 23.918222427368164,
+       "non_fini": 0,
+       "residu_ns_median": 0.0068103466398808325,
+       "frac_residu_gt1": 0.0
+      },
+      "14": {
+       "debit": 23.91982650756836,
+       "non_fini": 0,
+       "residu_ns_median": 0.0034347311962707096,
+       "frac_residu_gt1": 0.0
+      },
+      "15": {
+       "debit": 23.92018699645996,
+       "non_fini": 0,
+       "residu_ns_median": 0.0017159153340765756,
+       "frac_residu_gt1": 0.0
+      },
+      "16": {
+       "debit": 23.920204162597656,
+       "non_fini": 0,
+       "residu_ns_median": 0.0008566393022203865,
+       "frac_residu_gt1": 0.0
+      },
+      "17": {
+       "debit": 23.920196533203125,
+       "non_fini": 0,
+       "residu_ns_median": 0.00042950406119933004,
+       "frac_residu_gt1": 0.0
+      },
+      "18": {
+       "debit": 23.920198440551758,
+       "non_fini": 0,
+       "residu_ns_median": 0.00021227307336660155,
+       "frac_residu_gt1": 0.0
+      },
+      "19": {
+       "debit": 23.920202255249023,
+       "non_fini": 0,
+       "residu_ns_median": 0.00010669503537288157,
+       "frac_residu_gt1": 0.0
+      },
+      "20": {
+       "debit": 23.92020034790039,
+       "non_fini": 0,
+       "residu_ns_median": 5.3445781674016016e-05,
+       "frac_residu_gt1": 0.0
+      }
+     },
+     "ns+C+W": {
+      "8": {
+       "debit": 22.427921295166016,
+       "non_fini": 0,
+       "residu_ns_median": 0.22239985723272665,
+       "frac_residu_gt1": 0.2261962890625
+      },
+      "9": {
+       "debit": 23.391494750976562,
+       "non_fini": 0,
+       "residu_ns_median": 0.10918041571918495,
+       "frac_residu_gt1": 0.13531494140625
+      },
+      "10": {
+       "debit": 23.775100708007812,
+       "non_fini": 0,
+       "residu_ns_median": 0.05446569445789644,
+       "frac_residu_gt1": 0.0081787109375
+      },
+      "11": {
+       "debit": 23.876266479492188,
+       "non_fini": 0,
+       "residu_ns_median": 0.027255370391556705,
+       "frac_residu_gt1": 0.0
+      },
+      "12": {
+       "debit": 23.90929412841797,
+       "non_fini": 0,
+       "residu_ns_median": 0.013776917045821721,
+       "frac_residu_gt1": 0.0
+      },
+      "13": {
+       "debit": 23.91699981689453,
+       "non_fini": 0,
+       "residu_ns_median": 0.006759812843037798,
+       "frac_residu_gt1": 0.0
+      },
+      "14": {
+       "debit": 23.91954231262207,
+       "non_fini": 0,
+       "residu_ns_median": 0.0034080476849706583,
+       "frac_residu_gt1": 0.0
+      },
+      "15": {
+       "debit": 23.920082092285156,
+       "non_fini": 0,
+       "residu_ns_median": 0.0017017432736332093,
+       "frac_residu_gt1": 0.0
+      },
+      "16": {
+       "debit": 23.92013931274414,
+       "non_fini": 0,
+       "residu_ns_median": 0.000857866620609024,
+       "frac_residu_gt1": 0.0
+      },
+      "17": {
+       "debit": 23.92018699645996,
+       "non_fini": 0,
+       "residu_ns_median": 0.000425816754149296,
+       "frac_residu_gt1": 0.0
+      },
+      "18": {
+       "debit": 23.92020034790039,
+       "non_fini": 0,
+       "residu_ns_median": 0.0002156100200329468,
+       "frac_residu_gt1": 0.0
+      },
+      "19": {
+       "debit": 23.920204162597656,
+       "non_fini": 0,
+       "residu_ns_median": 0.00010711550109353645,
+       "frac_residu_gt1": 0.0
+      },
+      "20": {
+       "debit": 23.920204162597656,
+       "non_fini": 0,
+       "residu_ns_median": 5.388896058735984e-05,
+       "frac_residu_gt1": 0.0
+      }
+     },
+     "in+gram": {
+      "8": {
+       "debit": 23.51905632019043,
+       "non_fini": 0,
+       "residu_ns_median": 1.175805535450089e-15,
+       "frac_residu_gt1": 0.0
+      },
+      "9": {
+       "debit": 23.808311462402344,
+       "non_fini": 0,
+       "residu_ns_median": 1.177560399767266e-15,
+       "frac_residu_gt1": 0.0
+      },
+      "10": {
+       "debit": 23.891651153564453,
+       "non_fini": 0,
+       "residu_ns_median": 1.1597356353875975e-15,
+       "frac_residu_gt1": 0.0
+      },
+      "11": {
+       "debit": 23.91288948059082,
+       "non_fini": 0,
+       "residu_ns_median": 1.1768909979067275e-15,
+       "frac_residu_gt1": 0.0
+      },
+      "12": {
+       "debit": 23.91790199279785,
+       "non_fini": 0,
+       "residu_ns_median": 1.1777454995096605e-15,
+       "frac_residu_gt1": 0.0
+      },
+      "13": {
+       "debit": 23.9197998046875,
+       "non_fini": 0,
+       "residu_ns_median": 1.1802998741528477e-15,
+       "frac_residu_gt1": 0.0
+      },
+      "14": {
+       "debit": 23.920141220092773,
+       "non_fini": 0,
+       "residu_ns_median": 1.1807147435736623e-15,
+       "frac_residu_gt1": 0.0
+      },
+      "15": {
+       "debit": 23.920166015625,
+       "non_fini": 0,
+       "residu_ns_median": 1.1754687977812145e-15,
+       "frac_residu_gt1": 0.0
+      },
+      "16": {
+       "debit": 23.920177459716797,
+       "non_fini": 0,
+       "residu_ns_median": 1.1855778074718935e-15,
+       "frac_residu_gt1": 0.0
+      },
+      "17": {
+       "debit": 23.920217514038086,
+       "non_fini": 0,
+       "residu_ns_median": 1.1736584219598367e-15,
+       "frac_residu_gt1": 0.0
+      },
+      "18": {
+       "debit": 23.920204162597656,
+       "non_fini": 0,
+       "residu_ns_median": 1.1822227103836672e-15,
+       "frac_residu_gt1": 0.0
+      },
+      "19": {
+       "debit": 23.92020034790039,
+       "non_fini": 0,
+       "residu_ns_median": 1.177744329774118e-15,
+       "frac_residu_gt1": 0.0
+      },
+      "20": {
+       "debit": 23.920204162597656,
+       "non_fini": 0,
+       "residu_ns_median": 1.1740367261079915e-15,
+       "frac_residu_gt1": 0.0
+      }
+     },
+     "min_bits_0.1bps": {
+      "tout": 11,
+      "ns_seul": 10,
+      "ns+C+W": 11,
+      "in+gram": 10
+     }
+    },
+    "30": {
+     "flottant_modele": 36.26906204223633,
+     "flottant_emule": {
+      "debit": 36.26906204223633,
+      "non_fini": 0,
+      "residu_ns_median": 1.0076850093326581e-15,
+      "frac_residu_gt1": 0.0
+     },
+     "tout": {
+      "8": {
+       "debit": 27.38235092163086,
+       "non_fini": 0,
+       "residu_ns_median": 0.15604234844787976,
+       "frac_residu_gt1": 0.08453369140625
+      },
+      "9": {
+       "debit": 31.62195587158203,
+       "non_fini": 0,
+       "residu_ns_median": 0.07724995346472821,
+       "frac_residu_gt1": 0.0340576171875
+      },
+      "10": {
+       "debit": 34.30464172363281,
+       "non_fini": 0,
+       "residu_ns_median": 0.038800569335226645,
+       "frac_residu_gt1": 0.01092529296875
+      },
+      "11": {
+       "debit": 35.56290054321289,
+       "non_fini": 0,
+       "residu_ns_median": 0.01904683439479699,
+       "frac_residu_gt1": 0.0001220703125
+      },
+      "12": {
+       "debit": 36.053775787353516,
+       "non_fini": 0,
+       "residu_ns_median": 0.009625840105608793,
+       "frac_residu_gt1": 0.0
+      },
+      "13": {
+       "debit": 36.208953857421875,
+       "non_fini": 0,
+       "residu_ns_median": 0.0048083943087648484,
+       "frac_residu_gt1": 0.0
+      },
+      "14": {
+       "debit": 36.25379943847656,
+       "non_fini": 0,
+       "residu_ns_median": 0.0024097040906102462,
+       "frac_residu_gt1": 0.0
+      },
+      "15": {
+       "debit": 36.265018463134766,
+       "non_fini": 0,
+       "residu_ns_median": 0.0012189801678837043,
+       "frac_residu_gt1": 0.0
+      },
+      "16": {
+       "debit": 36.2679443359375,
+       "non_fini": 0,
+       "residu_ns_median": 0.0006080638157651974,
+       "frac_residu_gt1": 0.0
+      },
+      "17": {
+       "debit": 36.26881408691406,
+       "non_fini": 0,
+       "residu_ns_median": 0.0003024799976799209,
+       "frac_residu_gt1": 0.0
+      },
+      "18": {
+       "debit": 36.269012451171875,
+       "non_fini": 0,
+       "residu_ns_median": 0.0001523412805982056,
+       "frac_residu_gt1": 0.0
+      },
+      "19": {
+       "debit": 36.26905059814453,
+       "non_fini": 0,
+       "residu_ns_median": 7.546405991986321e-05,
+       "frac_residu_gt1": 0.0
+      },
+      "20": {
+       "debit": 36.26905822753906,
+       "non_fini": 0,
+       "residu_ns_median": 3.7512113945083975e-05,
+       "frac_residu_gt1": 0.0
+      }
+     },
+     "ns_seul": {
+      "8": {
+       "debit": 29.485441207885742,
+       "non_fini": 0,
+       "residu_ns_median": 0.15744485490080107,
+       "frac_residu_gt1": 0.08648681640625
+      },
+      "9": {
+       "debit": 33.087646484375,
+       "non_fini": 0,
+       "residu_ns_median": 0.07635585471961838,
+       "frac_residu_gt1": 0.0345458984375
+      },
+      "10": {
+       "debit": 35.00973892211914,
+       "non_fini": 0,
+       "residu_ns_median": 0.038399302505488384,
+       "frac_residu_gt1": 0.0107421875
+      },
+      "11": {
+       "debit": 35.84963607788086,
+       "non_fini": 0,
+       "residu_ns_median": 0.019020599651883026,
+       "frac_residu_gt1": 6.103515625e-05
+      },
+      "12": {
+       "debit": 36.147613525390625,
+       "non_fini": 0,
+       "residu_ns_median": 0.00963309625094095,
+       "frac_residu_gt1": 0.0
+      },
+      "13": {
+       "debit": 36.236656188964844,
+       "non_fini": 0,
+       "residu_ns_median": 0.004850781144475449,
+       "frac_residu_gt1": 0.0
+      },
+      "14": {
+       "debit": 36.26085662841797,
+       "non_fini": 0,
+       "residu_ns_median": 0.002420982061172508,
+       "frac_residu_gt1": 0.0
+      },
+      "15": {
+       "debit": 36.26689910888672,
+       "non_fini": 0,
+       "residu_ns_median": 0.0012115663434577018,
+       "frac_residu_gt1": 0.0
+      },
+      "16": {
+       "debit": 36.26850128173828,
+       "non_fini": 0,
+       "residu_ns_median": 0.0006087186450830765,
+       "frac_residu_gt1": 0.0
+      },
+      "17": {
+       "debit": 36.2689208984375,
+       "non_fini": 0,
+       "residu_ns_median": 0.0003025919919093426,
+       "frac_residu_gt1": 0.0
+      },
+      "18": {
+       "debit": 36.26903533935547,
+       "non_fini": 0,
+       "residu_ns_median": 0.00015078373692743805,
+       "frac_residu_gt1": 0.0
+      },
+      "19": {
+       "debit": 36.26905822753906,
+       "non_fini": 0,
+       "residu_ns_median": 7.511737100303182e-05,
+       "frac_residu_gt1": 0.0
+      },
+      "20": {
+       "debit": 36.26905822753906,
+       "non_fini": 0,
+       "residu_ns_median": 3.808301319819829e-05,
+       "frac_residu_gt1": 0.0
+      }
+     },
+     "ns+C+W": {
+      "8": {
+       "debit": 28.17690086364746,
+       "non_fini": 0,
+       "residu_ns_median": 0.15821227993366496,
+       "frac_residu_gt1": 0.0823974609375
+      },
+      "9": {
+       "debit": 32.1393928527832,
+       "non_fini": 0,
+       "residu_ns_median": 0.07687340370286955,
+       "frac_residu_gt1": 0.03375244140625
+      },
+      "10": {
+       "debit": 34.5537109375,
+       "non_fini": 0,
+       "residu_ns_median": 0.03841827011980145,
+       "frac_residu_gt1": 0.0107421875
+      },
+      "11": {
+       "debit": 35.666282653808594,
+       "non_fini": 0,
+       "residu_ns_median": 0.019257306669444703,
+       "frac_residu_gt1": 6.103515625e-05
+      },
+      "12": {
+       "debit": 36.08434295654297,
+       "non_fini": 0,
+       "residu_ns_median": 0.009644412131231031,
+       "frac_residu_gt1": 0.0
+      },
+      "13": {
+       "debit": 36.21794128417969,
+       "non_fini": 0,
+       "residu_ns_median": 0.004857341546747643,
+       "frac_residu_gt1": 0.0
+      },
+      "14": {
+       "debit": 36.25579071044922,
+       "non_fini": 0,
+       "residu_ns_median": 0.0024035345468626447,
+       "frac_residu_gt1": 0.0
+      },
+      "15": {
+       "debit": 36.26557922363281,
+       "non_fini": 0,
+       "residu_ns_median": 0.001198176641394016,
+       "frac_residu_gt1": 0.0
+      },
+      "16": {
+       "debit": 36.268123626708984,
+       "non_fini": 0,
+       "residu_ns_median": 0.0006046762474642279,
+       "frac_residu_gt1": 0.0
+      },
+      "17": {
+       "debit": 36.268836975097656,
+       "non_fini": 0,
+       "residu_ns_median": 0.00029932820413530904,
+       "frac_residu_gt1": 0.0
+      },
+      "18": {
+       "debit": 36.26902389526367,
+       "non_fini": 0,
+       "residu_ns_median": 0.0001513472910648129,
+       "frac_residu_gt1": 0.0
+      },
+      "19": {
+       "debit": 36.26905822753906,
+       "non_fini": 0,
+       "residu_ns_median": 7.539148617705694e-05,
+       "frac_residu_gt1": 0.0
+      },
+      "20": {
+       "debit": 36.26905822753906,
+       "non_fini": 0,
+       "residu_ns_median": 3.801968165892195e-05,
+       "frac_residu_gt1": 0.0
+      }
+     },
+     "in+gram": {
+      "8": {
+       "debit": 32.69569396972656,
+       "non_fini": 0,
+       "residu_ns_median": 1.0206224784552243e-15,
+       "frac_residu_gt1": 0.0
+      },
+      "9": {
+       "debit": 34.83903503417969,
+       "non_fini": 0,
+       "residu_ns_median": 1.021053408492509e-15,
+       "frac_residu_gt1": 0.0
+      },
+      "10": {
+       "debit": 35.816864013671875,
+       "non_fini": 0,
+       "residu_ns_median": 1.041751988217639e-15,
+       "frac_residu_gt1": 0.0
+      },
+      "11": {
+       "debit": 36.13700485229492,
+       "non_fini": 0,
+       "residu_ns_median": 1.014352615998137e-15,
+       "frac_residu_gt1": 0.0
+      },
+      "12": {
+       "debit": 36.23566436767578,
+       "non_fini": 0,
+       "residu_ns_median": 1.0115418052380864e-15,
+       "frac_residu_gt1": 0.0
+      },
+      "13": {
+       "debit": 36.26034927368164,
+       "non_fini": 0,
+       "residu_ns_median": 1.012740712798366e-15,
+       "frac_residu_gt1": 0.0
+      },
+      "14": {
+       "debit": 36.26695251464844,
+       "non_fini": 0,
+       "residu_ns_median": 1.019256640550444e-15,
+       "frac_residu_gt1": 0.0
+      },
+      "15": {
+       "debit": 36.268524169921875,
+       "non_fini": 0,
+       "residu_ns_median": 1.0047862440178033e-15,
+       "frac_residu_gt1": 0.0
+      },
+      "16": {
+       "debit": 36.2689094543457,
+       "non_fini": 0,
+       "residu_ns_median": 1.0166305459637612e-15,
+       "frac_residu_gt1": 0.0
+      },
+      "17": {
+       "debit": 36.269039154052734,
+       "non_fini": 0,
+       "residu_ns_median": 1.049156121090216e-15,
+       "frac_residu_gt1": 0.0
+      },
+      "18": {
+       "debit": 36.26905822753906,
+       "non_fini": 0,
+       "residu_ns_median": 1.0304825529705307e-15,
+       "frac_residu_gt1": 0.0
+      },
+      "19": {
+       "debit": 36.26906204223633,
+       "non_fini": 0,
+       "residu_ns_median": 1.0227531868997259e-15,
+       "frac_residu_gt1": 0.0
+      },
+      "20": {
+       "debit": 36.26906204223633,
+       "non_fini": 0,
+       "residu_ns_median": 1.0112023613467436e-15,
+       "frac_residu_gt1": 0.0
+      }
+     },
+     "min_bits_0.1bps": {
+      "tout": 13,
+      "ns_seul": 13,
+      "ns+C+W": 13,
+      "in+gram": 12
+     }
+    },
+    "40": {
+     "flottant_modele": 49.318748474121094,
+     "flottant_emule": {
+      "debit": 49.318748474121094,
+      "non_fini": 0,
+      "residu_ns_median": 8.407181406567638e-16,
+      "frac_residu_gt1": 0.0
+     },
+     "tout": {
+      "8": {
+       "debit": 29.14748764038086,
+       "non_fini": 0,
+       "residu_ns_median": 0.09972746703621788,
+       "frac_residu_gt1": 0.0511474609375
+      },
+      "9": {
+       "debit": 35.940948486328125,
+       "non_fini": 0,
+       "residu_ns_median": 0.050044617204847146,
+       "frac_residu_gt1": 0.0152587890625
+      },
+      "10": {
+       "debit": 41.63175964355469,
+       "non_fini": 0,
+       "residu_ns_median": 0.02521465703231707,
+       "frac_residu_gt1": 0.00604248046875
+      },
+      "11": {
+       "debit": 45.489952087402344,
+       "non_fini": 0,
+       "residu_ns_median": 0.012631186930313058,
+       "frac_residu_gt1": 0.00018310546875
+      },
+      "12": {
+       "debit": 47.74336242675781,
+       "non_fini": 0,
+       "residu_ns_median": 0.006285645104096488,
+       "frac_residu_gt1": 0.0
+      },
+      "13": {
+       "debit": 48.76245880126953,
+       "non_fini": 0,
+       "residu_ns_median": 0.00322270883535148,
+       "frac_residu_gt1": 0.0
+      },
+      "14": {
+       "debit": 49.150753021240234,
+       "non_fini": 0,
+       "residu_ns_median": 0.0015959283257660983,
+       "frac_residu_gt1": 0.0
+      },
+      "15": {
+       "debit": 49.27207565307617,
+       "non_fini": 0,
+       "residu_ns_median": 0.0007906059817266495,
+       "frac_residu_gt1": 0.0
+      },
+      "16": {
+       "debit": 49.306724548339844,
+       "non_fini": 0,
+       "residu_ns_median": 0.00039854169761076785,
+       "frac_residu_gt1": 0.0
+      },
+      "17": {
+       "debit": 49.31590270996094,
+       "non_fini": 0,
+       "residu_ns_median": 0.0001996418149171465,
+       "frac_residu_gt1": 0.0
+      },
+      "18": {
+       "debit": 49.31804656982422,
+       "non_fini": 0,
+       "residu_ns_median": 9.984393476140078e-05,
+       "frac_residu_gt1": 0.0
+      },
+      "19": {
+       "debit": 49.31858825683594,
+       "non_fini": 0,
+       "residu_ns_median": 4.975251911647558e-05,
+       "frac_residu_gt1": 0.0
+      },
+      "20": {
+       "debit": 49.318729400634766,
+       "non_fini": 0,
+       "residu_ns_median": 2.485778358326057e-05,
+       "frac_residu_gt1": 0.0
+      }
+     },
+     "ns_seul": {
+      "8": {
+       "debit": 33.199913024902344,
+       "non_fini": 0,
+       "residu_ns_median": 0.10058326384132646,
+       "frac_residu_gt1": 0.04986572265625
+      },
+      "9": {
+       "debit": 39.312740325927734,
+       "non_fini": 0,
+       "residu_ns_median": 0.04986151819918934,
+       "frac_residu_gt1": 0.015625
+      },
+      "10": {
+       "debit": 43.939598083496094,
+       "non_fini": 0,
+       "residu_ns_median": 0.02520805351170599,
+       "frac_residu_gt1": 0.00604248046875
+      },
+      "11": {
+       "debit": 46.82158660888672,
+       "non_fini": 0,
+       "residu_ns_median": 0.012665175636268827,
+       "frac_residu_gt1": 0.00048828125
+      },
+      "12": {
+       "debit": 48.36674499511719,
+       "non_fini": 0,
+       "residu_ns_median": 0.006352617656074339,
+       "frac_residu_gt1": 0.0
+      },
+      "13": {
+       "debit": 48.99683380126953,
+       "non_fini": 0,
+       "residu_ns_median": 0.0031914527042257133,
+       "frac_residu_gt1": 0.0
+      },
+      "14": {
+       "debit": 49.2264289855957,
+       "non_fini": 0,
+       "residu_ns_median": 0.0015858136692690934,
+       "frac_residu_gt1": 0.0
+      },
+      "15": {
+       "debit": 49.29447555541992,
+       "non_fini": 0,
+       "residu_ns_median": 0.0008010161738968793,
+       "frac_residu_gt1": 0.0
+      },
+      "16": {
+       "debit": 49.31260681152344,
+       "non_fini": 0,
+       "residu_ns_median": 0.00039583094903925485,
+       "frac_residu_gt1": 0.0
+      },
+      "17": {
+       "debit": 49.31727600097656,
+       "non_fini": 0,
+       "residu_ns_median": 0.00019884815248648452,
+       "frac_residu_gt1": 0.0
+      },
+      "18": {
+       "debit": 49.31841278076172,
+       "non_fini": 0,
+       "residu_ns_median": 9.951527771195299e-05,
+       "frac_residu_gt1": 0.0
+      },
+      "19": {
+       "debit": 49.31867218017578,
+       "non_fini": 0,
+       "residu_ns_median": 5.006364557113773e-05,
+       "frac_residu_gt1": 0.0
+      },
+      "20": {
+       "debit": 49.3187255859375,
+       "non_fini": 0,
+       "residu_ns_median": 2.4882756324828554e-05,
+       "frac_residu_gt1": 0.0
+      }
+     },
+     "ns+C+W": {
+      "8": {
+       "debit": 31.111175537109375,
+       "non_fini": 0,
+       "residu_ns_median": 0.10098780822081092,
+       "frac_residu_gt1": 0.052001953125
+      },
+      "9": {
+       "debit": 37.472450256347656,
+       "non_fini": 0,
+       "residu_ns_median": 0.04955339632694754,
+       "frac_residu_gt1": 0.0157470703125
+      },
+      "10": {
+       "debit": 42.60291290283203,
+       "non_fini": 0,
+       "residu_ns_median": 0.025255637603059003,
+       "frac_residu_gt1": 0.006103515625
+      },
+      "11": {
+       "debit": 46.02641296386719,
+       "non_fini": 0,
+       "residu_ns_median": 0.012725159686765929,
+       "frac_residu_gt1": 0.00048828125
+      },
+      "12": {
+       "debit": 47.96519088745117,
+       "non_fini": 0,
+       "residu_ns_median": 0.0063741429414566255,
+       "frac_residu_gt1": 0.0
+      },
+      "13": {
+       "debit": 48.843666076660156,
+       "non_fini": 0,
+       "residu_ns_median": 0.003192236828982824,
+       "frac_residu_gt1": 0.0
+      },
+      "14": {
+       "debit": 49.16973876953125,
+       "non_fini": 0,
+       "residu_ns_median": 0.0015901960906211,
+       "frac_residu_gt1": 0.0
+      },
+      "15": {
+       "debit": 49.27806854248047,
+       "non_fini": 0,
+       "residu_ns_median": 0.0007936375050020272,
+       "frac_residu_gt1": 0.0
+      },
+      "16": {
+       "debit": 49.30809783935547,
+       "non_fini": 0,
+       "residu_ns_median": 0.0003932221375244847,
+       "frac_residu_gt1": 0.0
+      },
+      "17": {
+       "debit": 49.316192626953125,
+       "non_fini": 0,
+       "residu_ns_median": 0.0001989290130601254,
+       "frac_residu_gt1": 0.0
+      },
+      "18": {
+       "debit": 49.31816101074219,
+       "non_fini": 0,
+       "residu_ns_median": 9.976220735574221e-05,
+       "frac_residu_gt1": 0.0
+      },
+      "19": {
+       "debit": 49.3186149597168,
+       "non_fini": 0,
+       "residu_ns_median": 4.953097112676873e-05,
+       "frac_residu_gt1": 0.0
+      },
+      "20": {
+       "debit": 49.3187141418457,
+       "non_fini": 0,
+       "residu_ns_median": 2.4999989142387598e-05,
+       "frac_residu_gt1": 0.0
+      }
+     },
+     "in+gram": {
+      "8": {
+       "debit": 37.84123992919922,
+       "non_fini": 0,
+       "residu_ns_median": 8.398498278215812e-16,
+       "frac_residu_gt1": 0.0
+      },
+      "9": {
+       "debit": 43.11626434326172,
+       "non_fini": 0,
+       "residu_ns_median": 8.518735344370439e-16,
+       "frac_residu_gt1": 0.0
+      },
+      "10": {
+       "debit": 46.547359466552734,
+       "non_fini": 0,
+       "residu_ns_median": 8.63253981119037e-16,
+       "frac_residu_gt1": 0.0
+      },
+      "11": {
+       "debit": 48.25582504272461,
+       "non_fini": 0,
+       "residu_ns_median": 8.535287201535129e-16,
+       "frac_residu_gt1": 0.0
+      },
+      "12": {
+       "debit": 48.991050720214844,
+       "non_fini": 0,
+       "residu_ns_median": 8.430538888860349e-16,
+       "frac_residu_gt1": 0.0
+      },
+      "13": {
+       "debit": 49.22753143310547,
+       "non_fini": 0,
+       "residu_ns_median": 8.775216341718067e-16,
+       "frac_residu_gt1": 0.0
+      },
+      "14": {
+       "debit": 49.296104431152344,
+       "non_fini": 0,
+       "residu_ns_median": 8.555092999767965e-16,
+       "frac_residu_gt1": 0.0
+      },
+      "15": {
+       "debit": 49.31304168701172,
+       "non_fini": 0,
+       "residu_ns_median": 8.524617154995928e-16,
+       "frac_residu_gt1": 0.0
+      },
+      "16": {
+       "debit": 49.31742477416992,
+       "non_fini": 0,
+       "residu_ns_median": 8.617299757455316e-16,
+       "frac_residu_gt1": 0.0
+      },
+      "17": {
+       "debit": 49.318458557128906,
+       "non_fini": 0,
+       "residu_ns_median": 8.619502136409748e-16,
+       "frac_residu_gt1": 0.0
+      },
+      "18": {
+       "debit": 49.31867599487305,
+       "non_fini": 0,
+       "residu_ns_median": 8.648500923162126e-16,
+       "frac_residu_gt1": 0.0
+      },
+      "19": {
+       "debit": 49.31871795654297,
+       "non_fini": 0,
+       "residu_ns_median": 8.616003768877295e-16,
+       "frac_residu_gt1": 0.0
+      },
+      "20": {
+       "debit": 49.31873321533203,
+       "non_fini": 0,
+       "residu_ns_median": 8.530745827916031e-16,
+       "frac_residu_gt1": 0.0
+      }
+     },
+     "min_bits_0.1bps": {
+      "tout": 15,
+      "ns_seul": 14,
+      "ns+C+W": 15,
+      "in+gram": 13
+     }
+    }
+   }
+  },
+  "int8_transformer": {
+   "calib_amax": {
+    "dense": 6.674790859222412,
+    "dense_9": 120.81146240234375,
+    "dense_1": 4.097535133361816,
+    "dense_2": 4.097535133361816,
+    "dense_3": 8.625385284423828,
+    "dense_4": 13.602327346801758,
+    "dense_5": 3.7395031452178955,
+    "dense_6": 3.7395031452178955,
+    "dense_7": 13.944851875305176,
+    "dense_8": 37.60390090942383
+   },
+   "umi": {
+    "20": {
+     "flottant_ns": {
+      "debit": 17.289541244506836,
+      "non_fini": 0,
+      "residu_ns_median": 0.025416636469270473,
+      "frac_residu_gt1": 0.00140380859375
+     },
+     "8": {
+      "debit": 15.00704288482666,
+      "non_fini": 0,
+      "residu_ns_median": 1.641136336313676,
+      "frac_residu_gt1": 0.693603515625
+     },
+     "9": {
+      "debit": 16.12497329711914,
+      "non_fini": 0,
+      "residu_ns_median": 0.9743237505942297,
+      "frac_residu_gt1": 0.4864501953125
+     },
+     "10": {
+      "debit": 16.793212890625,
+      "non_fini": 0,
+      "residu_ns_median": 0.5607497378937087,
+      "frac_residu_gt1": 0.138916015625
+     },
+     "11": {
+      "debit": 17.115360260009766,
+      "non_fini": 0,
+      "residu_ns_median": 0.309165114789402,
+      "frac_residu_gt1": 0.00726318359375
+     },
+     "12": {
+      "debit": 17.236997604370117,
+      "non_fini": 0,
+      "residu_ns_median": 0.1673593792274584,
+      "frac_residu_gt1": 0.0018310546875
+     },
+     "13": {
+      "debit": 17.274648666381836,
+      "non_fini": 0,
+      "residu_ns_median": 0.09180205580906918,
+      "frac_residu_gt1": 0.0015869140625
+     },
+     "14": {
+      "debit": 17.286855697631836,
+      "non_fini": 0,
+      "residu_ns_median": 0.052549177181773,
+      "frac_residu_gt1": 0.0013427734375
+     },
+     "15": {
+      "debit": 17.289562225341797,
+      "non_fini": 0,
+      "residu_ns_median": 0.03311325384029272,
+      "frac_residu_gt1": 0.00128173828125
+     },
+     "16": {
+      "debit": 17.289812088012695,
+      "non_fini": 0,
+      "residu_ns_median": 0.0278911772003177,
+      "frac_residu_gt1": 0.001220703125
+     },
+     "17": {
+      "debit": 17.289697647094727,
+      "non_fini": 0,
+      "residu_ns_median": 0.025685014345117246,
+      "frac_residu_gt1": 0.001220703125
+     },
+     "18": {
+      "debit": 17.290334701538086,
+      "non_fini": 0,
+      "residu_ns_median": 0.024680297966916287,
+      "frac_residu_gt1": 0.00152587890625
+     },
+     "19": {
+      "debit": 17.289947509765625,
+      "non_fini": 0,
+      "residu_ns_median": 0.0251394765649626,
+      "frac_residu_gt1": 0.00146484375
+     },
+     "20": {
+      "debit": 17.289737701416016,
+      "non_fini": 0,
+      "residu_ns_median": 0.025660294828089816,
+      "frac_residu_gt1": 0.00140380859375
+     }
+    },
+    "30": {
+     "flottant_ns": {
+      "debit": 26.463369369506836,
+      "non_fini": 0,
+      "residu_ns_median": 0.18865664063464538,
+      "frac_residu_gt1": 0.06878662109375
+     },
+     "8": {
+      "debit": 17.616701126098633,
+      "non_fini": 0,
+      "residu_ns_median": 1.2975587986974424,
+      "frac_residu_gt1": 0.63836669921875
+     },
+     "9": {
+      "debit": 20.497772216796875,
+      "non_fini": 0,
+      "residu_ns_median": 0.9901332605261712,
+      "frac_residu_gt1": 0.48931884765625
+     },
+     "10": {
+      "debit": 22.71646499633789,
+      "non_fini": 0,
+      "residu_ns_median": 0.6817261727913038,
+      "frac_residu_gt1": 0.2630615234375
+     },
+     "11": {
+      "debit": 24.286636352539062,
+      "non_fini": 0,
+      "residu_ns_median": 0.42488277033454114,
+      "frac_residu_gt1": 0.1077880859375
+     },
+     "12": {
+      "debit": 25.342493057250977,
+      "non_fini": 0,
+      "residu_ns_median": 0.27281992194282123,
+      "frac_residu_gt1": 0.07720947265625
+     },
+     "13": {
+      "debit": 25.969547271728516,
+      "non_fini": 0,
+      "residu_ns_median": 0.20851516336645887,
+      "frac_residu_gt1": 0.071044921875
+     },
+     "14": {
+      "debit": 26.280284881591797,
+      "non_fini": 0,
+      "residu_ns_median": 0.19499066508433832,
+      "frac_residu_gt1": 0.07080078125
+     },
+     "15": {
+      "debit": 26.410907745361328,
+      "non_fini": 0,
+      "residu_ns_median": 0.19031517330472247,
+      "frac_residu_gt1": 0.06829833984375
+     },
+     "16": {
+      "debit": 26.44864845275879,
+      "non_fini": 0,
+      "residu_ns_median": 0.1896786158703641,
+      "frac_residu_gt1": 0.0689697265625
+     },
+     "17": {
+      "debit": 26.45928382873535,
+      "non_fini": 0,
+      "residu_ns_median": 0.18828882786827206,
+      "frac_residu_gt1": 0.06982421875
+     },
+     "18": {
+      "debit": 26.463098526000977,
+      "non_fini": 0,
+      "residu_ns_median": 0.18889339625297036,
+      "frac_residu_gt1": 0.0703125
+     },
+     "19": {
+      "debit": 26.463592529296875,
+      "non_fini": 0,
+      "residu_ns_median": 0.18873408557117793,
+      "frac_residu_gt1": 0.06927490234375
+     },
+     "20": {
+      "debit": 26.463581085205078,
+      "non_fini": 0,
+      "residu_ns_median": 0.18870155705092256,
+      "frac_residu_gt1": 0.0689697265625
+     }
+    },
+    "40": {
+     "flottant_ns": {
+      "debit": 36.934120178222656,
+      "non_fini": 0,
+      "residu_ns_median": 0.00013757454220578218,
+      "frac_residu_gt1": 0.0264892578125
+     },
+     "8": {
+      "debit": 17.690248489379883,
+      "non_fini": 0,
+      "residu_ns_median": 0.9204829292572632,
+      "frac_residu_gt1": 0.45037841796875
+     },
+     "9": {
+      "debit": 22.271648406982422,
+      "non_fini": 0,
+      "residu_ns_median": 0.57293600499068,
+      "frac_residu_gt1": 0.29046630859375
+     },
+     "10": {
+      "debit": 26.39222526550293,
+      "non_fini": 0,
+      "residu_ns_median": 0.3018987816327271,
+      "frac_residu_gt1": 0.12939453125
+     },
+     "11": {
+      "debit": 29.625694274902344,
+      "non_fini": 0,
+      "residu_ns_median": 0.15574066336773906,
+      "frac_residu_gt1": 0.04583740234375
+     },
+     "12": {
+      "debit": 32.14274978637695,
+      "non_fini": 0,
+      "residu_ns_median": 0.07690415925208037,
+      "frac_residu_gt1": 0.03070068359375
+     },
+     "13": {
+      "debit": 34.013893127441406,
+      "non_fini": 0,
+      "residu_ns_median": 0.039735628036167744,
+      "frac_residu_gt1": 0.0272216796875
+     },
+     "14": {
+      "debit": 35.334354400634766,
+      "non_fini": 0,
+      "residu_ns_median": 0.020253966499455437,
+      "frac_residu_gt1": 0.02734375
+     },
+     "15": {
+      "debit": 36.16404724121094,
+      "non_fini": 0,
+      "residu_ns_median": 0.01051600964794459,
+      "frac_residu_gt1": 0.0269775390625
+     },
+     "16": {
+      "debit": 36.61138916015625,
+      "non_fini": 0,
+      "residu_ns_median": 0.005333403585424979,
+      "frac_residu_gt1": 0.02593994140625
+     },
+     "17": {
+      "debit": 36.823883056640625,
+      "non_fini": 0,
+      "residu_ns_median": 0.002816624648894661,
+      "frac_residu_gt1": 0.02642822265625
+     },
+     "18": {
+      "debit": 36.89726257324219,
+      "non_fini": 0,
+      "residu_ns_median": 0.0014399312687816278,
+      "frac_residu_gt1": 0.02630615234375
+     },
+     "19": {
+      "debit": 36.92552947998047,
+      "non_fini": 0,
+      "residu_ns_median": 0.000771250476853116,
+      "frac_residu_gt1": 0.026611328125
+     },
+     "20": {
+      "debit": 36.931846618652344,
+      "non_fini": 0,
+      "residu_ns_median": 0.0004230798648877484,
+      "frac_residu_gt1": 0.026611328125
+     }
+    }
+   },
+   "ericsson": {
+    "20": {
+     "flottant_ns": {
+      "debit": 23.17001724243164,
+      "non_fini": 0,
+      "residu_ns_median": 1.3214267894848185e-15,
+      "frac_residu_gt1": 0.0
+     },
+     "8": {
+      "debit": 21.485885620117188,
+      "non_fini": 0,
+      "residu_ns_median": 0.2489461564960178,
+      "frac_residu_gt1": 0.23223876953125
+     },
+     "9": {
+      "debit": 22.585853576660156,
+      "non_fini": 0,
+      "residu_ns_median": 0.1276525936304274,
+      "frac_residu_gt1": 0.12176513671875
+     },
+     "10": {
+      "debit": 22.997209548950195,
+      "non_fini": 0,
+      "residu_ns_median": 0.06300122510168353,
+      "frac_residu_gt1": 0.0198974609375
+     },
+     "11": {
+      "debit": 23.109790802001953,
+      "non_fini": 0,
+      "residu_ns_median": 0.032420079189028256,
+      "frac_residu_gt1": 0.0
+     },
+     "12": {
+      "debit": 23.149450302124023,
+      "non_fini": 0,
+      "residu_ns_median": 0.015790939477504578,
+      "frac_residu_gt1": 0.0
+     },
+     "13": {
+      "debit": 23.165164947509766,
+      "non_fini": 0,
+      "residu_ns_median": 0.008040216776800193,
+      "frac_residu_gt1": 0.0
+     },
+     "14": {
+      "debit": 23.16777801513672,
+      "non_fini": 0,
+      "residu_ns_median": 0.003985764555211455,
+      "frac_residu_gt1": 0.0
+     },
+     "15": {
+      "debit": 23.169960021972656,
+      "non_fini": 0,
+      "residu_ns_median": 0.0020082970950003162,
+      "frac_residu_gt1": 0.0
+     },
+     "16": {
+      "debit": 23.16856575012207,
+      "non_fini": 0,
+      "residu_ns_median": 0.0010090686699927467,
+      "frac_residu_gt1": 0.0
+     },
+     "17": {
+      "debit": 23.169910430908203,
+      "non_fini": 0,
+      "residu_ns_median": 0.0005030973604903061,
+      "frac_residu_gt1": 0.0
+     },
+     "18": {
+      "debit": 23.170026779174805,
+      "non_fini": 0,
+      "residu_ns_median": 0.00024652080878406714,
+      "frac_residu_gt1": 0.0
+     },
+     "19": {
+      "debit": 23.170047760009766,
+      "non_fini": 0,
+      "residu_ns_median": 0.0001261558856882044,
+      "frac_residu_gt1": 0.0
+     },
+     "20": {
+      "debit": 23.1699275970459,
+      "non_fini": 0,
+      "residu_ns_median": 6.29947521489884e-05,
+      "frac_residu_gt1": 0.0
+     }
+    },
+    "30": {
+     "flottant_ns": {
+      "debit": 35.478370666503906,
+      "non_fini": 0,
+      "residu_ns_median": 1.0790326487964444e-15,
+      "frac_residu_gt1": 0.0
+     },
+     "8": {
+      "debit": 26.400108337402344,
+      "non_fini": 0,
+      "residu_ns_median": 0.1703371968414351,
+      "frac_residu_gt1": 0.08935546875
+     },
+     "9": {
+      "debit": 30.754806518554688,
+      "non_fini": 0,
+      "residu_ns_median": 0.08665578229150059,
+      "frac_residu_gt1": 0.0357666015625
+     },
+     "10": {
+      "debit": 33.42359924316406,
+      "non_fini": 0,
+      "residu_ns_median": 0.0437982094953629,
+      "frac_residu_gt1": 0.0111083984375
+     },
+     "11": {
+      "debit": 34.744407653808594,
+      "non_fini": 0,
+      "residu_ns_median": 0.02223319882730998,
+      "frac_residu_gt1": 0.000244140625
+     },
+     "12": {
+      "debit": 35.25429153442383,
+      "non_fini": 0,
+      "residu_ns_median": 0.011187669144490351,
+      "frac_residu_gt1": 0.0
+     },
+     "13": {
+      "debit": 35.410736083984375,
+      "non_fini": 0,
+      "residu_ns_median": 0.005623693637505271,
+      "frac_residu_gt1": 0.0
+     },
+     "14": {
+      "debit": 35.458404541015625,
+      "non_fini": 0,
+      "residu_ns_median": 0.002749270306658368,
+      "frac_residu_gt1": 0.0
+     },
+     "15": {
+      "debit": 35.47307586669922,
+      "non_fini": 0,
+      "residu_ns_median": 0.001403450391013173,
+      "frac_residu_gt1": 0.0
+     },
+     "16": {
+      "debit": 35.47712707519531,
+      "non_fini": 0,
+      "residu_ns_median": 0.000701314775683553,
+      "frac_residu_gt1": 0.0
+     },
+     "17": {
+      "debit": 35.47679138183594,
+      "non_fini": 0,
+      "residu_ns_median": 0.00035074539679233436,
+      "frac_residu_gt1": 0.0
+     },
+     "18": {
+      "debit": 35.47785568237305,
+      "non_fini": 0,
+      "residu_ns_median": 0.00017392067960340165,
+      "frac_residu_gt1": 0.0
+     },
+     "19": {
+      "debit": 35.47818374633789,
+      "non_fini": 0,
+      "residu_ns_median": 8.701310159980348e-05,
+      "frac_residu_gt1": 0.0
+     },
+     "20": {
+      "debit": 35.478233337402344,
+      "non_fini": 0,
+      "residu_ns_median": 4.3855833171546504e-05,
+      "frac_residu_gt1": 0.0
+     }
+    },
+    "40": {
+     "flottant_ns": {
+      "debit": 47.92279052734375,
+      "non_fini": 0,
+      "residu_ns_median": 1.0147125553071207e-15,
+      "frac_residu_gt1": 0.0
+     },
+     "8": {
+      "debit": 27.83993148803711,
+      "non_fini": 0,
+      "residu_ns_median": 0.12621074765229864,
+      "frac_residu_gt1": 0.0657958984375
+     },
+     "9": {
+      "debit": 34.55964660644531,
+      "non_fini": 0,
+      "residu_ns_median": 0.06201018375435734,
+      "frac_residu_gt1": 0.0234375
+     },
+     "10": {
+      "debit": 40.23241424560547,
+      "non_fini": 0,
+      "residu_ns_median": 0.031109030028337165,
+      "frac_residu_gt1": 0.0079345703125
+     },
+     "11": {
+      "debit": 44.11566925048828,
+      "non_fini": 0,
+      "residu_ns_median": 0.015291594920411952,
+      "frac_residu_gt1": 0.00054931640625
+     },
+     "12": {
+      "debit": 46.31656265258789,
+      "non_fini": 0,
+      "residu_ns_median": 0.007689180930978347,
+      "frac_residu_gt1": 0.0
+     },
+     "13": {
+      "debit": 47.352989196777344,
+      "non_fini": 0,
+      "residu_ns_median": 0.0038750419506088938,
+      "frac_residu_gt1": 0.0
+     },
+     "14": {
+      "debit": 47.74652099609375,
+      "non_fini": 0,
+      "residu_ns_median": 0.0019270760652784062,
+      "frac_residu_gt1": 0.0
+     },
+     "15": {
+      "debit": 47.87644958496094,
+      "non_fini": 0,
+      "residu_ns_median": 0.0009701430779364036,
+      "frac_residu_gt1": 0.0
+     },
+     "16": {
+      "debit": 47.91412353515625,
+      "non_fini": 0,
+      "residu_ns_median": 0.00048577757730780763,
+      "frac_residu_gt1": 0.0
+     },
+     "17": {
+      "debit": 47.919776916503906,
+      "non_fini": 0,
+      "residu_ns_median": 0.0002431974147949439,
+      "frac_residu_gt1": 0.0
+     },
+     "18": {
+      "debit": 47.920921325683594,
+      "non_fini": 0,
+      "residu_ns_median": 0.00012082105047213365,
+      "frac_residu_gt1": 0.0
+     },
+     "19": {
+      "debit": 47.92261505126953,
+      "non_fini": 0,
+      "residu_ns_median": 6.0622944679299145e-05,
+      "frac_residu_gt1": 0.0
+     },
+     "20": {
+      "debit": 47.92341613769531,
+      "non_fini": 0,
+      "residu_ns_median": 3.0137994344118057e-05,
+      "frac_residu_gt1": 0.0
+     }
+    }
+   }
+  }
+ },
+ "meta": {
+  "fixed": {
+   "git_commit": "2bf2a69",
+   "created": "2026-11-27 01:48"
+  },
+  "seed": {
+   "git_commit": "47e24ed",
+   "created": "2026-11-27 02:31"
+  }
+ },
+ "seed": {
+  "csi_parfait": {
+   "umi": {
+    "n": 16384,
+    "0": {
+     "T20_s0": {
+      "debit": 5.155320167541504,
+      "fuite_db_mediane": 41.76268178138517
+     },
+     "T20_s1": {
+      "debit": 5.155217170715332,
+      "fuite_db_mediane": 41.9089976434048
+     },
+     "wmmse300": {
+      "debit": 5.1572065353393555,
+      "fuite_db_mediane": 257.4840952551239
+     },
+     "rzf": {
+      "debit": 4.559455394744873,
+      "fuite_db_mediane": -6.671793511719811
+     }
+    },
+    "10": {
+     "T20_s0": {
+      "debit": 10.335816383361816,
+      "fuite_db_mediane": -12.181845800376262
+     },
+     "T20_s1": {
+      "debit": 10.33541488647461,
+      "fuite_db_mediane": -12.172969095305618
+     },
+     "wmmse300": {
+      "debit": 10.342544555664062,
+      "fuite_db_mediane": -12.645239809329162
+     },
+     "rzf": {
+      "debit": 7.767784595489502,
+      "fuite_db_mediane": -16.646514594831384
+     }
+    },
+    "20": {
+     "T20_s0": {
+      "debit": 17.652603149414062,
+      "fuite_db_mediane": -30.642937436569554
+     },
+     "T20_s1": {
+      "debit": 17.651275634765625,
+      "fuite_db_mediane": -30.679244563615683
+     },
+     "wmmse300": {
+      "debit": 17.662784576416016,
+      "fuite_db_mediane": -30.594835587926987
+     },
+     "rzf": {
+      "debit": 11.633321762084961,
+      "fuite_db_mediane": -28.011047418407173
+     }
+    },
+    "25": {
+     "T20_s0": {
+      "debit": 22.082218170166016,
+      "fuite_db_mediane": -39.279952260771836
+     },
+     "T20_s1": {
+      "debit": 22.08211898803711,
+      "fuite_db_mediane": -39.384460883510776
+     },
+     "wmmse300": {
+      "debit": 22.012235641479492,
+      "fuite_db_mediane": -39.27904559323634
+     },
+     "rzf": {
+      "debit": 14.236379623413086,
+      "fuite_db_mediane": -34.6775983641989
+     }
+    },
+    "30": {
+     "T20_s0": {
+      "debit": 26.98275375366211,
+      "fuite_db_mediane": -47.52372964386525
+     },
+     "T20_s1": {
+      "debit": 26.983034133911133,
+      "fuite_db_mediane": -47.71253157338644
+     },
+     "wmmse300": {
+      "debit": 26.559736251831055,
+      "fuite_db_mediane": -49.39991277247418
+     },
+     "rzf": {
+      "debit": 17.543704986572266,
+      "fuite_db_mediane": -41.9153617766384
+     }
+    },
+    "35": {
+     "T20_s0": {
+      "debit": 32.30131530761719,
+      "fuite_db_mediane": -53.97836170672399
+     },
+     "T20_s1": {
+      "debit": 32.2997932434082,
+      "fuite_db_mediane": -54.03687238062318
+     },
+     "wmmse300": {
+      "debit": 31.100204467773438,
+      "fuite_db_mediane": -60.308229785773264
+     },
+     "rzf": {
+      "debit": 21.487716674804688,
+      "fuite_db_mediane": -49.685322626322034
+     }
+    },
+    "40": {
+     "T20_s0": {
+      "debit": 37.8419189453125,
+      "fuite_db_mediane": -58.893944266500036
+     },
+     "T20_s1": {
+      "debit": 37.86075210571289,
+      "fuite_db_mediane": -59.365912974324516
+     },
+     "wmmse300": {
+      "debit": 35.61333465576172,
+      "fuite_db_mediane": -69.50536414655744
+     },
+     "rzf": {
+      "debit": 26.047378540039062,
+      "fuite_db_mediane": -57.79480663717525
+     }
+    }
+   },
+   "stecath": {
+    "n": 16384,
+    "0": {
+     "T20_s0": {
+      "debit": 5.450965404510498,
+      "fuite_db_mediane": -11.944788564041634
+     },
+     "T20_s1": {
+      "debit": 5.451363563537598,
+      "fuite_db_mediane": -11.939693679160943
+     },
+     "wmmse300": {
+      "debit": 5.458591461181641,
+      "fuite_db_mediane": -12.342748359163402
+     },
+     "rzf": {
+      "debit": 4.8054609298706055,
+      "fuite_db_mediane": -10.260429564479246
+     }
+    },
+    "10": {
+     "T20_s0": {
+      "debit": 12.67380142211914,
+      "fuite_db_mediane": -26.931259607541428
+     },
+     "T20_s1": {
+      "debit": 12.675983428955078,
+      "fuite_db_mediane": -26.916421859540733
+     },
+     "wmmse300": {
+      "debit": 12.688322067260742,
+      "fuite_db_mediane": -26.429489259730488
+     },
+     "rzf": {
+      "debit": 10.390432357788086,
+      "fuite_db_mediane": -21.539445187119163
+     }
+    },
+    "20": {
+     "T20_s0": {
+      "debit": 22.391021728515625,
+      "fuite_db_mediane": -42.53793064020148
+     },
+     "T20_s1": {
+      "debit": 22.39501953125,
+      "fuite_db_mediane": -42.97754232963609
+     },
+     "wmmse300": {
+      "debit": 22.36495590209961,
+      "fuite_db_mediane": -41.99204749928329
+     },
+     "rzf": {
+      "debit": 16.89546012878418,
+      "fuite_db_mediane": -35.55951165235615
+     }
+    },
+    "25": {
+     "T20_s0": {
+      "debit": 27.935272216796875,
+      "fuite_db_mediane": -50.75420791110581
+     },
+     "T20_s1": {
+      "debit": 27.9748592376709,
+      "fuite_db_mediane": -51.38891166546519
+     },
+     "wmmse300": {
+      "debit": 27.907562255859375,
+      "fuite_db_mediane": -51.46092523210554
+     },
+     "rzf": {
+      "debit": 21.060976028442383,
+      "fuite_db_mediane": -43.726932186659795
+     }
+    },
+    "30": {
+     "T20_s0": {
+      "debit": 33.95892333984375,
+      "fuite_db_mediane": -57.94228826063568
+     },
+     "T20_s1": {
+      "debit": 33.96961975097656,
+      "fuite_db_mediane": -58.3884745019526
+     },
+     "wmmse300": {
+      "debit": 33.57757568359375,
+      "fuite_db_mediane": -61.01520821929131
+     },
+     "rzf": {
+      "debit": 26.166858673095703,
+      "fuite_db_mediane": -52.69123966492698
+     }
+    },
+    "35": {
+     "T20_s0": {
+      "debit": 40.1356201171875,
+      "fuite_db_mediane": -63.92858240551472
+     },
+     "T20_s1": {
+      "debit": 40.14866638183594,
+      "fuite_db_mediane": -64.33570274820079
+     },
+     "wmmse300": {
+      "debit": 39.155845642089844,
+      "fuite_db_mediane": -69.56523831967903
+     },
+     "rzf": {
+      "debit": 32.02239227294922,
+      "fuite_db_mediane": -62.12495687680388
+     }
+    },
+    "40": {
+     "T20_s0": {
+      "debit": 46.406402587890625,
+      "fuite_db_mediane": -69.16835744742994
+     },
+     "T20_s1": {
+      "debit": 46.38684844970703,
+      "fuite_db_mediane": -69.95193315933301
+     },
+     "wmmse300": {
+      "debit": 44.680763244628906,
+      "fuite_db_mediane": -77.60293730173797
+     },
+     "rzf": {
+      "debit": 38.32412338256836,
+      "fuite_db_mediane": -71.83218134565101
+     }
+    }
+   },
+   "decarie": {
+    "n": 16384,
+    "0": {
+     "T20_s0": {
+      "debit": 5.482075214385986,
+      "fuite_db_mediane": -14.223345541671318
+     },
+     "T20_s1": {
+      "debit": 5.4817795753479,
+      "fuite_db_mediane": -13.963165781468897
+     },
+     "wmmse300": {
+      "debit": 5.485779762268066,
+      "fuite_db_mediane": -13.888966169778023
+     },
+     "rzf": {
+      "debit": 4.727021217346191,
+      "fuite_db_mediane": -11.40530704578353
+     }
+    },
+    "10": {
+     "T20_s0": {
+      "debit": 12.910947799682617,
+      "fuite_db_mediane": -29.62344121897293
+     },
+     "T20_s1": {
+      "debit": 12.91755485534668,
+      "fuite_db_mediane": -29.514405356116008
+     },
+     "wmmse300": {
+      "debit": 12.945293426513672,
+      "fuite_db_mediane": -28.51438580975605
+     },
+     "rzf": {
+      "debit": 10.390262603759766,
+      "fuite_db_mediane": -21.309769685103007
+     }
+    },
+    "20": {
+     "T20_s0": {
+      "debit": 23.197927474975586,
+      "fuite_db_mediane": -43.98523053934477
+     },
+     "T20_s1": {
+      "debit": 23.2474365234375,
+      "fuite_db_mediane": -44.26477379552442
+     },
+     "wmmse300": {
+      "debit": 23.222991943359375,
+      "fuite_db_mediane": -43.48749616409397
+     },
+     "rzf": {
+      "debit": 18.51232147216797,
+      "fuite_db_mediane": -36.90590730194151
+     }
+    },
+    "25": {
+     "T20_s0": {
+      "debit": 29.086389541625977,
+      "fuite_db_mediane": -51.44884328682535
+     },
+     "T20_s1": {
+      "debit": 29.06427001953125,
+      "fuite_db_mediane": -51.86377345301279
+     },
+     "wmmse300": {
+      "debit": 29.025020599365234,
+      "fuite_db_mediane": -51.082237269361954
+     },
+     "rzf": {
+      "debit": 23.885486602783203,
+      "fuite_db_mediane": -46.158769402356036
+     }
+    },
+    "30": {
+     "T20_s0": {
+      "debit": 35.37458419799805,
+      "fuite_db_mediane": -58.69442692337374
+     },
+     "T20_s1": {
+      "debit": 35.365264892578125,
+      "fuite_db_mediane": -59.184175268173796
+     },
+     "wmmse300": {
+      "debit": 35.00104522705078,
+      "fuite_db_mediane": -60.11349545233651
+     },
+     "rzf": {
+      "debit": 29.929704666137695,
+      "fuite_db_mediane": -55.88709322422426
+     }
+    },
+    "35": {
+     "T20_s0": {
+      "debit": 41.837623596191406,
+      "fuite_db_mediane": -65.68077923769019
+     },
+     "T20_s1": {
+      "debit": 41.81303405761719,
+      "fuite_db_mediane": -66.40067622832882
+     },
+     "wmmse300": {
+      "debit": 40.63935852050781,
+      "fuite_db_mediane": -68.89515240656524
+     },
+     "rzf": {
+      "debit": 36.33794403076172,
+      "fuite_db_mediane": -65.79043122078812
+     }
+    },
+    "40": {
+     "T20_s0": {
+      "debit": 48.2840576171875,
+      "fuite_db_mediane": -71.83753807118772
+     },
+     "T20_s1": {
+      "debit": 48.276580810546875,
+      "fuite_db_mediane": -73.18844653762545
+     },
+     "wmmse300": {
+      "debit": 45.88055419921875,
+      "fuite_db_mediane": -77.72952409311254
+     },
+     "rzf": {
+      "debit": 42.899879455566406,
+      "fuite_db_mediane": -75.76263189508663
+     }
+    }
+   },
+   "ericsson": {
+    "n": 16384,
+    "0": {
+     "T20_s0": {
+      "debit": 5.415984630584717,
+      "fuite_db_mediane": -14.896337530354367
+     },
+     "T20_s1": {
+      "debit": 5.424262046813965,
+      "fuite_db_mediane": -14.792669030021742
+     },
+     "wmmse300": {
+      "debit": 5.445802688598633,
+      "fuite_db_mediane": -15.437779917758832
+     },
+     "rzf": {
+      "debit": 4.794193267822266,
+      "fuite_db_mediane": -10.371373823918805
+     }
+    },
+    "10": {
+     "T20_s0": {
+      "debit": 13.398021697998047,
+      "fuite_db_mediane": -28.477054653327468
+     },
+     "T20_s1": {
+      "debit": 13.427267074584961,
+      "fuite_db_mediane": -28.330435624321396
+     },
+     "wmmse300": {
+      "debit": 13.486349105834961,
+      "fuite_db_mediane": -28.176525487971702
+     },
+     "rzf": {
+      "debit": 11.48590087890625,
+      "fuite_db_mediane": -22.718107349150877
+     }
+    },
+    "20": {
+     "T20_s0": {
+      "debit": 23.92020034790039,
+      "fuite_db_mediane": -43.064557605998374
+     },
+     "T20_s1": {
+      "debit": 24.0028076171875,
+      "fuite_db_mediane": -43.9987697209492
+     },
+     "wmmse300": {
+      "debit": 24.026668548583984,
+      "fuite_db_mediane": -42.25396552575525
+     },
+     "rzf": {
+      "debit": 21.10279655456543,
+      "fuite_db_mediane": -39.08762501015471
+     }
+    },
+    "25": {
+     "T20_s0": {
+      "debit": 29.936172485351562,
+      "fuite_db_mediane": -51.1021780301799
+     },
+     "T20_s1": {
+      "debit": 29.930503845214844,
+      "fuite_db_mediane": -52.01369987596554
+     },
+     "wmmse300": {
+      "debit": 29.97527313232422,
+      "fuite_db_mediane": -51.0263493521158
+     },
+     "rzf": {
+      "debit": 27.031957626342773,
+      "fuite_db_mediane": -48.361613759645095
+     }
+    },
+    "30": {
+     "T20_s0": {
+      "debit": 36.26906204223633,
+      "fuite_db_mediane": -59.20313243333109
+     },
+     "T20_s1": {
+      "debit": 36.25981903076172,
+      "fuite_db_mediane": -60.30349664652678
+     },
+     "wmmse300": {
+      "debit": 36.154754638671875,
+      "fuite_db_mediane": -61.03002378860711
+     },
+     "rzf": {
+      "debit": 33.36214065551758,
+      "fuite_db_mediane": -58.11824575186832
+     }
+    },
+    "35": {
+     "T20_s0": {
+      "debit": 42.781410217285156,
+      "fuite_db_mediane": -67.0895037678153
+     },
+     "T20_s1": {
+      "debit": 42.78782653808594,
+      "fuite_db_mediane": -68.08135323569346
+     },
+     "wmmse300": {
+      "debit": 42.093265533447266,
+      "fuite_db_mediane": -70.39467959430036
+     },
+     "rzf": {
+      "debit": 39.88149642944336,
+      "fuite_db_mediane": -68.01366546159747
+     }
+    },
+    "40": {
+     "T20_s0": {
+      "debit": 49.31873321533203,
+      "fuite_db_mediane": -73.49582728664973
+     },
+     "T20_s1": {
+      "debit": 49.30400466918945,
+      "fuite_db_mediane": -74.54668422886606
+     },
+     "wmmse300": {
+      "debit": 47.83553695678711,
+      "fuite_db_mediane": -79.07469603403906
+     },
+     "rzf": {
+      "debit": 46.4796028137207,
+      "fuite_db_mediane": -77.99310829364696
+     }
+    }
+   }
+  },
+  "csi_estime_pilote20": {
+   "stecath": {
+    "20": {
+     "wmmse_robuste_300it_depuis_lab_csi_json": 21.799916966756186,
+     "T20_s0": 21.626136779785156,
+     "T20_s1": 21.644121170043945
+    },
+    "30": {
+     "wmmse_robuste_300it_depuis_lab_csi_json": 30.492282485961915,
+     "T20_s0": 30.276918411254883,
+     "T20_s1": 30.272199630737305
+    }
+   },
+   "decarie": {
+    "20": {
+     "wmmse_robuste_300it_depuis_lab_csi_json": 22.450397745768228,
+     "T20_s0": 22.400548934936523,
+     "T20_s1": 22.394161224365234
+    },
+    "30": {
+     "wmmse_robuste_300it_depuis_lab_csi_json": 31.66803766886393,
+     "T20_s0": 31.589868545532227,
+     "T20_s1": 31.63048553466797
+    }
+   },
+   "ericsson": {
+    "20": {
+     "wmmse_robuste_300it_depuis_lab_csi_json": 23.980098470052084,
+     "T20_s0": 23.76372718811035,
+     "T20_s1": 23.812984466552734
+    },
+    "30": {
+     "wmmse_robuste_300it_depuis_lab_csi_json": 33.34687194824219,
+     "T20_s0": 33.10578918457031,
+     "T20_s1": 33.117332458496094
+    }
+   }
+  }
+ }
+}
