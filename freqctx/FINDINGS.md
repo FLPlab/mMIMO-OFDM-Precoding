@@ -1685,6 +1685,9 @@ B blocs de 4 couches, canal effectif E du C courant injecté entre les blocs, en
 - Transformer en entier 8 bits sans entraînement adapté : −0,4 à −1,4 bps/Hz ; il faudrait ART.
 - Conséquence : le gain de la forme structurée est en MAC (193 k contre 717 k) et en débit au fort SNR ; l'inversion reste une opération 13-17 bits, comme pour WMMSE.
 
+### Piste 2 avec le réseau libre : ancres + correction légère du W interpolé — ÉCARTÉ (code non gardé)
+Réseau libre aux ancres (1 SC sur s), W interpolé, puis correcteur qui voit le canal effectif local (2e passe L4 telle quelle ; correcteurs dédiés L1 d16 / L1 d8 / L2 entraînés sur départs interpolés). Le correcteur referme 80-90 % de la perte d'interpolation (UMa s = 24, 30 dB : 19,3 → 25,9 avec L2) et dépasse même s = 1 sur les canaux plats avec L4, **mais il tourne sur chaque SC non-ancre** : son coût fixe empêche de descendre sous ~210 k MAC/SC, et un correcteur dans ce budget (L1, L2) ne fait qu'égaler le pas fixe 3 (239 k). Critère (≥ +0,2 à 30 dB sur 4 jeux à ≤ 240 k, ou même débit à ≤ 120 k) atteint sur 1 jeu sur 6. **Leçon : ce qu'on calcule à chaque SC doit être très bon marché** → voir l'interpolation de (λ, p) avec la forme structurée.
+
 ## Prochaine étape
 (1) 3 graines pour l'attention en fréquence D64. (2) Réduire le coût. (3) Bootstrap sur les tirages. (4) Faire le point avant d'aller plus loin (pilote 20 dB, vieillissement, M64).
 Cible principale ensuite (phases 2–3) : le régime pilote 10 dB, où il reste 2,7 à 5,9 bps/Hz après LMMSE.
