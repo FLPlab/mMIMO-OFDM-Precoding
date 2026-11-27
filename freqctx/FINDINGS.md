@@ -1757,6 +1757,22 @@ MAC/SC : 717 k / 195 k / 292 k ; fuite à 30 dB −46 / −40 / −41 dB. CSI es
 - **E3 — 2e passe étroite (4 couches d 8, ~96 k MAC) sur E1, entraînée après le tronc figé (`experiments/phase18_refine_narrow.py`, `phase18_refine_narrow_eval_E1.py`, `results/phase18/refine_narrow_E1.json`) : rejetée** (295 k MAC). Débit 20 / 30 / 40 dB, E1 → E1 + passe (base) : Ericsson 23,21 → 23,58 (24,08) / 32,82 → 34,55 (35,26) / 38,90 → 43,27 (43,71) ; St-Catherine 22,03 → 22,21 (22,35) / 32,27 → 33,24 (33,32) ; UMi 30 dB 26,54 → 26,89 (26,89). La passe rattrape la PRÉCISION au fort SNR (fuite) mais pas la perte de GÉNÉRALISATION à 20 dB sur les sites (Ericsson −0,50) ; −0,79 en moyenne à 30 dB face à base + 2e passe. E2 + passe (392 k) dépassait le budget de MAC : arrêtée.
 - **Conclusion phase 18 : réduire la largeur du précodeur libre coûte du zero-shot sur les sites jamais vus**, et une passe de raffinement ne le rend pas. La complexité doit se gagner ailleurs (où calculer en fréquence, quand activer la 2e passe, quantification).
 
+### Pas fréquentiel adaptatif : règle étalement + SNR (`experiments/phase18_step_rule.py`, `results/phase18/step_rule.json`, évaluation seule)
+Règle s·Δf ≤ 1/(α0·τ_rms·10^(γ·SNR/10)), (α0, γ) = (5,09 ; 0,45) réglés une fois sur UMi (perte moyenne ≤ 0,5 % sur 10/20/30 dB), appliquée telle quelle aux autres jeux (zero-shot). Débit pas fixe 3 / règle (MAC/SC) :
+
+| jeu | 10 dB | 20 dB | 30 dB |
+|---|---|---|---|
+| UMi | 10,34 / 10,27 (57 k) | 17,64 / 17,61 (153 k) | 26,73 / 26,83 (379 k) |
+| UMa | 10,47 / 10,37 (82 k) | 17,84 / 17,95 (241 k) | 26,97 / 27,51 (541 k) |
+| RMa | 10,53 / 10,51 (34 k) | 17,74 / 17,70 (58 k) | 26,62 / 26,54 (140 k) |
+| St-Catherine | 12,68 / 12,57 (35 k) | 22,04 / 21,88 (78 k) | 32,56 / 32,52 (216 k) |
+| Décarie | 12,73 / 12,71 (30 k) | 22,83 / 22,79 (38 k) | 34,00 / 33,95 (79 k) |
+| Ericsson | 13,58 / 13,56 (30 k) | 24,31 / 24,27 (38 k) | 35,77 / 35,76 (74 k) |
+
+- **MAC moyen sur les 6 jeux × 3 SNR : 128 k contre 239 k (÷ 1,87)**, sans toucher au réseau. La règle répartit le calcul : beaucoup moins au faible SNR et sur les canaux plats, plus au fort SNR sélectif (UMa 30 dB : +0,54 bps/Hz au pas fixe 3).
+- τ_rms estimé depuis les pilotes LS : mêmes débits à ±0,05, un peu plus de calcul (pas plus prudents).
+- Critère strict (≤ 0,05 ou ≤ 0,5 % partout) manqué de peu : UMa 10 dB −0,10 (0,95 %), St-Catherine 20 dB −0,16 (0,7 %). 2e réglage plus prudent (perte moyenne ≤ 0,25 %) en cours.
+
 ## Prochaine étape
 (1) 3 graines pour l'attention en fréquence D64. (2) Réduire le coût. (3) Bootstrap sur les tirages. (4) Faire le point avant d'aller plus loin (pilote 20 dB, vieillissement, M64).
 Cible principale ensuite (phases 2–3) : le régime pilote 10 dB, où il reste 2,7 à 5,9 bps/Hz après LMMSE.
