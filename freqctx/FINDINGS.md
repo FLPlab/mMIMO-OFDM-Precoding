@@ -1647,6 +1647,13 @@ Précodeur 3GPP, CSI parfait, W interpolé entre ancres (1 SC sur s, s ∈ {1…
 - **Le pas adaptatif vaut le coup** : l'oracle calcule 1,3× (UMa) à 6,8× (Décarie, Ericsson) moins que le pas fixe 3 pour < 0,6 % de perte.
 - **Le bon pas dépend aussi du SNR** (il diminue quand le SNR monte : l'erreur d'interpolation agit comme une fuite d'interférence, cf. plancher). La règle à un seul α (étalement seul) perd 1 à 5 % à 30 dB : il faut y ajouter le SNR (α(SNR)), avant d'envisager d'apprendre le pas.
 
+### RZF et WMMSE en virgule fixe : combien de bits vraiment ? (`torch_port/fixedpoint_classical.py`, `results/stecath/fixedpoint_classical.json`, CPU)
+Virgule fixe à exposant de bloc (mantisse b bits, arrondi + saturation après chaque opération, accumulateurs larges), H normalisé par utilisateur, un exposant par colonne pour les matrices K×K et W, inversion par équilibrage de Jacobi + LDLᴴ, réciproques et rsqrt par table + Newton, aucune division. St-Catherine et Ericsson (M64K4, CSI parfait, 20 000 échantillons ; chemin flottant = classical_energy*.json à 1e-6).
+- **Bits minimaux (perte ≤ 1 % / ≤ 0,1 bps/Hz)** : St-Catherine 12 / 13 pour RZF et WMMSE ; Ericsson 13 / 14-15. Un exposant unique par échantillon (format naïf) demande 17-19 bits : G casse (50 dB d'écarts). Le goulot est l'inversion, puis G et W ; l'entrée H tient en 8 bits.
+- **Énergie au nombre de bits qui tient (µJ, Moons v5)** : Ericsson RZF 33,2-33,3 à 0,012-0,013 ; WMMSE 5 it. 35,1-35,4 à 0,020-0,025 ; WMMSE 30 it. 37,0-37,2 à 0,061-0,068. St-Catherine RZF 16,9-17,0 à 0,010-0,012 ; WMMSE 30 it. 24,3-24,4 à 0,053-0,061. Nos points : ART 2 couches 34,35 à 0,031 (Ericsson), 24,07 à 0,025 (St-Catherine) ; 8 couches quantifié 26,64 à 0,113 (St-Catherine).
+- **Conclusions** : (1) à Ericsson, WMMSE 5 it. à 13-15 bits nous domine (plus de débit, moins d'énergie) : la phrase « WMMSE Gram nous domine à Ericsson » tient, plus fort qu'annoncé ; (2) à St-Catherine, à débit égal (~24,1-24,3), nous restons ~2× sous WMMSE 30 it., et le point 26,64 n'a pas d'équivalent WMMSE bon marché (~200 it.) ; (3) **nous ne battons pas RZF en énergie** : RZF coûte 2 à 3× moins, mais perd 7 bps/Hz à St-Catherine et ~0,9 à Ericsson. Notre avantage sur RZF est en débit, pas en énergie.
+- Réserves : format généreux pour les classiques (exposants dynamiques, détection de zéros de tête et décalages non comptés) ; Moons est un modèle ASIC générique ; CSI parfait, mono-porteuse.
+
 ## Prochaine étape
 (1) 3 graines pour l'attention en fréquence D64. (2) Réduire le coût. (3) Bootstrap sur les tirages. (4) Faire le point avant d'aller plus loin (pilote 20 dB, vieillissement, M64).
 Cible principale ensuite (phases 2–3) : le régime pilote 10 dB, où il reste 2,7 à 5,9 bps/Hz après LMMSE.
