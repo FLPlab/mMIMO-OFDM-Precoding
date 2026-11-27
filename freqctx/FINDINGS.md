@@ -1739,6 +1739,21 @@ Réseau libre 3GPP, CSI parfait, UMi / Ericsson, 30 dB (réseau 26,75 / 36,51 ; 
 - Bruit relatif isotrope ajouté sur C : la tolérance (perte ≤ 0,05) suit le SNR de données (~1 % à 10 dB, ≤ 0,5 % à 20-30 dB) et non la qualité du pilote. **Réserve importante** : un bruit isotrope sur C (normalisé par ‖C‖_F) détruit surtout les colonnes des utilisateurs faibles (puissances très inégales) ; ce test mesure donc la sensibilité de l'allocation aux faibles utilisateurs plus que la précision de l'annulation d'interférence. Il ne contredit pas l'argument « l'estimation masque le plancher d'interférence ».
 - Lecture linéaire aux couches 4 / 6 / 7 : −25 à −34 % / −11 à −17 % / −5 à −8 % à 20 dB ; mais un réseau entraîné à 8 couches n'est pas fait pour être lu plus tôt : ce n'est pas la mesure d'un réseau moins profond entraîné pour cela.
 
+## Phase 18 — réduire la complexité du précodeur libre (2026-11-27)
+
+### Précodeur libre étroit, de zéro (`experiments/phase18_narrow.py`, `phase18_eval.py`, `results/phase18/narrow.json`)
+Même architecture, mêmes données (60 000 pas), seule la largeur change. Débit (base / E1 d8-FFN16-8 couches / E2 d8-FFN16-12 couches / WMMSE 300) :
+
+| | 20 dB | 30 dB | 40 dB |
+|---|---|---|---|
+| UMi | 17,65 / 17,59 / 17,61 / 17,66 | 26,89 / 26,54 / 26,67 / 26,56 | 36,28 / 34,80 / 35,34 / 35,61 |
+| St-Catherine | 22,35 / 22,03 / 22,11 / 22,36 | 33,32 / 32,27 / 32,66 / 33,58 | 43,00 / 40,04 / 41,18 / 44,68 |
+| Ericsson | 24,08 / 23,21 / 23,40 / 24,03 | 35,26 / 32,82 / 33,45 / 36,15 | 43,71 / 38,90 / 40,11 / 47,84 |
+
+MAC/SC : 717 k / 195 k / 292 k ; fuite à 30 dB −46 / −40 / −41 dB. CSI estimé pilote 20 dB, 30 dB, Ericsson : 32,89 / 31,47 / 31,86.
+- **Rejetés tous deux** (critère ≥ base − 0,05 de 0 à 20 dB) : −0,87 / −0,67 à Ericsson 20 dB. Sur les tirages 3GPP vus, la perte est faible (M8K4 20 dB : −0,06 / −0,04) ; **sur les sites jamais vus, elle est grande** : l'état réduit généralise moins bien hors distribution. 12 couches atténuent sans compenser : c'est la largeur de l'état qui compte.
+- En cours : 2e passe étroite sur E1/E2 (E3) et largeur intermédiaire d = 12 (~336 k MAC).
+
 ## Prochaine étape
 (1) 3 graines pour l'attention en fréquence D64. (2) Réduire le coût. (3) Bootstrap sur les tirages. (4) Faire le point avant d'aller plus loin (pilote 20 dB, vieillissement, M64).
 Cible principale ensuite (phases 2–3) : le régime pilote 10 dB, où il reste 2,7 à 5,9 bps/Hz après LMMSE.
