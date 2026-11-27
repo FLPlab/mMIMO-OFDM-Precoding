@@ -1792,6 +1792,14 @@ Protocole de `phase14_finetune` (moitiés disjointes, 64 tirages test), seule la
 - **En zero-shot, la 2e passe égale ou dépasse déjà WMMSE 300 sur St-Catherine et Décarie à tous les SNR**, et à 20 dB sur les 3 sites. Ericsson reste à −0,13 (30 dB, passe ×2) et −0,9 (40 dB).
 - L'adaptation au site n'aide presque pas (+0,03 à +0,3) et fait moins bien que d'appliquer la passe deux fois ; aucune perte à 10-20 dB. **Le reste d'écart à Ericsson n'est pas un problème de site** mais la précision d'une correction apprise face au SINR très élevé de ce canal (fuite WMMSE −61 / −79 dB à 30 / 40 dB).
 
+### Combler Ericsson en zero-shot : passes répétées et 2e passe entraînée sur un régime de SINR élevé (`experiments/phase18_refine_npass.py`, `phase18_refine_hisinr.py`, `phase18_refine_hisinr_eval.py`, `results/phase18/refine_npass.json`, `refine_hisinr_eval.json`)
+Ericsson, CSI parfait — passe actuelle ×1 / ×2 / ×3 / ×4 | passe « fort SINR » ×1 / ×2 | WMMSE 300 :
+- 30 dB : 35,88 / 36,01 / 36,10 / **36,14** | 35,95 / 36,05 | 36,15
+- 40 dB : 46,43 / 46,92 / 47,08 / 47,20 | 46,93 / 47,32 | 47,84
+- **Répéter la même passe continue de gagner et reste stable** (+0,06 de ×2 à ×3, +0,04 de ×3 à ×4) : **×4 égale WMMSE 300 à Ericsson 30 dB** (36,14 contre 36,15), zero-shot. Reste −0,64 à 40 dB.
+- Passe « fort SINR » (50 % de tirages 3GPP du quartile bas de cond(G), SNR U(15, 40), base figée, aucune donnée de site) : un peu meilleure partout au fort SNR, sans perte (40 dB ×1 : UMi 37,84, St-Catherine 45,50, Décarie 47,33 contre 37,81 / 45,29 / 47,02 ; WMMSE 35,61 / 44,68 / 45,88) ; critère (Ericsson 30 dB ≥ 36,14 en ×1-×2) non atteint (36,05). CSI estimé : inchangé.
+- Lecture : le nombre de passes joue le rôle d'un nombre d'itérations, utile seulement au fort SNR ; avec la passe activée au-delà de 20 dB et répétée au-delà de 30 dB, on égale WMMSE 300 sur les 3 sites jusqu'à 30 dB, en zero-shot, sans forme imposée (coût : 363 k MAC par passe, seulement aux SNR élevés).
+
 ## Prochaine étape
 (1) 3 graines pour l'attention en fréquence D64. (2) Réduire le coût. (3) Bootstrap sur les tirages. (4) Faire le point avant d'aller plus loin (pilote 20 dB, vieillissement, M64).
 Cible principale ensuite (phases 2–3) : le régime pilote 10 dB, où il reste 2,7 à 5,9 bps/Hz après LMMSE.
