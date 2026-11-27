@@ -1654,6 +1654,25 @@ Virgule fixe à exposant de bloc (mantisse b bits, arrondi + saturation après c
 - **Conclusions** : (1) à Ericsson, WMMSE 5 it. à 13-15 bits nous domine (plus de débit, moins d'énergie) : la phrase « WMMSE Gram nous domine à Ericsson » tient, plus fort qu'annoncé ; (2) à St-Catherine, à débit égal (~24,1-24,3), nous restons ~2× sous WMMSE 30 it., et le point 26,64 n'a pas d'équivalent WMMSE bon marché (~200 it.) ; (3) **nous ne battons pas RZF en énergie** : RZF coûte 2 à 3× moins, mais perd 7 bps/Hz à St-Catherine et ~0,9 à Ericsson. Notre avantage sur RZF est en débit, pas en énergie.
 - Réserves : format généreux pour les classiques (exposants dynamiques, détection de zéros de tête et décalages non comptés) ; Moons est un modèle ASIC générique ; CSI parfait, mono-porteuse.
 
+## Phase 16 — refontes d'architecture (2026-11-27)
+
+### Forme imposée ENTRAÎNÉE : petit transformer → (λ, p) + Newton–Schulz (`models/structured_precoder.py`, `experiments/phase16_structured.py`, `phase16_eval.py`, `results/phase16/structured.json`)
+Expérience de comparaison (la v0 est libre). Transformer par paires de 2 couches (d 16, FFN 32, entrées normalisées) → deux scalaires positifs par utilisateur (λ_k, p_k) lus sur les tokens diagonaux ; A = ΛG + σ²I (G physique), inversion Newton–Schulz déroulée à T pas (X0 mis à l'échelle par une norme : une réciproque scalaire), C = X P^½, W = H̃ᴴC normalisé. De zéro, mêmes données, perte, SNR U(0, 30), 60 000 pas. Débit CSI parfait, M8K4 (T20 / libre / libre + 2e passe / WMMSE 300) :
+
+| | 10 dB | 20 dB | 30 dB | 40 dB |
+|---|---|---|---|---|
+| UMi | 10,34 / 10,33 / 10,33 / 10,34 | 17,65 / 17,65 / 17,65 / 17,66 | **26,98** / 26,89 / 26,99 / 26,56 | **37,84** / 36,28 / 37,81 / 35,61 |
+| St-Catherine | 12,67 / 12,64 / 12,65 / 12,69 | 22,39 / 22,35 / 22,40 / 22,36 | **33,96** / 33,32 / 33,69 / 33,58 | **46,41** / 43,00 / 45,29 / 44,68 |
+| Décarie | 12,91 / 12,92 / 12,93 / 12,95 | 23,20 / 23,27 / 23,32 / 23,22 | **35,37** / 34,80 / 35,28 / 35,00 | **48,28** / 44,51 / 47,02 / 45,88 |
+| Ericsson | 13,40 / 13,45 / 13,47 / 13,49 | 23,92 / 24,08 / 24,18 / 24,03 | **36,27** / 35,26 / 35,88 / 36,15 | **49,32** / 43,71 / 46,43 / 47,84 |
+
+CSI estimé, pilote 20 dB, 30 dB (T20 / libre / libre + 2e passe / WMMSE robuste) : St-Catherine 30,28 / 29,96 / 30,27 / 30,49 ; Décarie 31,59 / 31,31 / 31,58 / 31,67 ; Ericsson 33,11 / 32,89 / 33,24 / 33,35.
+- **MAC/SC (M8K4) : 193 k (T20), 188 k (T10)** contre 717 k (libre) et 1,08 M (libre + 2e passe) : 3,7× moins que le réseau libre ; Newton–Schulz ne pèse que ~10 k.
+- **T20 dépasse le réseau libre et sa 2e passe au fort SNR partout** (30-40 dB), et WMMSE 300 à 30-40 dB sur les 4 jeux (Ericsson 40 dB : 49,32 contre 47,84). Pas de plancher : l'inversion est exacte au nombre de pas près.
+- Petites pertes à 10-20 dB sur les canaux les plus faciles : Ericsson −0,16 à 20 dB, Décarie −0,07 ; ailleurs ±0,05.
+- T10 : Newton–Schulz trop court, −1 à −5 au fort SNR (le diagnostic phase 15 le prévoyait).
+- Réserves : une graine par T ; mélange de conventions (A sur G physique, transformer sur entrées normalisées) non testé autrement ; Newton–Schulz en virgule fixe non vérifié (l'inversion est le goulot des classiques : 13-15 bits) ; 20 pas séquentiels → latence. Contredit l'hypothèse « la liberté coûte peu » : à MAC égal, la forme imposée gagne nettement.
+
 ## Prochaine étape
 (1) 3 graines pour l'attention en fréquence D64. (2) Réduire le coût. (3) Bootstrap sur les tirages. (4) Faire le point avant d'aller plus loin (pilote 20 dB, vieillissement, M64).
 Cible principale ensuite (phases 2–3) : le régime pilote 10 dB, où il reste 2,7 à 5,9 bps/Hz après LMMSE.
