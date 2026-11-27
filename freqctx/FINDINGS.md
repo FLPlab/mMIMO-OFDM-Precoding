@@ -1627,6 +1627,11 @@ CSI estimé, pilote 20 dB, 30 dB : St-Catherine 29,96 → 30,27 (WMMSE robuste 3
 - **Deux applications des mêmes poids** (C3 = C2 + ΔC(G, E2), sans réentraîner) : le plancher descend encore d'~1-2 dB (Ericsson 30 dB : −55,4 → −57,4 dB) ; débit à 30 / 40 dB : St-Catherine 33,77 / 45,53, Décarie 35,34 / 47,39, Ericsson 36,01 / 46,92 (WMMSE 300 : 36,15 / 47,84), UMi 26,99 / 37,89. Aucune perte nulle part. Gain modeste (+0,06 à +0,13 à 30 dB) pour +363 k MAC : non retenu par défaut, option documentée.
 - **Passe 2 activée seulement au-dessus d'un seuil de SNR** (le SNR est connu) : seuil 20 dB → perte max 0,018 bps/Hz sur 0-40 dB (UMi + sites), coût moyen 838 k MAC/SC au lieu de 1,08 M pour un SNR uniforme sur 0-30 dB (−22 %) ; seuil 25 dB perd 0,10. **Retenu : passe 2 au-delà de 20 dB.**
 
+### Deuxième passe entraînée jusqu'à 40 dB — retenue de justesse, effet marginal (`experiments/phase15_refine40.py`, `results/phase15/refine40.json`)
+Seul changement : SNR d'entraînement de la passe 2 U(0, 40) (passe 1 figée). Débit passe 2 U(0,30) → U(0,40), CSI parfait : 40 dB UMi 37,81 → 37,91, St-Catherine 45,29 → 45,52, Décarie 47,02 → 47,28, Ericsson 46,43 → 46,92 (WMMSE 300 : 47,84) ; à 35 dB +0,0 à +0,2 ; de 0 à 30 dB ±0,04 ; CSI estimé (pilote 20 dB) identique.
+- Critère rempli de justesse (+0,21 en moyenne à 35-40 dB, pire −0,035 de 0 à 30 dB). Contrairement au réseau entier, **pas de compromis** quand seule la passe 2 voit le fort SNR (passe 1 figée).
+- Gain du même ordre que d'appliquer deux fois la passe 2 U(0,30), et seulement à 40 dB : sans effet en pratique. Même coût ; une graine.
+
 ## Prochaine étape
 (1) 3 graines pour l'attention en fréquence D64. (2) Réduire le coût. (3) Bootstrap sur les tirages. (4) Faire le point avant d'aller plus loin (pilote 20 dB, vieillissement, M64).
 Cible principale ensuite (phases 2–3) : le régime pilote 10 dB, où il reste 2,7 à 5,9 bps/Hz après LMMSE.
