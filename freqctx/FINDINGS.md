@@ -1776,6 +1776,14 @@ Règle s·Δf ≤ 1/(α0·τ_rms·10^(γ·SNR/10)), (α0, γ) = (5,09 ; 0,45) r�
 ### 2e passe entraînée avec erreur d'estimation (E4) — ÉCARTÉ (`results/phase18/refine_err.json`, code non gardé)
 Même 2e passe, base figée, h_est = h + e (niveau par utilisateur U(−25, −5) dB, 50 % des utilisateurs en CSI parfait), débit sur le vrai h, 60 000 pas. Elle n'apprend presque rien (objectif 1,35-1,55 contre 1,68 pour la passe en CSI parfait) : en CSI estimé ≈ base partout (Ericsson pilote 20 dB, 30 dB : 32,96 ; WMMSE robuste 33,35), et en CSI parfait elle perd tout le gain de la passe (Ericsson 40 dB : 43,73 contre 46,43). Avec une estimation bruitée, le canal effectif Ĝ·C ne dit plus de façon fiable ce qu'il faut corriger. Le reste d'écart en CSI estimé (−0,1 à −0,4 à pilote 20 dB) concerne le protocole « précodeur seul + estimateur classique » ; dans la chaîne depuis les pilotes (encodeur appris), le modèle dépasse nettement LMMSE + WMMSE robuste.
 
+### Distillation du grand réseau dans le réseau étroit — ÉCARTÉ (`results/phase18/distill.json`, code non gardé)
+Réseau étroit E1 (195 k MAC), perte = −débit/débit_RZF + β·‖W_élève − W_maître‖²/‖W_maître‖² (phase alignée par utilisateur), maître = base figée. 20 dB, E1 → élève β = 1 / β = 10 (base) : St-Catherine 22,03 → 22,11 / 22,08 (22,35) ; Décarie 22,88 → 23,06 / 23,00 (23,27) ; Ericsson 23,21 → 23,51 / 23,62 (24,08). La distillation réduit de 25 à 50 % la perte hors distribution, sans la combler ; aucun β ne domine.
+
+### Bilan phases 17-18 (architecture libre, 2026-11-27)
+- Réduire la largeur (d 8 ou 12), même avec raffinement ou distillation, coûte du zero-shot sur les sites (−0,2 à −0,9 à 20 dB) : **la largeur du précodeur libre sert la généralisation hors distribution**, pas seulement la précision.
+- Le retour d'erreur ne marche qu'en 2e passe sur une solution figée (pas intégré, pas partagé, pas avec erreur d'estimation).
+- **Architecture retenue (libre)** : base 8 couches (état 16) + 2e passe (4 couches) activée au-delà de 20 dB + pas fréquentiel adaptatif (étalement + SNR, réglage prudent). Coût moyen ≈ 184 k × (1 + 0,5·P(SNR > 20 dB)) ≈ 215 k MAC/SC pour un SNR uniforme sur 0-30 dB, contre 239 k pour la base au pas fixe 3 sans 2e passe, avec un meilleur débit au fort SNR.
+
 ## Prochaine étape
 (1) 3 graines pour l'attention en fréquence D64. (2) Réduire le coût. (3) Bootstrap sur les tirages. (4) Faire le point avant d'aller plus loin (pilote 20 dB, vieillissement, M64).
 Cible principale ensuite (phases 2–3) : le régime pilote 10 dB, où il reste 2,7 à 5,9 bps/Hz après LMMSE.
