@@ -1,0 +1,842 @@
+{
+ "meta": {
+  "git_commit": "3832760",
+  "created": "2026-11-26 20:13"
+ },
+ "csi_parfait": {
+  "umi": {
+   "n": 16384,
+   "0": {
+    "base": {
+     "debit": 5.148934841156006,
+     "fuite_db_mediane": 29.560891889869495
+    },
+    "1x_passe2": {
+     "debit": 5.149247169494629,
+     "fuite_db_mediane": 33.1913727346744
+    },
+    "2x_passe2": {
+     "debit": 5.149003982543945,
+     "fuite_db_mediane": 33.77844229442962
+    },
+    "wmmse300": {
+     "debit": 5.1572065353393555,
+     "fuite_db_mediane": 257.4840952551239
+    }
+   },
+   "10": {
+    "base": {
+     "debit": 10.327457427978516,
+     "fuite_db_mediane": -12.574300002990771
+    },
+    "1x_passe2": {
+     "debit": 10.329172134399414,
+     "fuite_db_mediane": -12.708946778389963
+    },
+    "2x_passe2": {
+     "debit": 10.329273223876953,
+     "fuite_db_mediane": -12.758497690403022
+    },
+    "wmmse300": {
+     "debit": 10.342544555664062,
+     "fuite_db_mediane": -12.645239809329162
+    }
+   },
+   "20": {
+    "base": {
+     "debit": 17.645444869995117,
+     "fuite_db_mediane": -31.191371477896006
+    },
+    "1x_passe2": {
+     "debit": 17.65413475036621,
+     "fuite_db_mediane": -31.32899021123744
+    },
+    "2x_passe2": {
+     "debit": 17.654491424560547,
+     "fuite_db_mediane": -31.26118700949639
+    },
+    "wmmse300": {
+     "debit": 17.662784576416016,
+     "fuite_db_mediane": -30.594835587926987
+    }
+   },
+   "25": {
+    "base": {
+     "debit": 22.058460235595703,
+     "fuite_db_mediane": -38.17801230244356
+    },
+    "1x_passe2": {
+     "debit": 22.085681915283203,
+     "fuite_db_mediane": -39.59302219314702
+    },
+    "2x_passe2": {
+     "debit": 22.086679458618164,
+     "fuite_db_mediane": -39.82185549179118
+    },
+    "wmmse300": {
+     "debit": 22.012235641479492,
+     "fuite_db_mediane": -39.27904559323634
+    }
+   },
+   "30": {
+    "base": {
+     "debit": 26.88518524169922,
+     "fuite_db_mediane": -42.753527357479484
+    },
+    "1x_passe2": {
+     "debit": 26.988540649414062,
+     "fuite_db_mediane": -47.29133315962535
+    },
+    "2x_passe2": {
+     "debit": 26.992433547973633,
+     "fuite_db_mediane": -47.85720403236467
+    },
+    "wmmse300": {
+     "debit": 26.559736251831055,
+     "fuite_db_mediane": -49.39991277247418
+    }
+   },
+   "35": {
+    "base": {
+     "debit": 31.863037109375,
+     "fuite_db_mediane": -43.55431156755283
+    },
+    "1x_passe2": {
+     "debit": 32.291648864746094,
+     "fuite_db_mediane": -51.87476075013884
+    },
+    "2x_passe2": {
+     "debit": 32.310237884521484,
+     "fuite_db_mediane": -53.04234153919153
+    },
+    "wmmse300": {
+     "debit": 31.100204467773438,
+     "fuite_db_mediane": -60.308229785773264
+    }
+   },
+   "40": {
+    "base": {
+     "debit": 36.277095794677734,
+     "fuite_db_mediane": -41.96067729495907
+    },
+    "1x_passe2": {
+     "debit": 37.80915069580078,
+     "fuite_db_mediane": -52.385326129048835
+    },
+    "2x_passe2": {
+     "debit": 37.88801956176758,
+     "fuite_db_mediane": -53.290312606915755
+    },
+    "wmmse300": {
+     "debit": 35.61333465576172,
+     "fuite_db_mediane": -69.50536414655744
+    }
+   }
+  },
+  "stecath": {
+   "n": 16384,
+   "0": {
+    "base": {
+     "debit": 5.414704322814941,
+     "fuite_db_mediane": -11.127217522841375
+    },
+    "1x_passe2": {
+     "debit": 5.416835784912109,
+     "fuite_db_mediane": -11.242868776101133
+    },
+    "2x_passe2": {
+     "debit": 5.41715145111084,
+     "fuite_db_mediane": -11.34076424276229
+    },
+    "wmmse300": {
+     "debit": 5.458591461181641,
+     "fuite_db_mediane": -12.342748359163402
+    }
+   },
+   "10": {
+    "base": {
+     "debit": 12.636831283569336,
+     "fuite_db_mediane": -26.379362096448922
+    },
+    "1x_passe2": {
+     "debit": 12.646244049072266,
+     "fuite_db_mediane": -26.44891174117823
+    },
+    "2x_passe2": {
+     "debit": 12.64971923828125,
+     "fuite_db_mediane": -26.45423175301844
+    },
+    "wmmse300": {
+     "debit": 12.688322067260742,
+     "fuite_db_mediane": -26.429489259730488
+    }
+   },
+   "20": {
+    "base": {
+     "debit": 22.346067428588867,
+     "fuite_db_mediane": -40.265015693772284
+    },
+    "1x_passe2": {
+     "debit": 22.396806716918945,
+     "fuite_db_mediane": -42.28775751878827
+    },
+    "2x_passe2": {
+     "debit": 22.405651092529297,
+     "fuite_db_mediane": -42.533674389648425
+    },
+    "wmmse300": {
+     "debit": 22.36495590209961,
+     "fuite_db_mediane": -41.99204749928329
+    }
+   },
+   "25": {
+    "base": {
+     "debit": 27.735755920410156,
+     "fuite_db_mediane": -45.01847524138762
+    },
+    "1x_passe2": {
+     "debit": 27.886547088623047,
+     "fuite_db_mediane": -49.78736911455928
+    },
+    "2x_passe2": {
+     "debit": 27.91678810119629,
+     "fuite_db_mediane": -50.38929346890278
+    },
+    "wmmse300": {
+     "debit": 27.907562255859375,
+     "fuite_db_mediane": -51.46092523210554
+    }
+   },
+   "30": {
+    "base": {
+     "debit": 33.32073211669922,
+     "fuite_db_mediane": -46.77820954630468
+    },
+    "1x_passe2": {
+     "debit": 33.694820404052734,
+     "fuite_db_mediane": -55.70947315113473
+    },
+    "2x_passe2": {
+     "debit": 33.76674270629883,
+     "fuite_db_mediane": -57.097828557643
+    },
+    "wmmse300": {
+     "debit": 33.57757568359375,
+     "fuite_db_mediane": -61.01520821929131
+    }
+   },
+   "35": {
+    "base": {
+     "debit": 38.75004577636719,
+     "fuite_db_mediane": -46.46907712512318
+    },
+    "1x_passe2": {
+     "debit": 39.63646697998047,
+     "fuite_db_mediane": -57.265740131186625
+    },
+    "2x_passe2": {
+     "debit": 39.758758544921875,
+     "fuite_db_mediane": -58.549065633167366
+    },
+    "wmmse300": {
+     "debit": 39.155845642089844,
+     "fuite_db_mediane": -69.56523831967903
+    }
+   },
+   "40": {
+    "base": {
+     "debit": 43.00306701660156,
+     "fuite_db_mediane": -43.88703235076681
+    },
+    "1x_passe2": {
+     "debit": 45.288185119628906,
+     "fuite_db_mediane": -54.88815458366531
+    },
+    "2x_passe2": {
+     "debit": 45.5337028503418,
+     "fuite_db_mediane": -55.49811356580628
+    },
+    "wmmse300": {
+     "debit": 44.680763244628906,
+     "fuite_db_mediane": -77.60293730173797
+    }
+   }
+  },
+  "decarie": {
+   "n": 16384,
+   "0": {
+    "base": {
+     "debit": 5.479365348815918,
+     "fuite_db_mediane": -14.265103456608411
+    },
+    "1x_passe2": {
+     "debit": 5.480067253112793,
+     "fuite_db_mediane": -14.25331216020781
+    },
+    "2x_passe2": {
+     "debit": 5.479209899902344,
+     "fuite_db_mediane": -14.312825995025467
+    },
+    "wmmse300": {
+     "debit": 5.485779762268066,
+     "fuite_db_mediane": -13.888966169778023
+    }
+   },
+   "10": {
+    "base": {
+     "debit": 12.919876098632812,
+     "fuite_db_mediane": -29.071618060127307
+    },
+    "1x_passe2": {
+     "debit": 12.92599868774414,
+     "fuite_db_mediane": -29.027850860218578
+    },
+    "2x_passe2": {
+     "debit": 12.926922798156738,
+     "fuite_db_mediane": -28.908919938683443
+    },
+    "wmmse300": {
+     "debit": 12.945293426513672,
+     "fuite_db_mediane": -28.51438580975605
+    }
+   },
+   "20": {
+    "base": {
+     "debit": 23.27431869506836,
+     "fuite_db_mediane": -41.30578167666455
+    },
+    "1x_passe2": {
+     "debit": 23.32090950012207,
+     "fuite_db_mediane": -44.08267795041445
+    },
+    "2x_passe2": {
+     "debit": 23.325641632080078,
+     "fuite_db_mediane": -44.26354064699389
+    },
+    "wmmse300": {
+     "debit": 23.222991943359375,
+     "fuite_db_mediane": -43.48749616409397
+    }
+   },
+   "25": {
+    "base": {
+     "debit": 28.979450225830078,
+     "fuite_db_mediane": -44.78957546124964
+    },
+    "1x_passe2": {
+     "debit": 29.145048141479492,
+     "fuite_db_mediane": -50.07902969012862
+    },
+    "2x_passe2": {
+     "debit": 29.16415786743164,
+     "fuite_db_mediane": -51.23268960888835
+    },
+    "wmmse300": {
+     "debit": 29.025020599365234,
+     "fuite_db_mediane": -51.082237269361954
+    }
+   },
+   "30": {
+    "base": {
+     "debit": 34.79957580566406,
+     "fuite_db_mediane": -47.31862140778463
+    },
+    "1x_passe2": {
+     "debit": 35.27973937988281,
+     "fuite_db_mediane": -55.51145120573126
+    },
+    "2x_passe2": {
+     "debit": 35.33794403076172,
+     "fuite_db_mediane": -57.0917678800142
+    },
+    "wmmse300": {
+     "debit": 35.00104522705078,
+     "fuite_db_mediane": -60.11349545233651
+    }
+   },
+   "35": {
+    "base": {
+     "debit": 40.32382583618164,
+     "fuite_db_mediane": -46.2849975596701
+    },
+    "1x_passe2": {
+     "debit": 41.41510772705078,
+     "fuite_db_mediane": -57.28712823614097
+    },
+    "2x_passe2": {
+     "debit": 41.56096649169922,
+     "fuite_db_mediane": -58.72181697817367
+    },
+    "wmmse300": {
+     "debit": 40.63935852050781,
+     "fuite_db_mediane": -68.89515240656524
+    }
+   },
+   "40": {
+    "base": {
+     "debit": 44.506507873535156,
+     "fuite_db_mediane": -43.58382352665855
+    },
+    "1x_passe2": {
+     "debit": 47.018184661865234,
+     "fuite_db_mediane": -55.71815114627812
+    },
+    "2x_passe2": {
+     "debit": 47.388633728027344,
+     "fuite_db_mediane": -56.2166465197607
+    },
+    "wmmse300": {
+     "debit": 45.88055419921875,
+     "fuite_db_mediane": -77.72952409311254
+    }
+   }
+  },
+  "ericsson": {
+   "n": 16384,
+   "0": {
+    "base": {
+     "debit": 5.401127338409424,
+     "fuite_db_mediane": -14.152798542110745
+    },
+    "1x_passe2": {
+     "debit": 5.405063629150391,
+     "fuite_db_mediane": -14.443533482886888
+    },
+    "2x_passe2": {
+     "debit": 5.405449867248535,
+     "fuite_db_mediane": -14.563441262613104
+    },
+    "wmmse300": {
+     "debit": 5.445802688598633,
+     "fuite_db_mediane": -15.437779917758832
+    }
+   },
+   "10": {
+    "base": {
+     "debit": 13.45341682434082,
+     "fuite_db_mediane": -27.79261565557251
+    },
+    "1x_passe2": {
+     "debit": 13.47152328491211,
+     "fuite_db_mediane": -28.314334578935743
+    },
+    "2x_passe2": {
+     "debit": 13.480451583862305,
+     "fuite_db_mediane": -28.676161414081555
+    },
+    "wmmse300": {
+     "debit": 13.486349105834961,
+     "fuite_db_mediane": -28.176525487971702
+    }
+   },
+   "20": {
+    "base": {
+     "debit": 24.077075958251953,
+     "fuite_db_mediane": -41.09933646641767
+    },
+    "1x_passe2": {
+     "debit": 24.17638397216797,
+     "fuite_db_mediane": -44.32031119039783
+    },
+    "2x_passe2": {
+     "debit": 24.192787170410156,
+     "fuite_db_mediane": -44.54414675068287
+    },
+    "wmmse300": {
+     "debit": 24.026668548583984,
+     "fuite_db_mediane": -42.25396552575525
+    }
+   },
+   "25": {
+    "base": {
+     "debit": 29.718345642089844,
+     "fuite_db_mediane": -44.273738093724916
+    },
+    "1x_passe2": {
+     "debit": 30.010135650634766,
+     "fuite_db_mediane": -51.12219228703111
+    },
+    "2x_passe2": {
+     "debit": 30.07364273071289,
+     "fuite_db_mediane": -52.30297942113289
+    },
+    "wmmse300": {
+     "debit": 29.97527313232422,
+     "fuite_db_mediane": -51.0263493521158
+    }
+   },
+   "30": {
+    "base": {
+     "debit": 35.258846282958984,
+     "fuite_db_mediane": -45.7819210732208
+    },
+    "1x_passe2": {
+     "debit": 35.87852478027344,
+     "fuite_db_mediane": -55.361980452923646
+    },
+    "2x_passe2": {
+     "debit": 36.014991760253906,
+     "fuite_db_mediane": -57.3620179936904
+    },
+    "wmmse300": {
+     "debit": 36.154754638671875,
+     "fuite_db_mediane": -61.03002378860711
+    }
+   },
+   "35": {
+    "base": {
+     "debit": 40.38147735595703,
+     "fuite_db_mediane": -45.13330818802656
+    },
+    "1x_passe2": {
+     "debit": 41.671600341796875,
+     "fuite_db_mediane": -55.65871114145833
+    },
+    "2x_passe2": {
+     "debit": 41.90199279785156,
+     "fuite_db_mediane": -57.79528937669685
+    },
+    "wmmse300": {
+     "debit": 42.093265533447266,
+     "fuite_db_mediane": -70.39467959430036
+    }
+   },
+   "40": {
+    "base": {
+     "debit": 43.71421432495117,
+     "fuite_db_mediane": -42.93746672952547
+    },
+    "1x_passe2": {
+     "debit": 46.427223205566406,
+     "fuite_db_mediane": -53.31101327887327
+    },
+    "2x_passe2": {
+     "debit": 46.92275619506836,
+     "fuite_db_mediane": -54.16425038067196
+    },
+    "wmmse300": {
+     "debit": 47.83553695678711,
+     "fuite_db_mediane": -79.07469603403906
+    }
+   }
+  }
+ },
+ "q1_deux_passes": {
+  "detail": [
+   {
+    "site": "umi",
+    "snr": 0,
+    "gain_2x_vs_1x_debit": -0.00024318695068359375,
+    "gain_2x_vs_base_debit": 6.914138793945312e-05,
+    "fuite_2x_vs_1x_db": 0.5870695597552142,
+    "perte_2x_vs_base": false,
+    "instabilite_2x_vs_1x": false
+   },
+   {
+    "site": "umi",
+    "snr": 10,
+    "gain_2x_vs_1x_debit": 0.0001010894775390625,
+    "gain_2x_vs_base_debit": 0.0018157958984375,
+    "fuite_2x_vs_1x_db": -0.049550912013058834,
+    "perte_2x_vs_base": false,
+    "instabilite_2x_vs_1x": false
+   },
+   {
+    "site": "umi",
+    "snr": 20,
+    "gain_2x_vs_1x_debit": 0.0003566741943359375,
+    "gain_2x_vs_base_debit": 0.009046554565429688,
+    "fuite_2x_vs_1x_db": 0.06780320174105015,
+    "perte_2x_vs_base": false,
+    "instabilite_2x_vs_1x": false
+   },
+   {
+    "site": "umi",
+    "snr": 25,
+    "gain_2x_vs_1x_debit": 0.0009975433349609375,
+    "gain_2x_vs_base_debit": 0.028219223022460938,
+    "fuite_2x_vs_1x_db": -0.2288332986441617,
+    "perte_2x_vs_base": false,
+    "instabilite_2x_vs_1x": false
+   },
+   {
+    "site": "umi",
+    "snr": 30,
+    "gain_2x_vs_1x_debit": 0.0038928985595703125,
+    "gain_2x_vs_base_debit": 0.10724830627441406,
+    "fuite_2x_vs_1x_db": -0.5658708727393176,
+    "perte_2x_vs_base": false,
+    "instabilite_2x_vs_1x": false
+   },
+   {
+    "site": "umi",
+    "snr": 35,
+    "gain_2x_vs_1x_debit": 0.018589019775390625,
+    "gain_2x_vs_base_debit": 0.4472007751464844,
+    "fuite_2x_vs_1x_db": -1.1675807890526926,
+    "perte_2x_vs_base": false,
+    "instabilite_2x_vs_1x": false
+   },
+   {
+    "site": "umi",
+    "snr": 40,
+    "gain_2x_vs_1x_debit": 0.07886886596679688,
+    "gain_2x_vs_base_debit": 1.6109237670898438,
+    "fuite_2x_vs_1x_db": -0.9049864778669203,
+    "perte_2x_vs_base": false,
+    "instabilite_2x_vs_1x": false
+   },
+   {
+    "site": "stecath",
+    "snr": 0,
+    "gain_2x_vs_1x_debit": 0.00031566619873046875,
+    "gain_2x_vs_base_debit": 0.0024471282958984375,
+    "fuite_2x_vs_1x_db": -0.09789546666115712,
+    "perte_2x_vs_base": false,
+    "instabilite_2x_vs_1x": false
+   },
+   {
+    "site": "stecath",
+    "snr": 10,
+    "gain_2x_vs_1x_debit": 0.003475189208984375,
+    "gain_2x_vs_base_debit": 0.012887954711914062,
+    "fuite_2x_vs_1x_db": -0.005320011840211691,
+    "perte_2x_vs_base": false,
+    "instabilite_2x_vs_1x": false
+   },
+   {
+    "site": "stecath",
+    "snr": 20,
+    "gain_2x_vs_1x_debit": 0.008844375610351562,
+    "gain_2x_vs_base_debit": 0.05958366394042969,
+    "fuite_2x_vs_1x_db": -0.24591687086015668,
+    "perte_2x_vs_base": false,
+    "instabilite_2x_vs_1x": false
+   },
+   {
+    "site": "stecath",
+    "snr": 25,
+    "gain_2x_vs_1x_debit": 0.030241012573242188,
+    "gain_2x_vs_base_debit": 0.1810321807861328,
+    "fuite_2x_vs_1x_db": -0.6019243543434953,
+    "perte_2x_vs_base": false,
+    "instabilite_2x_vs_1x": false
+   },
+   {
+    "site": "stecath",
+    "snr": 30,
+    "gain_2x_vs_1x_debit": 0.07192230224609375,
+    "gain_2x_vs_base_debit": 0.4460105895996094,
+    "fuite_2x_vs_1x_db": -1.3883554065082677,
+    "perte_2x_vs_base": false,
+    "instabilite_2x_vs_1x": false
+   },
+   {
+    "site": "stecath",
+    "snr": 35,
+    "gain_2x_vs_1x_debit": 0.12229156494140625,
+    "gain_2x_vs_base_debit": 1.0087127685546875,
+    "fuite_2x_vs_1x_db": -1.283325501980741,
+    "perte_2x_vs_base": false,
+    "instabilite_2x_vs_1x": false
+   },
+   {
+    "site": "stecath",
+    "snr": 40,
+    "gain_2x_vs_1x_debit": 0.24551773071289062,
+    "gain_2x_vs_base_debit": 2.5306358337402344,
+    "fuite_2x_vs_1x_db": -0.6099589821409666,
+    "perte_2x_vs_base": false,
+    "instabilite_2x_vs_1x": false
+   },
+   {
+    "site": "decarie",
+    "snr": 0,
+    "gain_2x_vs_1x_debit": -0.0008573532104492188,
+    "gain_2x_vs_base_debit": -0.00015544891357421875,
+    "fuite_2x_vs_1x_db": -0.05951383481765582,
+    "perte_2x_vs_base": true,
+    "instabilite_2x_vs_1x": false
+   },
+   {
+    "site": "decarie",
+    "snr": 10,
+    "gain_2x_vs_1x_debit": 0.0009241104125976562,
+    "gain_2x_vs_base_debit": 0.007046699523925781,
+    "fuite_2x_vs_1x_db": 0.11893092153513507,
+    "perte_2x_vs_base": false,
+    "instabilite_2x_vs_1x": false
+   },
+   {
+    "site": "decarie",
+    "snr": 20,
+    "gain_2x_vs_1x_debit": 0.0047321319580078125,
+    "gain_2x_vs_base_debit": 0.05132293701171875,
+    "fuite_2x_vs_1x_db": -0.18086269657943888,
+    "perte_2x_vs_base": false,
+    "instabilite_2x_vs_1x": false
+   },
+   {
+    "site": "decarie",
+    "snr": 25,
+    "gain_2x_vs_1x_debit": 0.019109725952148438,
+    "gain_2x_vs_base_debit": 0.1847076416015625,
+    "fuite_2x_vs_1x_db": -1.153659918759729,
+    "perte_2x_vs_base": false,
+    "instabilite_2x_vs_1x": false
+   },
+   {
+    "site": "decarie",
+    "snr": 30,
+    "gain_2x_vs_1x_debit": 0.05820465087890625,
+    "gain_2x_vs_base_debit": 0.5383682250976562,
+    "fuite_2x_vs_1x_db": -1.5803166742829404,
+    "perte_2x_vs_base": false,
+    "instabilite_2x_vs_1x": false
+   },
+   {
+    "site": "decarie",
+    "snr": 35,
+    "gain_2x_vs_1x_debit": 0.1458587646484375,
+    "gain_2x_vs_base_debit": 1.2371406555175781,
+    "fuite_2x_vs_1x_db": -1.434688742032698,
+    "perte_2x_vs_base": false,
+    "instabilite_2x_vs_1x": false
+   },
+   {
+    "site": "decarie",
+    "snr": 40,
+    "gain_2x_vs_1x_debit": 0.3704490661621094,
+    "gain_2x_vs_base_debit": 2.8821258544921875,
+    "fuite_2x_vs_1x_db": -0.49849537348258366,
+    "perte_2x_vs_base": false,
+    "instabilite_2x_vs_1x": false
+   },
+   {
+    "site": "ericsson",
+    "snr": 0,
+    "gain_2x_vs_1x_debit": 0.00038623809814453125,
+    "gain_2x_vs_base_debit": 0.004322528839111328,
+    "fuite_2x_vs_1x_db": -0.11990777972621558,
+    "perte_2x_vs_base": false,
+    "instabilite_2x_vs_1x": false
+   },
+   {
+    "site": "ericsson",
+    "snr": 10,
+    "gain_2x_vs_1x_debit": 0.008928298950195312,
+    "gain_2x_vs_base_debit": 0.027034759521484375,
+    "fuite_2x_vs_1x_db": -0.3618268351458127,
+    "perte_2x_vs_base": false,
+    "instabilite_2x_vs_1x": false
+   },
+   {
+    "site": "ericsson",
+    "snr": 20,
+    "gain_2x_vs_1x_debit": 0.0164031982421875,
+    "gain_2x_vs_base_debit": 0.11571121215820312,
+    "fuite_2x_vs_1x_db": -0.22383556028503904,
+    "perte_2x_vs_base": false,
+    "instabilite_2x_vs_1x": false
+   },
+   {
+    "site": "ericsson",
+    "snr": 25,
+    "gain_2x_vs_1x_debit": 0.063507080078125,
+    "gain_2x_vs_base_debit": 0.3552970886230469,
+    "fuite_2x_vs_1x_db": -1.1807871341017773,
+    "perte_2x_vs_base": false,
+    "instabilite_2x_vs_1x": false
+   },
+   {
+    "site": "ericsson",
+    "snr": 30,
+    "gain_2x_vs_1x_debit": 0.13646697998046875,
+    "gain_2x_vs_base_debit": 0.7561454772949219,
+    "fuite_2x_vs_1x_db": -2.0000375407667548,
+    "perte_2x_vs_base": false,
+    "instabilite_2x_vs_1x": false
+   },
+   {
+    "site": "ericsson",
+    "snr": 35,
+    "gain_2x_vs_1x_debit": 0.2303924560546875,
+    "gain_2x_vs_base_debit": 1.5205154418945312,
+    "fuite_2x_vs_1x_db": -2.1365782352385168,
+    "perte_2x_vs_base": false,
+    "instabilite_2x_vs_1x": false
+   },
+   {
+    "site": "ericsson",
+    "snr": 40,
+    "gain_2x_vs_1x_debit": 0.4955329895019531,
+    "gain_2x_vs_base_debit": 3.2085418701171875,
+    "fuite_2x_vs_1x_db": -0.8532371017986904,
+    "perte_2x_vs_base": false,
+    "instabilite_2x_vs_1x": false
+   }
+  ],
+  "plancher_descend_encore_db_moyen_30_40": -1.201952641490924,
+  "cas_instables_ou_perte": [
+   {
+    "site": "decarie",
+    "snr": 0,
+    "gain_2x_vs_1x_debit": -0.0008573532104492188,
+    "gain_2x_vs_base_debit": -0.00015544891357421875,
+    "fuite_2x_vs_1x_db": -0.05951383481765582,
+    "perte_2x_vs_base": true,
+    "instabilite_2x_vs_1x": false
+   }
+  ]
+ },
+ "q2_seuil_snr": {
+  "budget_bps_hz": 0.02,
+  "seuils": {
+   "10": {
+    "perte_max_bps_hz": 0.003936290740966797,
+    "pire_cas": [
+     "ericsson",
+     0
+    ],
+    "proba_passe2_active_uniforme_0_30": 0.6666666666666666,
+    "mac_moyen_par_sc": 959488.0,
+    "respecte_budget": true
+   },
+   "15": {
+    "perte_max_bps_hz": 0.018106460571289062,
+    "pire_cas": [
+     "ericsson",
+     10
+    ],
+    "proba_passe2_active_uniforme_0_30": 0.5,
+    "mac_moyen_par_sc": 898944.0,
+    "respecte_budget": true
+   },
+   "20": {
+    "perte_max_bps_hz": 0.018106460571289062,
+    "pire_cas": [
+     "ericsson",
+     10
+    ],
+    "proba_passe2_active_uniforme_0_30": 0.3333333333333333,
+    "mac_moyen_par_sc": 838400.0,
+    "respecte_budget": true
+   },
+   "25": {
+    "perte_max_bps_hz": 0.09930801391601562,
+    "pire_cas": [
+     "ericsson",
+     20
+    ],
+    "proba_passe2_active_uniforme_0_30": 0.16666666666666666,
+    "mac_moyen_par_sc": 777856.0,
+    "respecte_budget": false
+   }
+  },
+  "seuil_max_sous_budget": 20
+ },
+ "macs": {
+  "base_macs_par_sc": 717312,
+  "passe2_macs_par_sc": 363264
+ }
+}

@@ -1623,6 +1623,10 @@ CSI estimé, pilote 20 dB, 30 dB : St-Catherine 29,96 → 30,27 (WMMSE robuste 3
 - **Coût : +363 k MAC/SC (+51 %, total 1,08 M en M8K4)**, à peu près celui de 12 couches, qui ne gagnaient que la moitié (Ericsson 30 dB +0,31 contre +0,62, protocoles de tirage différents) : à coût égal, voir l'erreur vaut mieux que plus de profondeur.
 - Réserves : une graine ; en CSI estimé, WMMSE est repris de `lab_csi.json` (mêmes réglages, sous-ensemble de tirages possiblement différent : la base y vaut 29,96 contre 30,11) ; passe 2 entraînée seulement en CSI parfait.
 
+### Deuxième passe : appliquée deux fois, et seulement au fort SNR (`experiments/phase15_refine_more.py`, `results/phase15/refine_more.json`, évaluation seule)
+- **Deux applications des mêmes poids** (C3 = C2 + ΔC(G, E2), sans réentraîner) : le plancher descend encore d'~1-2 dB (Ericsson 30 dB : −55,4 → −57,4 dB) ; débit à 30 / 40 dB : St-Catherine 33,77 / 45,53, Décarie 35,34 / 47,39, Ericsson 36,01 / 46,92 (WMMSE 300 : 36,15 / 47,84), UMi 26,99 / 37,89. Aucune perte nulle part. Gain modeste (+0,06 à +0,13 à 30 dB) pour +363 k MAC : non retenu par défaut, option documentée.
+- **Passe 2 activée seulement au-dessus d'un seuil de SNR** (le SNR est connu) : seuil 20 dB → perte max 0,018 bps/Hz sur 0-40 dB (UMi + sites), coût moyen 838 k MAC/SC au lieu de 1,08 M pour un SNR uniforme sur 0-30 dB (−22 %) ; seuil 25 dB perd 0,10. **Retenu : passe 2 au-delà de 20 dB.**
+
 ## Prochaine étape
 (1) 3 graines pour l'attention en fréquence D64. (2) Réduire le coût. (3) Bootstrap sur les tirages. (4) Faire le point avant d'aller plus loin (pilote 20 dB, vieillissement, M64).
 Cible principale ensuite (phases 2–3) : le régime pilote 10 dB, où il reste 2,7 à 5,9 bps/Hz après LMMSE.
