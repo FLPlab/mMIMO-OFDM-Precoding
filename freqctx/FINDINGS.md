@@ -1632,6 +1632,21 @@ Seul changement : SNR d'entraînement de la passe 2 U(0, 40) (passe 1 figée). D
 - Critère rempli de justesse (+0,21 en moyenne à 35-40 dB, pire −0,035 de 0 à 30 dB). Contrairement au réseau entier, **pas de compromis** quand seule la passe 2 voit le fort SNR (passe 1 figée).
 - Gain du même ordre que d'appliquer deux fois la passe 2 U(0,30), et seulement à 40 dB : sans effet en pratique. Même coût ; une graine.
 
+### Pas fréquentiel adaptatif par tirage (`experiments/phase15_adaptive_step.py`, `results/phase15/adaptive_step.json`, évaluation seule)
+Précodeur 3GPP, CSI parfait, W interpolé entre ancres (1 SC sur s, s ∈ {1…24}). Oracle = plus grand s par tirage perdant ≤ 1 % ; règle = s tel que s·Δf ≤ B_c = 1/(α τ_rms), τ_rms estimé par ajustement de l'autocorrélation en fréquence (l'IDFT pleine bande surestime τ_rms ×10-50 par fuite), α = 26,3 réglé sur UMi à 20 dB. s moyen harmonique, débit 20 / 30 dB :
+
+| jeu (τ_rms médian) | pas fixe 3 | oracle 1 % (s à 20 → 30 dB) | règle (s ; perte 20 / 30 dB) |
+|---|---|---|---|
+| UMi (108 ns) | 17,64 / 26,73 | 6,9 → 3,8 ; 17,58 / 26,79 | 7,2 ; 0,95 % / 3,9 % |
+| UMa (182 ns) | 17,84 / 26,97 | 3,9 → 2,5 ; 17,92 / 27,43 | 4,4 ; 1,2 % / 4,2 % |
+| RMa (27 ns) | 17,74 / 26,62 | 16,4 → 12,1 ; 17,70 / 26,53 | 16,3 ; 0,4 % / 1,4 % |
+| St-Catherine (65 ns) | 22,04 / 32,56 | 8,8 → 5,5 ; 21,94 / 32,44 | 13,7 ; 1,7 % / 5,3 % |
+| Décarie (17 ns) | 22,83 / 34,00 | 20,4 → 16,4 ; 22,79 / 33,91 | 21,9 ; 0,35 % / 1,1 % |
+| Ericsson (12 ns) | 24,31 / 35,77 | 20,4 → 17,1 ; 24,26 / 35,68 | 22,3 ; 0,37 % / 1,05 % |
+
+- **Le pas adaptatif vaut le coup** : l'oracle calcule 1,3× (UMa) à 6,8× (Décarie, Ericsson) moins que le pas fixe 3 pour < 0,6 % de perte.
+- **Le bon pas dépend aussi du SNR** (il diminue quand le SNR monte : l'erreur d'interpolation agit comme une fuite d'interférence, cf. plancher). La règle à un seul α (étalement seul) perd 1 à 5 % à 30 dB : il faut y ajouter le SNR (α(SNR)), avant d'envisager d'apprendre le pas.
+
 ## Prochaine étape
 (1) 3 graines pour l'attention en fréquence D64. (2) Réduire le coût. (3) Bootstrap sur les tirages. (4) Faire le point avant d'aller plus loin (pilote 20 dB, vieillissement, M64).
 Cible principale ensuite (phases 2–3) : le régime pilote 10 dB, où il reste 2,7 à 5,9 bps/Hz après LMMSE.
