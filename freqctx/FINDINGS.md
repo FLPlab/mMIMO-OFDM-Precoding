@@ -1726,6 +1726,19 @@ Réseau libre 3GPP, CSI parfait, UMi / Ericsson, 30 dB (réseau 26,75 / 36,51 ; 
 - **Seule la « décision » (λ, p) est lisse en fréquence ; « l'exécution » (l'inversion sur le G local) doit être faite à chaque SC** — soit exactement (Newton–Schulz, ~11 k MAC), soit par une tête apprise entraînée pour cela.
 - Phase : la normalisation n'enlève que la phase commune ; le réseau est quasi équivariant aux phases par utilisateur (écart 1,4-2 %) ; suivre la phase par utilisateur réduit les erreurs d'interpolation de ~30 % sans changer la conclusion.
 
+### D2 — précision utile du précodeur en CSI estimé (`experiments/phase17_csi_need.py`, `results/phase17/csi_need.json`, évaluation seule)
+3 sites + UMi, protocoles phase14_csi / phase15_lab_csi, M8K4. Moyenne des 4 jeux à 30 dB, sur le VRAI canal :
+
+| pilote | fuite réseau | débit réseau | WMMSE robuste 300 | CSI parfait |
+|---|---|---|---|---|
+| 0 dB | −17,0 dB | 19,7 | 19,8 | 32,3 |
+| 10 dB | −23,6 dB | 25,5 | 25,6 | 32,3 |
+| 20 dB | −30,5 dB | 29,7 | 30,0 | 32,3 |
+
+- En CSI estimé, le réseau égale WMMSE robuste (écart ≤ 0,3) ; l'écart au CSI parfait vient de l'estimation. La fuite due à l'estimation (−17 à −30 dB) domine de loin le plancher du réseau (−45 dB).
+- Bruit relatif isotrope ajouté sur C : la tolérance (perte ≤ 0,05) suit le SNR de données (~1 % à 10 dB, ≤ 0,5 % à 20-30 dB) et non la qualité du pilote. **Réserve importante** : un bruit isotrope sur C (normalisé par ‖C‖_F) détruit surtout les colonnes des utilisateurs faibles (puissances très inégales) ; ce test mesure donc la sensibilité de l'allocation aux faibles utilisateurs plus que la précision de l'annulation d'interférence. Il ne contredit pas l'argument « l'estimation masque le plancher d'interférence ».
+- Lecture linéaire aux couches 4 / 6 / 7 : −25 à −34 % / −11 à −17 % / −5 à −8 % à 20 dB ; mais un réseau entraîné à 8 couches n'est pas fait pour être lu plus tôt : ce n'est pas la mesure d'un réseau moins profond entraîné pour cela.
+
 ## Prochaine étape
 (1) 3 graines pour l'attention en fréquence D64. (2) Réduire le coût. (3) Bootstrap sur les tirages. (4) Faire le point avant d'aller plus loin (pilote 20 dB, vieillissement, M64).
 Cible principale ensuite (phases 2–3) : le régime pilote 10 dB, où il reste 2,7 à 5,9 bps/Hz après LMMSE.
