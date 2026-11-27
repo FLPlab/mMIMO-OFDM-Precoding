@@ -1784,6 +1784,14 @@ Réseau étroit E1 (195 k MAC), perte = −débit/débit_RZF + β·‖W_élève 
 - Le retour d'erreur ne marche qu'en 2e passe sur une solution figée (pas intégré, pas partagé, pas avec erreur d'estimation).
 - **Architecture retenue (libre)** : base 8 couches (état 16) + 2e passe (4 couches) activée au-delà de 20 dB + pas fréquentiel adaptatif (étalement + SNR, réglage prudent). Coût moyen ≈ 184 k × (1 + 0,5·P(SNR > 20 dB)) ≈ 215 k MAC/SC pour un SNR uniforme sur 0-30 dB, contre 239 k pour la base au pas fixe 3 sans 2e passe, avec un meilleur débit au fort SNR.
 
+### Adapter la 2e passe au site (fine-tuning, base figée) — ÉCARTÉ (`experiments/phase18_ft_refine.py`, `results/phase18/ft_refine.json`)
+Protocole de `phase14_finetune` (moitiés disjointes, 64 tirages test), seule la 2e passe adaptée (complète ou LoRA rang 4), N = 40 / 400 / 4000 canaux du site, SNR d'adaptation U(0, 40). 30 / 40 dB, WMMSE 300 | passe 2 zero-shot | ×2 zero-shot | adaptée N = 400 | N = 4000 :
+- St-Catherine : 33,56 / 44,64 | 33,66 / 45,21 | 33,74 / 45,46 | 33,67 / 45,36 | 33,70 / 45,49
+- Décarie : 35,04 / 45,92 | 35,33 / 47,12 | 35,39 / 47,48 | 35,32 / 47,33 | 35,34 / 47,42
+- Ericsson : 36,19 / 47,89 | 35,93 / 46,47 | **36,06 / 46,97** | 35,96 / 46,90 | 35,99 / 47,05
+- **En zero-shot, la 2e passe égale ou dépasse déjà WMMSE 300 sur St-Catherine et Décarie à tous les SNR**, et à 20 dB sur les 3 sites. Ericsson reste à −0,13 (30 dB, passe ×2) et −0,9 (40 dB).
+- L'adaptation au site n'aide presque pas (+0,03 à +0,3) et fait moins bien que d'appliquer la passe deux fois ; aucune perte à 10-20 dB. **Le reste d'écart à Ericsson n'est pas un problème de site** mais la précision d'une correction apprise face au SINR très élevé de ce canal (fuite WMMSE −61 / −79 dB à 30 / 40 dB).
+
 ## Prochaine étape
 (1) 3 graines pour l'attention en fréquence D64. (2) Réduire le coût. (3) Bootstrap sur les tirages. (4) Faire le point avant d'aller plus loin (pilote 20 dB, vieillissement, M64).
 Cible principale ensuite (phases 2–3) : le régime pilote 10 dB, où il reste 2,7 à 5,9 bps/Hz après LMMSE.
