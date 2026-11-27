@@ -1708,6 +1708,18 @@ Transformer de la forme structurée (T20) seulement sur 1 SC sur s ; les 2K scal
 ### Piste 1 : bloc partagé répété avec retour d'erreur, N variable — ÉCARTÉ (`results/phase16/iter.json`, code non gardé)
 2 couches initiales + bloc de 2 couches à poids partagés appliqué N fois (canal effectif en entrée, sortie résiduelle), N ∈ {1…6} au hasard à l'entraînement, de zéro (22,9 k paramètres). Moyenne des 3 sites, 20 / 30 dB : meilleur N (4-5) 22,87 / 33,80 contre base 23,23 / 34,46 (N = 4 : 925 k MAC). Aucun N ne bat la base ; politique N(SNR) à 684 k MAC : −0,68 partout. Avec l'intégration du retour d'erreur (B2/B3), c'est le 2e échec d'un retour d'erreur appris de zéro : il ne marche que pour corriger une solution déjà bonne et figée (2e passe).
 
+## Phase 17 — comprendre le réseau libre pour l'aider sans imposer de forme (2026-11-27)
+
+### Sondes couche par couche (`experiments/phase17_probe.py`, `results/phase17/probe.json`, évaluation seule)
+Réseau libre 3GPP, CSI parfait, UMi / Ericsson, 30 dB (réseau 26,75 / 36,51 ; WMMSE 300 26,44 / 37,22). Sondes linéaires par moindres carrés sur l'état des paires après chaque couche ; err W = médiane ‖h̃ᴴ(Ĉ−T)‖/‖h̃ᴴT‖.
+- **Précision au fil des couches** (C du réseau lu linéairement) : err W 27 % (L1) → 14 % (L4) → 6 % (L6) → 3 % (L7) → 0 (L8) ; fuite −11 → −15 → −21 → −25 → −43 dB (UMi). **La dernière couche, surtout son produit triangulaire, fait passer de 3 % à 0,5 %** (17-23 dB de fuite).
+- **λ et p lisibles dès la couche 1** (R² 0,93 sur UMi) ; le C final est à 3 % / 0,5 % de la forme de Björnson calculée avec ses propres (λ, p), à 20 % / 15 % du C de WMMSE (autre point stationnaire).
+- **Pas de profil polynomial** (ni Neumann ni Newton–Schulz) : G² … G⁸ également lisibles, pic à L2. Le réseau raffine vers sa propre solution.
+- **Dimension utile** : 99 % de la variance en 8-13 directions sur 32 ; 8 directions donnent 2 % d'erreur, le plancher (0,5 %) en demande ~16.
+- **LayerNorm : pas coupable** (sonde sur LN(e) ≈ sonde sur e) ; l'excès de fuite sur WMMSE (~12 dB) ne suit ni cond(G) ni l'écart de puissance : **le plancher est une précision relative uniforme (~0,5 %) de la fonction apprise** — cohérent avec fuite ≈ (erreur relative)² ≈ −46 dB.
+- Ablation sans réentraîner : couche 1 indispensable ; produits des couches 6-8 les plus importants.
+- **Lecture** : un tronc grossier suffit pour (λ, p) et un C à 5-15 % ; la précision vient d'un raffinement final. La 2e passe marche parce qu'elle part d'un C à ~0,5 % et calcule l'erreur exactement (canal effectif) : une correction précise à 10 % divise l'erreur par 10. Le retour d'erreur appris de zéro échoue (B2, B3, bloc partagé) : injecté trop tôt (C encore à 15-30 %) et sans étape où le tronc est d'abord bon.
+
 ## Prochaine étape
 (1) 3 graines pour l'attention en fréquence D64. (2) Réduire le coût. (3) Bootstrap sur les tirages. (4) Faire le point avant d'aller plus loin (pilote 20 dB, vieillissement, M64).
 Cible principale ensuite (phases 2–3) : le régime pilote 10 dB, où il reste 2,7 à 5,9 bps/Hz après LMMSE.
