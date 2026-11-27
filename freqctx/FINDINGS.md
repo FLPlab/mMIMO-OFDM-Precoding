@@ -1673,6 +1673,9 @@ CSI estimé, pilote 20 dB, 30 dB (T20 / libre / libre + 2e passe / WMMSE robuste
 - T10 : Newton–Schulz trop court, −1 à −5 au fort SNR (le diagnostic phase 15 le prévoyait).
 - Réserves : une graine par T ; mélange de conventions (A sur G physique, transformer sur entrées normalisées) non testé autrement ; Newton–Schulz en virgule fixe non vérifié (l'inversion est le goulot des classiques : 13-15 bits) ; 20 pas séquentiels → latence. Contredit l'hypothèse « la liberté coûte peu » : à MAC égal, la forme imposée gagne nettement.
 
+### Encodeur angle × retard en massif — ÉCARTÉ (code non gardé)
+BS 1×32 au pas λ/2, deux polarisations : DFT unitaire de 32 points par polarisation avant le traitement par retard, filtre complexe 3×3 (retard × angle) par faisceau, log de la puissance par angle en entrée (départ = référence exacte) ; reste identique à `phase13_massive_pilots` (30 000 pas). 64 tirages UMi, pilote 10 dB : 13,47 / 24,47 / **39,27** / 47,26 / 55,15 à 0 / 10 / 20 / 25 / 30 dB contre 13,48 / 24,49 / 39,34 / 47,36 / 55,24 pour la référence. À 20 dB : pilote 0 dB 36,49 contre 36,19, pilote 20 dB 40,05 contre 40,23. Encodeur +56 % de MAC (FFT comptées). Critère (+0,3) non atteint : l'angle n'apporte rien de mesurable, en massif comme en M8K4. Non testé : jetons par couple (retard, faisceau), ~64× plus cher.
+
 ## Prochaine étape
 (1) 3 graines pour l'attention en fréquence D64. (2) Réduire le coût. (3) Bootstrap sur les tirages. (4) Faire le point avant d'aller plus loin (pilote 20 dB, vieillissement, M64).
 Cible principale ensuite (phases 2–3) : le régime pilote 10 dB, où il reste 2,7 à 5,9 bps/Hz après LMMSE.
