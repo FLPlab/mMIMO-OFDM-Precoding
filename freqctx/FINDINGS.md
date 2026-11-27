@@ -1688,6 +1688,23 @@ B blocs de 4 couches, canal effectif E du C courant injecté entre les blocs, en
 ### Piste 2 avec le réseau libre : ancres + correction légère du W interpolé — ÉCARTÉ (code non gardé)
 Réseau libre aux ancres (1 SC sur s), W interpolé, puis correcteur qui voit le canal effectif local (2e passe L4 telle quelle ; correcteurs dédiés L1 d16 / L1 d8 / L2 entraînés sur départs interpolés). Le correcteur referme 80-90 % de la perte d'interpolation (UMa s = 24, 30 dB : 19,3 → 25,9 avec L2) et dépasse même s = 1 sur les canaux plats avec L4, **mais il tourne sur chaque SC non-ancre** : son coût fixe empêche de descendre sous ~210 k MAC/SC, et un correcteur dans ce budget (L1, L2) ne fait qu'égaler le pas fixe 3 (239 k). Critère (≥ +0,2 à 30 dB sur 4 jeux à ≤ 240 k, ou même débit à ≤ 120 k) atteint sur 1 jeu sur 6. **Leçon : ce qu'on calcule à chaque SC doit être très bon marché** → voir l'interpolation de (λ, p) avec la forme structurée.
 
+### Forme structurée : (λ, p) calculés aux ancres et interpolés, Newton–Schulz exact à chaque SC — RETENU (`experiments/phase16_struct_anchor.py`, `results/phase16/struct_anchor.json`, évaluation seule)
+Transformer de la forme structurée (T20) seulement sur 1 SC sur s ; les 2K scalaires (λ, p) interpolés (linéaire ou log) entre ancres ; G, Newton–Schulz, C et W exacts à chaque SC. Coût/SC = 182 k/s + 11 k (G + NS 20 + W). CSI parfait, M8K4, 192 tirages par jeu, mêmes générateurs que `phase15_adaptive_step`. Débit à s = 24 (≈ 19 k MAC/SC), interpolation log, contre s = 1 et WMMSE 300 :
+
+| jeu | 30 dB : s = 24 / s = 1 / WMMSE 300 | 40 dB : s = 24 / s = 1 / WMMSE 300 | W interpolé à s = 24, 30 dB (structuré / libre) |
+|---|---|---|---|
+| UMi | 26,95 / 27,03 / 26,60 | 37,79 / 37,90 / 35,67 | 21,28 / 21,27 |
+| UMa | 27,57 / 27,68 / 27,29 | 38,68 / 38,82 / 36,53 | 19,29 / 19,29 |
+| RMa | ≤ 0,1 de s = 1 (26,82) / 26,43 | ≤ 0,1 de s = 1 (37,20) / 35,23 | — |
+| St-Catherine | 33,28 / 33,33 / 33,11 | 45,85 / 45,89 / 44,14 | 29,59 / 29,33 |
+| Décarie | ≤ 0,1 de s = 1 (34,64) / 34,39 | ≤ 0,1 de s = 1 (47,17) / 45,37 | — |
+| Ericsson | 36,42 / 36,42 / 36,37 | 49,20 / 49,19 / 47,97 | 35,85 / 35,24 |
+
+- **Interpoler (λ, p) au lieu de W supprime presque toute la perte d'interpolation** : à s = 24, −0,1 au plus à 30 dB même sur UMi (W interpolé : −5,8). Plus grand s à ≤ 0,1 de s = 1 : 24 partout à 20 et 30 dB sauf UMa 30 dB (12, ou 24 à −0,11) ; à 40 dB, 24 sur les canaux plats, 6-12 sur UMi/UMa.
+- **≈ 19 k MAC/SC (26 k à s = 12)** : 37× moins que le réseau libre (717 k), l'ordre de WMMSE 5 it. en forme Gram (14 k), avec le débit d'au-dessus de WMMSE 300 au fort SNR. Les (λ, p) sont lisses en fréquence ; seuls G et l'inversion doivent être calculés par SC.
+- Linéaire et log quasi identiques ; log un peu meilleur à 40 dB.
+- Réserves : CSI parfait ; Ericsson 20 dB, la forme structurée reste sous WMMSE 300 (24,26 contre 24,44) ; NS demande 13-17 bits (cf. vérification) ; énergie à refaire avec ces MAC.
+
 ## Prochaine étape
 (1) 3 graines pour l'attention en fréquence D64. (2) Réduire le coût. (3) Bootstrap sur les tirages. (4) Faire le point avant d'aller plus loin (pilote 20 dB, vieillissement, M64).
 Cible principale ensuite (phases 2–3) : le régime pilote 10 dB, où il reste 2,7 à 5,9 bps/Hz après LMMSE.
