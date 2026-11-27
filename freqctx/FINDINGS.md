@@ -1607,6 +1607,22 @@ Sites convertis en OFDM (`phase13_lab`, convention psi2az), pilotes Sionna, LS +
 - **Variante « erreur synthétique + variance » (réentraînée à l'identique, UMi reproduit à 0,03 près ; `--errin-only`)** : à 30 dB, St-Catherine 20,14 / 25,73 / 29,44, Décarie 21,19 / 26,80 / 30,56, Ericsson 21,53 / 27,80 / 32,21 (pilote 0 / 10 / 20 dB). Elle bat WMMSE robuste à pilote 0 dB mais fait MOINS bien que le modèle sans variance à pilote 10-20 dB (jusqu'à −1,1 contre WMMSE à pilote 20 dB). Le gain de la variance vu sur UMi ne se transfère pas aux sites : probablement parce que la variance d'erreur fournie par l'estimateur est calculée avec la covariance du mélange 3GPP, fausse sur des canaux presque plats (variance surestimée → précodeur trop prudent). À vérifier avant de montrer la variante.
 
 
+### Deuxième passe qui voit sa propre erreur — RETENU (`models/refine.py`, `experiments/phase15_refine.py`, `phase15_refine_eval.py`, `results/phase15/refine.json`)
+Passe 1 = précodeur 3GPP figé (C1) ; passe 2 = 4 blocs triangulaires (d 16, FFN 32) qui reçoivent par paire les caractéristiques de G plus celles du canal effectif E = H̃W1 (≈ G·C1), et sortent ΔC (sortie initialisée à zéro : départ = base exactement) ; C2 = C1 + ΔC. Seule la passe 2 est entraînée (mêmes données, perte, SNR U(0, 30), 60 000 pas, 23 min). Aucune division, aucune forme imposée. Débit base / base + passe 2 / WMMSE 300 (fuite médiane du réseau, dB) :
+
+| CSI parfait | 20 dB | 30 dB | 40 dB |
+|---|---|---|---|
+| UMi | 17,65 / 17,65 / 17,66 | 26,89 / **26,99** / 26,56 (−43 → −47) | 36,28 / **37,81** / 35,61 |
+| St-Catherine | 22,35 / 22,40 / 22,36 | 33,32 / **33,69** / 33,58 (−47 → −56) | 43,00 / **45,29** / 44,68 |
+| Décarie | 23,27 / 23,32 / 23,22 | 34,80 / **35,28** / 35,00 (−47 → −56) | 44,51 / **47,02** / 45,88 |
+| Ericsson | 24,08 / 24,18 / 24,03 | 35,26 / 35,88 / 36,15 (−46 → −55) | 43,71 / 46,43 / 47,84 |
+
+CSI estimé, pilote 20 dB, 30 dB : St-Catherine 29,96 → 30,27 (WMMSE robuste 30,49), Décarie 31,31 → 31,58 (31,67), Ericsson 32,89 → 33,24 (33,35).
+- Critère fixé à l'avance : rempli (+0,49 à 30 dB en moyenne sur les sites, aucune perte de 0 à 20 dB, perte en CSI estimé réduite de moitié environ).
+- **Le plancher descend d'environ 9 dB** (−46 → −55 dB) ; le réseau dépasse WMMSE 300 à 30 dB sur St-Catherine et Décarie et à 40 dB sur UMi, St-Catherine, Décarie. Seul Ericsson (le plus haut SINR) reste sous WMMSE au fort SNR.
+- **Coût : +363 k MAC/SC (+51 %, total 1,08 M en M8K4)**, à peu près celui de 12 couches, qui ne gagnaient que la moitié (Ericsson 30 dB +0,31 contre +0,62, protocoles de tirage différents) : à coût égal, voir l'erreur vaut mieux que plus de profondeur.
+- Réserves : une graine ; en CSI estimé, WMMSE est repris de `lab_csi.json` (mêmes réglages, sous-ensemble de tirages possiblement différent : la base y vaut 29,96 contre 30,11) ; passe 2 entraînée seulement en CSI parfait.
+
 ## Prochaine étape
 (1) 3 graines pour l'attention en fréquence D64. (2) Réduire le coût. (3) Bootstrap sur les tirages. (4) Faire le point avant d'aller plus loin (pilote 20 dB, vieillissement, M64).
 Cible principale ensuite (phases 2–3) : le régime pilote 10 dB, où il reste 2,7 à 5,9 bps/Hz après LMMSE.
