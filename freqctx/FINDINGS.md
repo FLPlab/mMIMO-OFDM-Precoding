@@ -1753,6 +1753,7 @@ Même architecture, mêmes données (60 000 pas), seule la largeur change. Débi
 MAC/SC : 717 k / 195 k / 292 k ; fuite à 30 dB −46 / −40 / −41 dB. CSI estimé pilote 20 dB, 30 dB, Ericsson : 32,89 / 31,47 / 31,86.
 - **Rejetés tous deux** (critère ≥ base − 0,05 de 0 à 20 dB) : −0,87 / −0,67 à Ericsson 20 dB. Sur les tirages 3GPP vus, la perte est faible (M8K4 20 dB : −0,06 / −0,04) ; **sur les sites jamais vus, elle est grande** : l'état réduit généralise moins bien hors distribution. 12 couches atténuent sans compenser : c'est la largeur de l'état qui compte.
 - En cours : 2e passe étroite sur E1/E2 (E3) et largeur intermédiaire d = 12 (~336 k MAC).
+- **Largeur intermédiaire d = 12, FFN 16, 8 couches (~336 k MAC, `experiments/phase18_eval_d12.py`, `results/phase18/narrow_d12.json`) : rejetée aussi**, et pas meilleure que E2 : 20 dB St-Catherine / Décarie / Ericsson 22,14 / 23,07 / 23,40 (base 22,35 / 23,27 / 24,08), 30 dB 32,56 / 34,11 / 33,33. La perte de zero-shot à 20 dB sur les sites (−0,2 à −0,7) apparaît dès qu'on réduit la largeur, même modérément.
 
 ## Prochaine étape
 (1) 3 graines pour l'attention en fréquence D64. (2) Réduire le coût. (3) Bootstrap sur les tirages. (4) Faire le point avant d'aller plus loin (pilote 20 dB, vieillissement, M64).
