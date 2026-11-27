@@ -1720,6 +1720,12 @@ Réseau libre 3GPP, CSI parfait, UMi / Ericsson, 30 dB (réseau 26,75 / 36,51 ; 
 - Ablation sans réentraîner : couche 1 indispensable ; produits des couches 6-8 les plus importants.
 - **Lecture** : un tronc grossier suffit pour (λ, p) et un C à 5-15 % ; la précision vient d'un raffinement final. La 2e passe marche parce qu'elle part d'un C à ~0,5 % et calcule l'erreur exactement (canal effectif) : une correction précise à 10 % divise l'erreur par 10. Le retour d'erreur appris de zéro échoue (B2, B3, bloc partagé) : injecté trop tôt (C encore à 15-30 %) et sans étape où le tronc est d'abord bon.
 
+### D1 — régularité en fréquence des états internes du réseau libre (`experiments/phase17_freq_smooth.py`, `results/phase17/freq_smooth.json`, évaluation seule)
+96 tirages × 612 SC par jeu, CSI parfait, 30 dB. Erreur d'interpolation à s = 24 sur UMi (partie variable) : états des couches 1-6 15-17 %, couche 8 20 %, C 22 %, W 23 %, **λ 7 %, p 3 %**. Test fonctionnel (interpoler l'état après la couche ℓ entre ancres, finir avec les couches existantes et le G local) : UMi 30 dB, s = 24 : ℓ = 1 → 23,16, ℓ = 4 → 22,55, W interpolé → 21,52, **(λ, p) du réseau interpolés + forme exacte locale → 26,93** (s = 1 : 27,01).
+- **Les états internes ne sont pas lisses comme (λ, p)**, et les couches suivantes ne corrigent pas un état interpolé (sans réentraîner) : interpoler l'état perd presque autant qu'interpoler W, pour 5 à 20× plus de calcul.
+- **Seule la « décision » (λ, p) est lisse en fréquence ; « l'exécution » (l'inversion sur le G local) doit être faite à chaque SC** — soit exactement (Newton–Schulz, ~11 k MAC), soit par une tête apprise entraînée pour cela.
+- Phase : la normalisation n'enlève que la phase commune ; le réseau est quasi équivariant aux phases par utilisateur (écart 1,4-2 %) ; suivre la phase par utilisateur réduit les erreurs d'interpolation de ~30 % sans changer la conclusion.
+
 ## Prochaine étape
 (1) 3 graines pour l'attention en fréquence D64. (2) Réduire le coût. (3) Bootstrap sur les tirages. (4) Faire le point avant d'aller plus loin (pilote 20 dB, vieillissement, M64).
 Cible principale ensuite (phases 2–3) : le régime pilote 10 dB, où il reste 2,7 à 5,9 bps/Hz après LMMSE.
