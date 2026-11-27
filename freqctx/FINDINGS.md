@@ -1705,6 +1705,9 @@ Transformer de la forme structurée (T20) seulement sur 1 SC sur s ; les 2K scal
 - Linéaire et log quasi identiques ; log un peu meilleur à 40 dB.
 - Réserves : CSI parfait ; Ericsson 20 dB, la forme structurée reste sous WMMSE 300 (24,26 contre 24,44) ; NS demande 13-17 bits (cf. vérification) ; énergie à refaire avec ces MAC.
 
+### Piste 1 : bloc partagé répété avec retour d'erreur, N variable — ÉCARTÉ (`results/phase16/iter.json`, code non gardé)
+2 couches initiales + bloc de 2 couches à poids partagés appliqué N fois (canal effectif en entrée, sortie résiduelle), N ∈ {1…6} au hasard à l'entraînement, de zéro (22,9 k paramètres). Moyenne des 3 sites, 20 / 30 dB : meilleur N (4-5) 22,87 / 33,80 contre base 23,23 / 34,46 (N = 4 : 925 k MAC). Aucun N ne bat la base ; politique N(SNR) à 684 k MAC : −0,68 partout. Avec l'intégration du retour d'erreur (B2/B3), c'est le 2e échec d'un retour d'erreur appris de zéro : il ne marche que pour corriger une solution déjà bonne et figée (2e passe).
+
 ## Prochaine étape
 (1) 3 graines pour l'attention en fréquence D64. (2) Réduire le coût. (3) Bootstrap sur les tirages. (4) Faire le point avant d'aller plus loin (pilote 20 dB, vieillissement, M64).
 Cible principale ensuite (phases 2–3) : le régime pilote 10 dB, où il reste 2,7 à 5,9 bps/Hz après LMMSE.
