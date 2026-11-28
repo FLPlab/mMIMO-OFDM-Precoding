@@ -1815,6 +1815,19 @@ Recherche vérifiée sur les PDF arXiv (détail des articles dans la mémoire du
 - Énergie (µJ, Moons v5), WMMSE I = 5 / 30 / 300 : SiPS 15,9 / 95,7 / 957 ; **standard O(M³), 16 bits : 6,9 / 41,3 / 413** ; efficace 0,060 / 0,301 / 2,91 (St-Catherine) ; **R-WMMSE (Gram) 0,020 / 0,060 / 0,501** (St-Catherine, 13 bits), 0,025 / 0,076 / 0,629 (Ericsson, 15 bits).
 - **Référence principale retenue : R-WMMSE aux bits mesurés** (publiée, même précodeur, la moins chère) ; standard O(M³) en 2e ligne (« référence classique ») ; SiPS en note (continuité avec BitAdapt) ; forme efficace retirée.
 
+## Phase 19 — chaîne complète depuis les pilotes (2026-11-27)
+
+### 2e passe dans la chaîne pilotes → encodeur → précodeur v2 — RETENU (`experiments/phase19_pilot_refine.py`, `results/phase19/pilot_refine.json`)
+Base v2 de bout en bout (encodeur fréquentiel + précodeur, `weights/phase7/pilot_rand_ph32_norm_relpow`), puis la 2e passe de la phase 15 TELLE QUELLE (entraînée en CSI parfait sur un autre précodeur), G et E calculés sur la sortie de l'encodeur. UMi, UMa, RMa (tirages phase 7) et 3 sites (chaîne phase13_lab), pilote 0 / 10 / 20 dB, données 10-30 dB. Débit 20 / 30 dB, v2 | + passe | ×2 | LMMSE + WMMSE robuste 100 | Wiener + WMMSE 100 :
+- UMi pilote 20 : 17,50 / 25,69 | 17,51 / 25,78 | 17,52 / 25,82 | 17,24 / 24,12 | 17,24 / 23,63
+- St-Catherine pilote 20 : 21,96 / 31,49 | 22,01 / 31,87 | 22,04 / 32,11 | 21,66 / 30,03 | 21,85 / 30,74
+- Décarie pilote 20 : 22,71 / 33,11 | 22,76 / 33,47 | 22,79 / 33,70 | 22,37 / 31,19 | 22,65 / 32,32
+- Ericsson pilote 0 / 10 / 20, 30 dB : 30,35 / 33,48 / 34,50 | 30,61 / 33,91 / 35,01 | 30,76 / 34,19 / 35,33 | 21,37 / 28,00 / 32,99 | 27,54 / 32,08 / 34,65
+- **Critère rempli** (≥ +0,2 quelque part, aucune perte) : jusqu'à +0,50 (×1) et +0,83 (×2) sur les sites à 30 dB, +0,13 à +0,20 à 25 dB ; 3GPP +0,05 à +0,14 à 30 dB ; pire perte −0,0003 sur 216 cases. À Ericsson pilote 20 dB, v2 seul était sous Wiener + WMMSE (34,50 contre 34,65) ; avec la passe, il passe devant (35,01).
+- **La chaîne v2 dépasse les chaînes classiques depuis les pilotes partout** (jusqu'à +9 bps/Hz sur LMMSE + WMMSE à Ericsson pilote 0 dB, 30 dB).
+- Réserves : une graine, un tirage de bruit de sondage ; 30 dB hors de la plage d'entraînement de v2 (0-25 dB) ; passe non réentraînée sur v2 (il reste ~1,3 à Ericsson pilote 20 dB face au CSI parfait).
+- **v0 = encodeur fréquentiel + précodeur v2 + 2e passe (une passe au-delà de 20 dB).**
+
 ## Prochaine étape
 (1) 3 graines pour l'attention en fréquence D64. (2) Réduire le coût. (3) Bootstrap sur les tirages. (4) Faire le point avant d'aller plus loin (pilote 20 dB, vieillissement, M64).
 Cible principale ensuite (phases 2–3) : le régime pilote 10 dB, où il reste 2,7 à 5,9 bps/Hz après LMMSE.
