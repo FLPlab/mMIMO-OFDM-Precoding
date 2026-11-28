@@ -1837,6 +1837,9 @@ Base v2 de bout en bout (encodeur fréquentiel + précodeur, `weights/phase7/pil
 - Le pas fréquentiel vaut aussi pour les classiques (WMMSE interpolé suit notre réseau) : aucun avantage relatif.
 - **Ce qu'on peut affirmer** : débit nettement meilleur que RZF (+7 / +0,9 bps/Hz) mais RZF 3-5× moins cher en calcul ; 40-1 600× moins cher que WMMSE standard ; face à R-WMMSE, avantage modeste (1,5-2×) seulement au point haut débit de St-Catherine, dominé à Ericsson ; **notre avantage vient de la tolérance à la quantification (3-9 bits contre 13-15), pas du nombre d'opérations** ; à l'échelle du système, l'énergie rayonnée domine et le débit décide. La v0 (encodeur + 8 couches + 2e passe) n'a encore ni quantification ni énergie.
 
+### 2e passe réentraînée sur la chaîne v2 — ÉCARTÉ, résultat suspect (`experiments/phase19_pilot_refine_train.py`, `results/phase19/pilot_refine_v2pass.json`)
+Passe entraînée sur la chaîne v2 figée (entrées = sortie de l'encodeur, débit sur le vrai canal, 60 000 pas). À l'entraînement, objectif à peine au-dessus de v2 seul (2,123 contre 2,116, +0,3 %) ; à l'évaluation, **moins bonne que v2 seul partout** (pilote 20 dB, 30 dB : St-Catherine 31,35 contre 31,49 ; Ericsson 34,44 contre 34,50 ; passe transférée 31,87 / 35,01), y compris en CSI parfait. Une passe partant de zéro ne devrait pas faire moins bien que son point de départ : probable incohérence entre entraînement et évaluation (normalisation des entrées de la sortie de l'encodeur, ou distribution des SNR), non investiguée. **On garde la passe transférée** (phase 15) dans v0.
+
 ## Prochaine étape
 (1) 3 graines pour l'attention en fréquence D64. (2) Réduire le coût. (3) Bootstrap sur les tirages. (4) Faire le point avant d'aller plus loin (pilote 20 dB, vieillissement, M64).
 Cible principale ensuite (phases 2–3) : le régime pilote 10 dB, où il reste 2,7 à 5,9 bps/Hz après LMMSE.
