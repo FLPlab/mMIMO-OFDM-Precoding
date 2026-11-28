@@ -1828,6 +1828,15 @@ Base v2 de bout en bout (encodeur fréquentiel + précodeur, `weights/phase7/pil
 - Réserves : une graine, un tirage de bruit de sondage ; 30 dB hors de la plage d'entraînement de v2 (0-25 dB) ; passe non réentraînée sur v2 (il reste ~1,3 à Ericsson pilote 20 dB face au CSI parfait).
 - **v0 = encodeur fréquentiel + précodeur v2 + 2e passe (une passe au-delà de 20 dB).**
 
+### ⚠ Audit indépendant des calculs d'énergie (2026-11-28, `torch_port/energy_audit.py`, `results/stecath/energy_audit.json`)
+- **MAC : OK** (RZF 9 010 ; standard O(M³) 1,187 M/it. ; SiPS 2,88 M/it. ; nous 737 792 / 143 360) ; R-WMMSE 8 970 + 1 112·I (le code comptait 1 088·I : −2 %).
+- **ERREUR corrigée — bits de nos réseaux** : le LSQ du labo borne à ±(2^b − 1), soit b + 1 bits signés, mais l'énergie utilisait b (les classiques comptent b bits signe compris). Corrigé : **8 couches 0,113 → 0,154 µJ** ; 2 couches St-Catherine 0,026 → 0,034 ; 2 couches Ericsson 0,031 → 0,041 ; 4 couches Ericsson 0,060 → 0,078. Opérations non comptées : chez nous LayerNorm, GELU, rsqrt, log, requantification 16 bits (+0,03 à +0,12 µJ en 8 couches) ; chez les classiques gestion de l'exposant de bloc (+12-25 %).
+- Biais : poids relus à chaque échantillon (contre nous, amorti en OFDM) ; activations comptées à Q_A alors que le HLS les porte sur 19 bits (pour nous, jusqu'à +0,12 µJ) ; nos réseaux testés sur les positions d'entraînement (protocole du labo).
+- **Tableau corrigé à débit égal** : St-Catherine 2 couches (24,07 @ 0,034) ≈ R-WMMSE ~24 it. → **égalité** (on annonçait 2×) ; 8 couches (26,61 @ 0,154-0,27) ≈ R-WMMSE ~220 it. (0,37-0,41 µJ) → **1,4-2,1× mieux** (on annonçait 4-5×) ; **Ericsson : R-WMMSE 1-10 it. domine tous nos points de 2-4×**. Face aux formes standard O(M³) / SiPS : 40-1 600× moins cher.
+- **Efficacité système** : les seuils annoncés (14,6-47 W) supposaient un recalcul du précodeur à chaque symbole et sans rendement d'amplificateur ; avec un recalcul par créneau (14 symboles), ils tombent à 1,0-1,6 W (St-Catherine) et 3,4-6,8 W (Ericsson) (×2,9 avec un ampli à 35 %) : **l'efficacité système dépend surtout du débit**.
+- Le pas fréquentiel vaut aussi pour les classiques (WMMSE interpolé suit notre réseau) : aucun avantage relatif.
+- **Ce qu'on peut affirmer** : débit nettement meilleur que RZF (+7 / +0,9 bps/Hz) mais RZF 3-5× moins cher en calcul ; 40-1 600× moins cher que WMMSE standard ; face à R-WMMSE, avantage modeste (1,5-2×) seulement au point haut débit de St-Catherine, dominé à Ericsson ; **notre avantage vient de la tolérance à la quantification (3-9 bits contre 13-15), pas du nombre d'opérations** ; à l'échelle du système, l'énergie rayonnée domine et le débit décide. La v0 (encodeur + 8 couches + 2e passe) n'a encore ni quantification ni énergie.
+
 ## Prochaine étape
 (1) 3 graines pour l'attention en fréquence D64. (2) Réduire le coût. (3) Bootstrap sur les tirages. (4) Faire le point avant d'aller plus loin (pilote 20 dB, vieillissement, M64).
 Cible principale ensuite (phases 2–3) : le régime pilote 10 dB, où il reste 2,7 à 5,9 bps/Hz après LMMSE.
