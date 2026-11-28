@@ -1840,6 +1840,11 @@ Base v2 de bout en bout (encodeur fréquentiel + précodeur, `weights/phase7/pil
 ### 2e passe réentraînée sur la chaîne v2 — ÉCARTÉ, résultat suspect (`experiments/phase19_pilot_refine_train.py`, `results/phase19/pilot_refine_v2pass.json`)
 Passe entraînée sur la chaîne v2 figée (entrées = sortie de l'encodeur, débit sur le vrai canal, 60 000 pas). À l'entraînement, objectif à peine au-dessus de v2 seul (2,123 contre 2,116, +0,3 %) ; à l'évaluation, **moins bonne que v2 seul partout** (pilote 20 dB, 30 dB : St-Catherine 31,35 contre 31,49 ; Ericsson 34,44 contre 34,50 ; passe transférée 31,87 / 35,01), y compris en CSI parfait. Une passe partant de zéro ne devrait pas faire moins bien que son point de départ : probable incohérence entre entraînement et évaluation (normalisation des entrées de la sortie de l'encodeur, ou distribution des SNR), non investiguée. **On garde la passe transférée** (phase 15) dans v0.
 
+### Précodeur 8 couches quantifié (ART) à Ericsson (`results/stecath/art_pair_h32_lam5_qprod_norm_ericsson.json`, `energy_v5_h32_L8_ericsson.json`)
+Même chaîne que St-Catherine (32 bits 40 000 pas, ART λ = 5, produits quantifiés, entrée normalisée). 32 bits : 40,82 ; **quantifié : 38,48 bps/Hz à 0,142 µJ** (convention b bits ; avec la correction b + 1 de l'audit, ≈ 0,19 µJ) ; bits moyens poids 4,55, activations 6,61.
+- R-WMMSE à Ericsson : 30 it. 37,31 @ 0,077-0,086 ; 100 it. 38,67 @ 0,22-0,24. **Notre point tombe entre les deux, dans le régime de R-WMMSE à ~60-70 it.** : à peu près à égalité (légèrement dominé avec la correction b + 1). Les versions 2 et 4 couches étaient nettement dominées par R-WMMSE 5 it. RZF : 33,44 @ 0,013 (+5,0 bps/Hz pour nous, 11-15× plus cher).
+- Conclusion énergie, canal facile : **égalité avec R-WMMSE en 8 couches**, pas d'avantage ; canal difficile (St-Catherine) : 1,4-2× mieux.
+
 ## Prochaine étape
 (1) 3 graines pour l'attention en fréquence D64. (2) Réduire le coût. (3) Bootstrap sur les tirages. (4) Faire le point avant d'aller plus loin (pilote 20 dB, vieillissement, M64).
 Cible principale ensuite (phases 2–3) : le régime pilote 10 dB, où il reste 2,7 à 5,9 bps/Hz après LMMSE.
