@@ -1,0 +1,411 @@
+{
+ "meta": {
+  "sites": "St-Catherine et Ericsson, M=64, K=4, CSI parfait, modele d'energie Moons et al. 2017 (torch_port.energy, corrected=True)",
+  "systeme": {
+   "scs_hz": 30000.0,
+   "bande_hz": 100000000.0,
+   "n_sc": 3333,
+   "cp_overhead": 0.07,
+   "T_symbole_utile_s": 3.3333333333333335e-05,
+   "T_symbole_total_s": 3.566666666666667e-05,
+   "ptx_scenarios_W": {
+    "macro_20W": 20.0,
+    "macro_30W": 30.0,
+    "macro_40W": 40.0,
+    "petite_cellule_1W": 1.0
+   },
+   "note": "bits/symbole/SC = debit [bps/Hz] exactement (SCS * T_u = 1) ; E_rad = (P_tx/N_sc) * T_sym ; (b) = debit / (E_calcul + E_rad)"
+  },
+  "wmmse_standard_eq12": {
+   "N_c_MAC": 2880309,
+   "E_par_iteration_uJ": 3.189655172413793,
+   "note": "E = K.I.N_c, calibre sur 296 uJ a I=92.8 (BitAdaptHLS/eval_baselines.py) ; lineaire en I, memes M=64,K=4 -> MEME valeur aux deux sites"
+  },
+  "structure_phase16": {
+   "bits_transformer": 8,
+   "bits_phys_G_NS_W": 16,
+   "note": "transformer NON quantifie par ART (hypothese plate 8 bits, pas verifiee) ; G/NS/W aux bits mesures en phase16_check.json (13-17 bits, on retient 16)"
+  }
+ },
+ "sites": {
+  "stecath": {
+   "RZF_12-14bit": {
+    "debit": 17.03152,
+    "energy_uJ": 0.0115461,
+    "bits": 13,
+    "eff_calcul_bps_hz_par_uJ": 1475.089
+   },
+   "RZF_16bit": {
+    "debit": 17.03152,
+    "energy_uJ": 0.0161959,
+    "eff_calcul_bps_hz_par_uJ": 1051.595
+   },
+   "WMMSE_standard_eq12": {
+    "5": {
+     "debit": 21.6172,
+     "energy_uJ": 15.948275862068966,
+     "eff_calcul_bps_hz_par_uJ": 1.355
+    },
+    "30": {
+     "debit": 24.4141,
+     "energy_uJ": 95.6896551724138,
+     "eff_calcul_bps_hz_par_uJ": 0.255
+    },
+    "100": {
+     "debit": 25.9153,
+     "energy_uJ": 318.9655172413793,
+     "eff_calcul_bps_hz_par_uJ": 0.081
+    },
+    "300": {
+     "debit": 26.881,
+     "energy_uJ": 956.8965517241379,
+     "eff_calcul_bps_hz_par_uJ": 0.028
+    }
+   },
+   "WMMSE_gram_bits": {
+    "5": {
+     "debit": 21.6172,
+     "energy_uJ": 0.019677787109375,
+     "bits": 13,
+     "mac": 14410,
+     "eff_calcul_bps_hz_par_uJ": 1098.558
+    },
+    "30": {
+     "debit": 24.4141,
+     "energy_uJ": 0.0604835234375,
+     "bits": 13,
+     "mac": 41610,
+     "eff_calcul_bps_hz_par_uJ": 403.649
+    },
+    "100": {
+     "debit": 25.9153,
+     "energy_uJ": 0.17473959375,
+     "bits": 13,
+     "mac": 117770,
+     "eff_calcul_bps_hz_par_uJ": 148.308
+    },
+    "300": {
+     "debit": 26.881,
+     "energy_uJ": 0.50118546875,
+     "bits": 13,
+     "mac": 335370,
+     "eff_calcul_bps_hz_par_uJ": 53.635
+    }
+   },
+   "notre_precodeur": {
+    "8couches_quant": {
+     "debit": 26.650097,
+     "energy_uJ": 0.113343,
+     "eff_calcul_bps_hz_par_uJ": 235.128
+    },
+    "2couches_ART": {
+     "debit": 24.070309,
+     "energy_uJ": 0.02452,
+     "eff_calcul_bps_hz_par_uJ": 981.66
+    }
+   },
+   "forme_structuree_T20_persc": {
+    "debit": 27.280668,
+    "energy_uJ": 0.10698173046875,
+    "note": "zero-shot, poids Sionna M8K4+M64K8 non reentraines",
+    "eff_calcul_bps_hz_par_uJ": 255.003
+   },
+   "forme_structuree_T10_persc": {
+    "debit": 26.283031,
+    "energy_uJ": 0.09956943945312499,
+    "eff_calcul_bps_hz_par_uJ": 263.967
+   },
+   "forme_structuree_T20_interp_s24": {
+    "debit_estime_transpose_M8K4": 27.18,
+    "energy_uJ": 0.03021413916015625,
+    "note": "debit NON mesurable sur ce protocole mono-porteuse (pas d'axe frequentiel) ; estime par transposition de la perte mesuree en M8K4 Sionna (<=0.1 bps/Hz a s=24, phase16)"
+   },
+   "forme_structuree_T20_wmmse_anchor": {
+    "note": "non calcule (fit post-hoc, hors budget 'si simple')"
+   },
+   "eff_systeme_par_Ptx": {
+    "macro_20W": {
+     "RZF_16bit": 73.9802,
+     "notre_precodeur_8couches": 81.408,
+     "forme_structuree_T20": 84.9857,
+     "WMMSE_gram_I300": 37.5849
+    },
+    "macro_30W": {
+     "RZF_16bit": 50.5045,
+     "notre_precodeur_8couches": 61.3527,
+     "forme_structuree_T20": 63.7378,
+     "WMMSE_gram_I300": 32.6933
+    },
+    "macro_40W": {
+     "RZF_16bit": 38.3387,
+     "notre_precodeur_8couches": 49.2257,
+     "forme_structuree_T20": 50.9896,
+     "WMMSE_gram_I300": 28.9283
+    },
+    "petite_cellule_1W": {
+     "RZF_16bit": 633.2133,
+     "notre_precodeur_8couches": 214.8438,
+     "forme_structuree_T20": 231.8153,
+     "WMMSE_gram_I300": 52.5136
+    }
+   },
+   "crossover_ours_vs_RZF16b_W": 14.561302378974071,
+   "crossover_structure_T20_vs_RZF16b_W": 12.584483371643573,
+   "bitadapt_v5_front_non_domine": [
+    {
+     "config": "tiny",
+     "lambda": "5.0",
+     "debit": 19.06,
+     "energy_uJ": 0.08558767208151194,
+     "eff_calcul_bps_hz_par_uJ": 222.696
+    },
+    {
+     "config": "tiny",
+     "lambda": "1.0",
+     "debit": 20.61,
+     "energy_uJ": 0.10554588235200048,
+     "eff_calcul_bps_hz_par_uJ": 195.271
+    },
+    {
+     "config": "tiny",
+     "lambda": "0.3",
+     "debit": 21.25,
+     "energy_uJ": 0.16537006104331245,
+     "eff_calcul_bps_hz_par_uJ": 128.5
+    },
+    {
+     "config": "tiny",
+     "lambda": "0.1",
+     "debit": 21.89,
+     "energy_uJ": 0.2757385278339723,
+     "eff_calcul_bps_hz_par_uJ": 79.387
+    },
+    {
+     "config": "small",
+     "lambda": "1.0",
+     "debit": 22.05,
+     "energy_uJ": 0.34960514013041544,
+     "eff_calcul_bps_hz_par_uJ": 63.071
+    },
+    {
+     "config": "tiny",
+     "lambda": "0.03",
+     "debit": 22.13,
+     "energy_uJ": 0.37318161310091863,
+     "eff_calcul_bps_hz_par_uJ": 59.301
+    },
+    {
+     "config": "small",
+     "lambda": "0.3",
+     "debit": 22.62,
+     "energy_uJ": 0.4568009211912142,
+     "eff_calcul_bps_hz_par_uJ": 49.518
+    },
+    {
+     "config": "tiny",
+     "lambda": "0.003",
+     "debit": 22.68,
+     "energy_uJ": 0.6497884710427109,
+     "eff_calcul_bps_hz_par_uJ": 34.904
+    },
+    {
+     "config": "small",
+     "lambda": "0.1",
+     "debit": 22.89,
+     "energy_uJ": 0.7031905732064394,
+     "eff_calcul_bps_hz_par_uJ": 32.552
+    },
+    {
+     "config": "base",
+     "lambda": "1.0",
+     "debit": 23.57,
+     "energy_uJ": 1.049399699307822,
+     "eff_calcul_bps_hz_par_uJ": 22.46
+    },
+    {
+     "config": "base",
+     "lambda": "0.3",
+     "debit": 24.24,
+     "energy_uJ": 1.3928691037429417,
+     "eff_calcul_bps_hz_par_uJ": 17.403
+    },
+    {
+     "config": "large",
+     "lambda": "5.0",
+     "debit": 24.45,
+     "energy_uJ": 1.8069970479652295,
+     "eff_calcul_bps_hz_par_uJ": 13.531
+    },
+    {
+     "config": "large",
+     "lambda": "1.0",
+     "debit": 25.32,
+     "energy_uJ": 2.2755554648110543,
+     "eff_calcul_bps_hz_par_uJ": 11.127
+    },
+    {
+     "config": "large",
+     "lambda": "0.3",
+     "debit": 25.77,
+     "energy_uJ": 2.975713157300941,
+     "eff_calcul_bps_hz_par_uJ": 8.66
+    },
+    {
+     "config": "large",
+     "lambda": "0.1",
+     "debit": 25.88,
+     "energy_uJ": 4.764697512436127,
+     "eff_calcul_bps_hz_par_uJ": 5.432
+    },
+    {
+     "config": "xlarge",
+     "lambda": "1.0",
+     "debit": 26.32,
+     "energy_uJ": 6.410706232973306,
+     "eff_calcul_bps_hz_par_uJ": 4.106
+    },
+    {
+     "config": "xlarge",
+     "lambda": "0.3",
+     "debit": 26.56,
+     "energy_uJ": 10.51455085765033,
+     "eff_calcul_bps_hz_par_uJ": 2.526
+    },
+    {
+     "config": "xlarge",
+     "lambda": "0.1",
+     "debit": 26.67,
+     "energy_uJ": 14.454905479875809,
+     "eff_calcul_bps_hz_par_uJ": 1.845
+    },
+    {
+     "config": "xlarge",
+     "lambda": "0.001",
+     "debit": 26.69,
+     "energy_uJ": 28.04640554922583,
+     "eff_calcul_bps_hz_par_uJ": 0.952
+    }
+   ]
+  },
+  "ericsson": {
+   "RZF_12-14bit": {
+    "debit": 33.4382,
+    "energy_uJ": 0.0130189,
+    "bits": 14,
+    "eff_calcul_bps_hz_par_uJ": 2568.435
+   },
+   "RZF_16bit": {
+    "debit": 33.4382,
+    "energy_uJ": 0.0161959,
+    "eff_calcul_bps_hz_par_uJ": 2064.609
+   },
+   "WMMSE_standard_eq12": {
+    "5": {
+     "debit": 35.44809,
+     "energy_uJ": 15.948275862068966,
+     "eff_calcul_bps_hz_par_uJ": 2.223
+    },
+    "30": {
+     "debit": 37.31246,
+     "energy_uJ": 95.6896551724138,
+     "eff_calcul_bps_hz_par_uJ": 0.39
+    },
+    "100": {
+     "debit": 38.66543,
+     "energy_uJ": 318.9655172413793,
+     "eff_calcul_bps_hz_par_uJ": 0.121
+    },
+    "300": {
+     "debit": 39.84234,
+     "energy_uJ": 956.8965517241379,
+     "eff_calcul_bps_hz_par_uJ": 0.042
+    }
+   },
+   "WMMSE_gram_bits": {
+    "5": {
+     "debit": 35.44809,
+     "energy_uJ": 0.024772794921875,
+     "bits": 15,
+     "mac": 14410,
+     "eff_calcul_bps_hz_par_uJ": 1430.928
+    },
+    "30": {
+     "debit": 37.31246,
+     "energy_uJ": 0.075981984375,
+     "bits": 15,
+     "mac": 41610,
+     "eff_calcul_bps_hz_par_uJ": 491.07
+    },
+    "100": {
+     "debit": 38.66543,
+     "energy_uJ": 0.219367703125,
+     "bits": 15,
+     "mac": 117770,
+     "eff_calcul_bps_hz_par_uJ": 176.259
+    },
+    "300": {
+     "debit": 39.84234,
+     "energy_uJ": 0.6290411875,
+     "bits": 15,
+     "mac": 335370,
+     "eff_calcul_bps_hz_par_uJ": 63.338
+    }
+   },
+   "notre_precodeur": {
+    "2couches_ART": {
+     "debit": 34.354603,
+     "energy_uJ": 0.030468,
+     "eff_calcul_bps_hz_par_uJ": 1127.563
+    }
+   },
+   "forme_structuree_T20_persc": {
+    "debit": 40.903217,
+    "energy_uJ": 0.10698173046875,
+    "note": "zero-shot, poids Sionna M8K4+M64K8 non reentraines",
+    "eff_calcul_bps_hz_par_uJ": 382.338
+   },
+   "forme_structuree_T10_persc": {
+    "debit": 38.802711,
+    "energy_uJ": 0.09956943945312499,
+    "eff_calcul_bps_hz_par_uJ": 389.705
+   },
+   "forme_structuree_T20_interp_s24": {
+    "debit_estime_transpose_M8K4": 40.8,
+    "energy_uJ": 0.03021413916015625,
+    "note": "debit NON mesurable sur ce protocole mono-porteuse (pas d'axe frequentiel) ; estime par transposition de la perte mesuree en M8K4 Sionna (<=0.1 bps/Hz a s=24, phase16)"
+   },
+   "forme_structuree_T20_wmmse_anchor": {
+    "note": "non calcule (fit post-hoc, hors budget 'si simple')"
+   },
+   "eff_systeme_par_Ptx": {
+    "macro_20W": {
+     "RZF_16bit": 145.2463,
+     "notre_precodeur_2couches": 140.5157,
+     "forme_structuree_T20": 127.4231,
+     "WMMSE_gram_I300": 47.2591
+    },
+    "macro_30W": {
+     "RZF_16bit": 99.1561,
+     "notre_precodeur_2couches": 97.7371,
+     "forme_structuree_T20": 95.5652,
+     "WMMSE_gram_I300": 41.9361
+    },
+    "macro_40W": {
+     "RZF_16bit": 75.2708,
+     "notre_precodeur_2couches": 74.9265,
+     "forme_structuree_T20": 76.4511,
+     "WMMSE_gram_I300": 37.6908
+    },
+    "petite_cellule_1W": {
+     "RZF_16bit": 1243.1958,
+     "notre_precodeur_2couches": 834.476,
+     "forme_structuree_T20": 347.5718,
+     "WMMSE_gram_I300": 62.2787
+    }
+   },
+   "crossover_ours_vs_RZF16b_W": 47.151553026589525,
+   "crossover_structure_T20_vs_RZF16b_W": 36.488209390060966,
+   "bitadapt_v5_front_non_domine": "non disponible (pas de point BitAdapt v5 a Ericsson)"
+  }
+ }
+}

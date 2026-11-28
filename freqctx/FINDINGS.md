@@ -1800,6 +1800,14 @@ Ericsson, CSI parfait — passe actuelle ×1 / ×2 / ×3 / ×4 | passe « fort S
 - Passe « fort SINR » (50 % de tirages 3GPP du quartile bas de cond(G), SNR U(15, 40), base figée, aucune donnée de site) : un peu meilleure partout au fort SNR, sans perte (40 dB ×1 : UMi 37,84, St-Catherine 45,50, Décarie 47,33 contre 37,81 / 45,29 / 47,02 ; WMMSE 35,61 / 44,68 / 45,88) ; critère (Ericsson 30 dB ≥ 36,14 en ×1-×2) non atteint (36,05). CSI estimé : inchangé.
 - Lecture : le nombre de passes joue le rôle d'un nombre d'itérations, utile seulement au fort SNR ; avec la passe activée au-delà de 20 dB et répétée au-delà de 30 dB, on égale WMMSE 300 sur les 3 sites jusqu'à 30 dB, en zero-shot, sans forme imposée (coût : 363 k MAC par passe, seulement aux SNR élevés).
 
+### Efficacité énergétique face à RZF et WMMSE, deux conventions (`torch_port/energy_efficiency.py`, `results/stecath/energy_efficiency.json`, CPU)
+M = 64, K = 4, protocole torch_port, Moons v5. Débit @ énergie de calcul (µJ) :
+- **St-Catherine** : RZF 13 bits 17,03 @ 0,0115 ; WMMSE Gram 13 bits I = 5 / 30 / 300 : 21,62 / 24,41 / 26,88 @ 0,020 / 0,060 / 0,501 ; WMMSE forme standard (SiPS, E = K·I·N_c) mêmes débits @ 15,9 / 95,7 / 957 ; nous 8 couches quantifié 26,65 @ 0,113, 2 couches ART 24,07 @ 0,025 ; **forme structurée T20 (zero-shot, sans réentraîner sur ce protocole) 27,28 @ 0,107** (transformer supposé 8 bits, NS 16 bits) ; front BitAdapt v5 19,06-26,69 @ 0,086-28.
+- **Ericsson** : RZF 14 bits 33,44 @ 0,0130 ; WMMSE Gram 15 bits I = 5 / 30 / 300 : 35,45 / 37,31 / 39,84 @ 0,025 / 0,076 / 0,629 ; nous 2 couches ART 34,35 @ 0,030 ; **forme structurée T20 40,90 @ 0,107**.
+- **Efficacité de calcul** : RZF reste imbattable (2-3× moins cher que tout le reste) mais perd 7-10 bps/Hz (St-Catherine) / ~1 (Ericsson). Face à WMMSE en forme Gram : nous gagnons à St-Catherine (WMMSE doit faire ~300 it. pour notre débit, 4-5× notre énergie) ; à Ericsson, WMMSE Gram 5 it. domine notre version 2 couches. En forme standard, WMMSE est 100-1000× plus cher : le verdict dépend de la convention — montrer les deux.
+- **Efficacité système** (bits par joule total, calcul + puissance rayonnée, hypothèses dans le JSON) : à 1 W (petite cellule) RZF domine ; le gain de débit l'emporte sur le surcoût de calcul au-delà de ~13-15 W (St-Catherine) et ~36-47 W (Ericsson), donc dans la plage macro (20-40 W) sur les canaux difficiles.
+- Réserve : la forme structurée est zero-shot ici, transformer non quantifié (8 bits supposés), variante interpolée non mesurable en mono-porteuse — préliminaire.
+
 ## Prochaine étape
 (1) 3 graines pour l'attention en fréquence D64. (2) Réduire le coût. (3) Bootstrap sur les tirages. (4) Faire le point avant d'aller plus loin (pilote 20 dB, vieillissement, M64).
 Cible principale ensuite (phases 2–3) : le régime pilote 10 dB, où il reste 2,7 à 5,9 bps/Hz après LMMSE.
