@@ -1452,7 +1452,7 @@ Erreur synthétique tirée par utilisateur, niveau fourni au réseau ; déploiem
 - Réserve : la colonne « synth. » n'a été entraînée qu'en M8K4 (zero-shot en massif) ; le témoin « synth. sans variance entraîné aussi en M64K8 » manque pour attribuer le gain massif à la seule variance.
 
 ### Énergie à Ericsson et WMMSE en forme Gram (`torch_port/*.py --site ericsson`, `results/stecath/classical_energy_ericsson.json`, `art_pair_*_ericsson.json`)
-WMMSE en forme Gram : itération sur C (K x K) seulement, G une fois, W = H^H C à la fin ; identique à wmmse() (écart ~1e-7), coût par itération indépendant de M (`torch_port.stecath.wmmse_gram`). Énergie (µJ, Moons v5) :
+WMMSE en forme Gram : itération sur C (K x K) seulement, G une fois, W = H^H C à la fin ; identique à wmmse() (écart ~1e-7) — c'est R-WMMSE (Zhao et al., IEEE TSP 2023, arXiv:2205.06225), déjà publiée, coût par itération indépendant de M (`torch_port.stecath.wmmse_gram`). Énergie (µJ, Moons v5) :
 | méthode | Ericsson débit / énergie | St-Catherine débit / énergie |
 |---|---|---|
 | RZF 32 / 16 bits | 33,44 / 0,052 / 0,016 | 17,03 / 0,052 / 0,016 |
@@ -1807,6 +1807,13 @@ M = 64, K = 4, protocole torch_port, Moons v5. Débit @ énergie de calcul (µJ)
 - **Efficacité de calcul** : RZF reste imbattable (2-3× moins cher que tout le reste) mais perd 7-10 bps/Hz (St-Catherine) / ~1 (Ericsson). Face à WMMSE en forme Gram : nous gagnons à St-Catherine (WMMSE doit faire ~300 it. pour notre débit, 4-5× notre énergie) ; à Ericsson, WMMSE Gram 5 it. domine notre version 2 couches. En forme standard, WMMSE est 100-1000× plus cher : le verdict dépend de la convention — montrer les deux.
 - **Efficacité système** (bits par joule total, calcul + puissance rayonnée, hypothèses dans le JSON) : à 1 W (petite cellule) RZF domine ; le gain de débit l'emporte sur le surcoût de calcul au-delà de ~13-15 W (St-Catherine) et ~36-47 W (Ericsson), donc dans la plage macro (20-40 W) sur les canaux difficiles.
 - Réserve : la forme structurée est zero-shot ici, transformer non quantifié (8 bits supposés), variante interpolée non mesurable en mono-porteuse — préliminaire.
+
+### Complexité de WMMSE dans la littérature, et forme Gram = R-WMMSE (`torch_port/energy_efficiency_v2.py`, `results/stecath/energy_efficiency_v2.json`)
+Recherche vérifiée sur les PDF arXiv (détail des articles dans la mémoire du projet) :
+- **Référence standard** (Pellaco et al. 2006.08448, Schynol & Pesavento 2202.10371, etc.) : **une inversion M×M par itération, O(M³)**, bissection sur μ ignorée ou traitée comme constante. La convention SiPS / BitAdapt (une inversion M×M **par utilisateur**) a des précédents (Hu et al. IAIDNN, Emery et al. 2507.18587 : N_c SiPS = leur tableau) mais elle est redondante (la matrice est commune à tous les utilisateurs).
+- **Notre « forme Gram » est connue : c'est R-WMMSE** (Zhao, Lu, Shi, Luo, IEEE TSP 2023, arXiv:2205.06225) : P = HᴴX, HHᴴ une fois, itération sur X en dimension K, coût indépendant de M, sans bissection (pleine puissance). Reprise dans 2311.04546, 2605.18368. Ce n'est pas une contribution ; la forme « efficace » (dimension K, ~9 k MAC/it) n'a pas d'équivalent dans la littérature.
+- Énergie (µJ, Moons v5), WMMSE I = 5 / 30 / 300 : SiPS 15,9 / 95,7 / 957 ; **standard O(M³), 16 bits : 6,9 / 41,3 / 413** ; efficace 0,060 / 0,301 / 2,91 (St-Catherine) ; **R-WMMSE (Gram) 0,020 / 0,060 / 0,501** (St-Catherine, 13 bits), 0,025 / 0,076 / 0,629 (Ericsson, 15 bits).
+- **Référence principale retenue : R-WMMSE aux bits mesurés** (publiée, même précodeur, la moins chère) ; standard O(M³) en 2e ligne (« référence classique ») ; SiPS en note (continuité avec BitAdapt) ; forme efficace retirée.
 
 ## Prochaine étape
 (1) 3 graines pour l'attention en fréquence D64. (2) Réduire le coût. (3) Bootstrap sur les tirages. (4) Faire le point avant d'aller plus loin (pilote 20 dB, vieillissement, M64).
